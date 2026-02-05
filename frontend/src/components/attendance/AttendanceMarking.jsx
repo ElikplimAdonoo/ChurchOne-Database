@@ -186,13 +186,13 @@ export default function AttendanceMarking({ currentRole }) {
             </div>
         ) : (
             <div className="divide-y divide-slate-700/50">
-                <div className="grid grid-cols-12 gap-4 p-4 bg-slate-800/50 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                <div className="hidden md:grid grid-cols-12 gap-4 p-4 bg-slate-800/50 text-xs font-semibold text-slate-400 uppercase tracking-wider">
                     <div className="col-span-8">Member Name</div>
                     <div className="col-span-4 text-center">Status</div>
                 </div>
                 {members.map(member => (
-                    <div key={member.id} className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-slate-800/30 transition-colors">
-                        <div className="col-span-8 flex items-center gap-3">
+                    <div key={member.id} className="flex flex-col md:grid md:grid-cols-12 gap-4 p-4 items-center hover:bg-slate-800/30 transition-colors border-b border-slate-700/50 md:border-none">
+                        <div className="w-full md:col-span-8 flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-slate-700 overflow-hidden shrink-0 border border-slate-600">
                                 {member.photo_url ? (
                                     <img src={member.photo_url} alt={member.full_name} className="w-full h-full object-cover" />
@@ -204,7 +204,7 @@ export default function AttendanceMarking({ currentRole }) {
                             </div>
                             <span className="font-medium text-slate-200">{member.full_name}</span>
                         </div>
-                        <div className="col-span-4 flex justify-center">
+                        <div className="w-full md:col-span-4 flex justify-between md:justify-center gap-2">
                             <button
                                 onClick={() => toggleStatus(member.id)}
                                 className={`

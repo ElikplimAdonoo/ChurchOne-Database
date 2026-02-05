@@ -98,7 +98,7 @@ function NavItem({ to, icon, label }) {
     <NavLink
       to={to}
       className={({ isActive }) => `
-        flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+        flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
         ${isActive
           ? 'bg-slate-700 text-white shadow-lg shadow-black/20'
           : 'text-slate-400 hover:text-white hover:bg-slate-800'
@@ -106,7 +106,7 @@ function NavItem({ to, icon, label }) {
       `}
     >
       {icon}
-      <span>{label}</span>
+      <span className="hidden md:block">{label}</span>
     </NavLink>
   )
 }

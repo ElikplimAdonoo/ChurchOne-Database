@@ -48,7 +48,7 @@ export default function AttendancePage() {
 
         {/* User Badge */}
         <div className="flex items-center gap-4">
-            <div className="text-right hidden md:block">
+            <div className="text-left md:text-right block">
                 <div className="text-sm font-bold text-white">{userRole.title}</div>
                 <div className="text-xs text-slate-500 font-medium uppercase tracking-wider">{userRole.unitName}</div>
             </div>
