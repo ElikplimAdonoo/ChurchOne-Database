@@ -18,6 +18,7 @@ import { createUnit, fetchHierarchyData } from '../services/hierarchyService';
 import CollapsibleNode from './CollapsibleNode';
 import NodeDetailsPanel from './NodeDetailsPanel';
 import Modal from './ui/Modal';
+import ImageModal from './common/ImageModal';
 
 const nodeTypes = {
     mindMapNode: CollapsibleNode
@@ -76,12 +77,34 @@ const layoutTree = (flatData, collapsedIds) => {
     // --- ACTUAL D3 IMPLEMENTATION ---
     // 1. Build simple hierarchy object for D3
     const buildHierarchy = (parentId) => {
-        const kids = childrenMap.get(parentId) || [];
+        const unit = dataMap.get(parentId);
+        const unitKids = childrenMap.get(parentId) || [];
+        
+        // Convert unit members to person nodes if the unit is not collapsed
+        const memberKids = (!collapsedIds.has(parentId) && unit?.members) 
+            ? unit.members.map(m => ({
+                id: `person-${m.id}`,
+                name: m.name,
+                unit_type: 'PERSON',
+                photo: m.photo,
+                role: m.role,
+                is_person_node: true
+            })) 
+            : [];
+
+        const children = collapsedIds.has(parentId) 
+            ? [] 
+            : [
+                ...unitKids.map(k => buildHierarchy(k.id)),
+                ...memberKids
+            ];
+
         const result = {
             id: parentId,
-            ...dataMap.get(parentId),
-            children: collapsedIds.has(parentId) ? [] : kids.map(k => buildHierarchy(k.id))
+            ...unit,
+            children
         };
+        
         // Remove empty children array for D3 leaf nodes
         if (result.children.length === 0) delete result.children;
         return result;
@@ -120,14 +143,16 @@ const layoutTree = (flatData, collapsedIds) => {
             data: {
                 label: d.data.name,
                 unit_type: d.data.unit_type,
-                hasChildren: (childrenMap.get(d.data.id)?.length > 0),
+                hasChildren: (childrenMap.get(d.data.id)?.length > 0 || (d.data.members?.length > 0)),
                 isCollapsed: collapsedIds.has(d.data.id),
                 leaders: d.data.leaders,
+                photo: d.data.photo, // For PERSON nodes
+                role: d.data.role,   // For PERSON nodes
                 id: d.data.id
             },
             sourcePosition: Position.Right,
             targetPosition: Position.Left,
-            style: getStyle(d.data.unit_type)
+            style: getStyle(d.data.unit_type, false, d.data.role)
         });
 
         if (d.parent) {
@@ -145,50 +170,94 @@ const layoutTree = (flatData, collapsedIds) => {
     return { nodes, edges };
 };
 
-// --- STYLES ---
 const baseStyle = {
-    background: '#1e293b',
+    background: '#1a1a1a',
     color: '#e2e8f0',
-    border: '1px solid #334155',
-    borderRadius: '20px',
+    borderTopWidth: '2px',
+    borderRightWidth: '2px',
+    borderBottomWidth: '2px',
+    borderLeftWidth: '2px',
+    borderStyle: 'solid',
+    borderTopColor: '#0066FF',
+    borderRightColor: '#0066FF',
+    borderBottomColor: '#0066FF',
+    borderLeftColor: '#0066FF',
+    borderRadius: '16px',
     padding: '8px 16px',
     fontSize: '13px',
-    fontWeight: '500',
+    fontWeight: '700',
     width: 'auto',
     minWidth: '180px',
     textAlign: 'center',
-    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.3)',
+    boxShadow: '0 4px 12px -2px rgba(0, 102, 255, 0.25)',
     transition: 'all 0.3s ease'
 };
 
-const getStyle = (type, isSelected) => {
+const getStyle = (type, isSelected, role) => {
     let style = { ...baseStyle };
     if (isSelected) {
-        style.boxShadow = '0 0 0 4px rgba(99, 102, 241, 0.5), 0 8px 12px -2px rgba(0, 0, 0, 0.4)'; // Glow
-        style.borderColor = '#6366f1';
-        style.transform = 'scale(1.05)';
+        style.boxShadow = '0 0 0 3px rgba(0, 102, 255, 0.6), 0 8px 16px -4px rgba(0, 0, 0, 0.5)';
+        style.borderTopColor = '#3385FF';
+        style.borderRightColor = '#3385FF';
+        style.borderBottomColor = '#3385FF';
+        style.borderLeftColor = '#3385FF';
+        style.transform = 'scale(1.03)';
         style.zIndex = 100;
     }
 
+    // Unique style for Cell Shepherds
+    const isCellShepherd = role?.toLowerCase() === 'cell shepherd';
+
     switch (type) {
-        case 'ZONAL': return { ...style, borderLeftColor: '#6366f1', borderLeftWidth: '4px', background: isSelected ? '#312e81' : '#1e1b4b' };
-        case 'MC': return { ...style, borderLeftColor: '#a855f7', borderLeftWidth: '4px' };
-        case 'BUSCENTA': return { ...style, borderLeftColor: '#3b82f6', borderLeftWidth: '4px' };
-        case 'CELL': return { ...style, borderLeftColor: '#10b981', borderLeftWidth: '4px' };
-        case 'PERSON': return {
-            ...style,
-            background: isSelected ? '#1e293b' : '#0f172a',
-            borderTop: isSelected ? '1px solid #6366f1' : '1px solid #1e293b',
-            borderRight: isSelected ? '1px solid #6366f1' : '1px solid #1e293b',
-            borderBottom: isSelected ? '1px solid #6366f1' : '1px solid #1e293b',
-            borderLeft: isSelected ? '4px solid #6366f1' : '4px solid #cbd5e1',
-            // Note: If isSelected, we want to match the selection style, otherwise the gray accent.
-            // Wait, previous code had `border: ...` AND `borderLeft: ...`. 
-            // To fix warning, we should just NOT use `border` shorthand if we use `borderLeft`.
-            color: '#94a3b8',
-            minWidth: '150px',
-            fontSize: '12px'
+        case 'ZONAL': return { 
+            ...style, 
+            borderLeftColor: '#0066FF', 
+            borderLeftWidth: '4px', 
+            background: isSelected ? '#172554' : '#0a0a0a' 
         };
+        case 'MC': return { 
+            ...style, 
+            borderLeftColor: '#3385FF', 
+            borderLeftWidth: '4px', 
+            background: isSelected ? '#1e3a8a' : '#111111' 
+        };
+        case 'BUSCENTA': return { 
+            ...style, 
+            borderLeftColor: '#66A3FF', 
+            borderLeftWidth: '4px', 
+            background: isSelected ? '#1e40af' : '#1a1a1a' 
+        };
+        case 'CELL': return { 
+            ...style, 
+            borderLeftColor: '#99C2FF', 
+            borderLeftWidth: '4px', 
+            background: isSelected ? '#2563eb' : '#222222' 
+        };
+        case 'PERSON': {
+            const personBorderColor = isSelected 
+                ? (isCellShepherd ? '#EAB308' : '#3385FF') 
+                : (isCellShepherd ? '#EAB308' : '#333');
+            
+            const personBorderLeftColor = isCellShepherd 
+                ? '#EAB308' 
+                : (isSelected ? '#0066FF' : '#444');
+
+            return {
+                ...style,
+                background: isCellShepherd ? (isSelected ? '#422006' : '#1c1917') : (isSelected ? '#1e293b' : '#0f0f0f'),
+                borderTopColor: personBorderColor,
+                borderRightColor: personBorderColor,
+                borderBottomColor: personBorderColor,
+                borderLeftColor: personBorderLeftColor,
+                borderTopWidth: '2px',
+                borderRightWidth: '2px',
+                borderBottomWidth: '2px',
+                borderLeftWidth: '4px',
+                color: isCellShepherd ? '#FDE047' : '#94a3b8',
+                minWidth: '150px',
+                fontSize: '12px'
+            };
+        }
         default: return style;
     }
 };
@@ -207,6 +276,7 @@ export default function HierarchyMindMap() {
     const [selectedNodeId, setSelectedNodeId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
+    const [modalConfig, setModalConfig] = useState({ isOpen: false, src: '', title: '' });
 
     // Toggle Handler
     const handleToggle = useCallback((nodeId) => {
@@ -235,18 +305,33 @@ export default function HierarchyMindMap() {
         }
 
         const q = searchQuery.toLowerCase();
-        const results = flatData.filter(d =>
-            d.name.toLowerCase().includes(q) ||
-            (d.leaders && d.leaders.some(l => l.name.toLowerCase().includes(q)))
-        );
+        const results = [];
+        
+        flatData.forEach(d => {
+            // Check unit name/leaders
+            if (d.name.toLowerCase().includes(q) || (d.leaders && d.leaders.some(l => l.name.toLowerCase().includes(q)))) {
+                results.push({ id: d.id, name: d.name, type: d.unit_type });
+            }
+            // Check members
+            if (d.members) {
+                const matchingMembers = d.members.filter(m => m.name.toLowerCase().includes(q));
+                matchingMembers.forEach(m => {
+                    results.push({ id: `person-${m.id}`, name: m.name, type: 'PERSON', unitName: d.name });
+                });
+            }
+        });
 
-        setSearchResults(results.map(r => r.id));
+        setSearchResults(results.slice(0, 10));
     }, [searchQuery, flatData]);
 
-    const handleSearchResultClick = (id) => {
-        const node = nodes.find(n => n.id === id);
+    const handleSearchResultClick = (result) => {
+        // If it's a person node, we need to ensure their parent unit is expanded 
+        // before we can focus on them. This is tricky with the current collapsible logic.
+        // For now, let's at least find the node if it exists.
+        
+        const node = nodes.find(n => n.id === result.id);
         if (node && rfInstance) {
-            setSelectedNodeId(id);
+            setSelectedNodeId(result.id);
             rfInstance.setCenter(node.position.x, node.position.y, { zoom: 1.2, duration: 800 });
             setSearchQuery('');
         }
@@ -266,7 +351,8 @@ export default function HierarchyMindMap() {
                 name: unit.name,
                 unit_type: unit.unit_type,
                 parent_id: unit.parent_id,
-                leaders: unit.leaders || []
+                leaders: unit.leaders || [],
+                members: unit.members || []
             }));
             setFlatData(hierarchyNodes);
         });
@@ -318,6 +404,7 @@ export default function HierarchyMindMap() {
             data: {
                 ...n.data,
                 onToggle: handleToggle,
+                onImageClick: (src, title) => setModalConfig({ isOpen: true, src, title }),
                 // Pass selection state to node component if needed, 
                 // but style updates are handled here
             },
@@ -355,37 +442,39 @@ export default function HierarchyMindMap() {
     }, [nodes, selectedNodeId]);
 
     return (
-        <div className="h-full w-full bg-slate-950 relative overflow-hidden">
+        <div className="h-full w-full bg-gradient-dark relative overflow-hidden">
+            {/* Decorative Dot Pattern */}
+            <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none z-0"></div>
 
             {/* Search Overlay */}
             <div className="absolute top-6 left-6 z-50 w-80">
                 <div className="relative group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-400 transition-colors" size={18} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={18} />
                     <input
                         type="text"
                         placeholder="Search map..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-indigo-500/50 shadow-lg text-slate-200"
+                        className="w-full bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 shadow-lg text-slate-200 font-medium"
                     />
 
                     {/* Search Results Dropdown */}
                     {searchQuery && searchResults.length > 0 && (
                         <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900/95 backdrop-blur border border-slate-700/50 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
-                            {flatData.filter(d => searchResults.includes(d.id)).slice(0, 10).map(result => (
+                            {searchResults.map(result => (
                                 <div
                                     key={result.id}
-                                    onClick={() => handleSearchResultClick(result.id)}
+                                    onClick={() => handleSearchResultClick(result)}
                                     className="px-4 py-3 hover:bg-slate-800/50 cursor-pointer border-b border-slate-800/50 last:border-0 flex items-center justify-between group"
                                 >
                                     <div>
-                                        <p className="text-sm font-medium text-slate-200 group-hover:text-white">{result.name}</p>
+                                        <p className="text-sm font-bold text-slate-200 group-hover:text-white">{result.name}</p>
                                         <p className="text-xs text-slate-500">
-                                            {result.unit_type}
-                                            {result.leaders && result.leaders.length > 0 && ` • ${result.leaders[0].name}`}
+                                            {result.type}
+                                            {result.unitName && ` • ${result.unitName}`}
                                         </p>
                                     </div>
-                                    <ChevronRight size={14} className="text-slate-600 group-hover:text-indigo-400" />
+                                    <ChevronRight size={14} className="text-slate-600 group-hover:text-church-blue-400" />
                                 </div>
                             ))}
                         </div>
@@ -410,20 +499,20 @@ export default function HierarchyMindMap() {
             <Modal isOpen={isUnitModalOpen} onClose={() => setIsUnitModalOpen(false)} title={`Add Child to ${targetParent?.data?.label || 'Unit'}`}>
                 <form onSubmit={handleSubmit(onSubmitUnit)} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1">Unit Name</label>
+                        <label className="block text-sm font-black text-slate-300 mb-1">Unit Name</label>
                         <input
                             {...register('name', { required: true })}
-                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500"
+                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 font-medium"
                             placeholder="e.g. North Zone, Cell Alpha..."
                             autoFocus
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1">Unit Type</label>
+                        <label className="block text-sm font-black text-slate-300 mb-1">Unit Type</label>
                         <select
                             {...register('unit_type')}
-                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500"
+                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 font-medium"
                         >
                             <option value="ZONAL">ZONAL</option>
                             <option value="MC">MC</option>
@@ -436,13 +525,13 @@ export default function HierarchyMindMap() {
                         <button
                             type="button"
                             onClick={() => setIsUnitModalOpen(false)}
-                            className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors"
+                            className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors font-bold border border-slate-600"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="flex-1 py-2 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-500 transition-colors"
+                            className="flex-1 py-2 rounded-lg bg-gradient-church text-white font-black hover:opacity-90 transition-all border border-church-blue-600"
                         >
                             Create Unit
                         </button>
@@ -466,18 +555,25 @@ export default function HierarchyMindMap() {
                 edgesFocusable={false}
                 nodesDraggable={false}
             >
-                <Controls className="bg-slate-800 text-slate-300 border-slate-700 !left-6 !bottom-6" />
+                <Controls className="!bg-black/80 !text-gray-300 !border !border-gray-700 !rounded-xl !left-6 !bottom-6" />
                 <MiniMap
                     nodeColor={(n) => {
-                        if (n.data.unit_type === 'PERSON') return '#1e293b';
-                        if (n.id === selectedNodeId) return '#6366f1';
-                        return '#475569';
+                        if (n.data.unit_type === 'PERSON') return '#1a1a1a';
+                        if (n.id === selectedNodeId) return '#3385FF';
+                        return '#0066FF';
                     }}
-                    maskColor="rgba(2, 6, 23, 0.8)"
-                    className="!bg-slate-900 !border !border-slate-800 !rounded-lg !bottom-6 !right-6"
+                    maskColor="rgba(0, 0, 0, 0.85)"
+                    className="!bg-black/80 !border !border-gray-700 !rounded-xl !bottom-6 !right-6"
                 />
-                <Background color="#0f172a" gap={30} size={1} variant="dots" />
+                <Background color="#1a1a1a" gap={30} size={1} variant="dots" />
             </ReactFlow>
+
+            <ImageModal
+                isOpen={modalConfig.isOpen}
+                onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
+                imageSrc={modalConfig.src}
+                title={modalConfig.title}
+            />
         </div>
     );
 }

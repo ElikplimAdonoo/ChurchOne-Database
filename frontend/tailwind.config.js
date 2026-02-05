@@ -91,7 +91,8 @@ export default {
       },
       backgroundImage: {
         'dot-pattern': 'radial-gradient(circle, currentColor 1px, transparent 1px)',
-        'gradient-church': 'linear-gradient(135deg, #0066FF 0%, #8B00FF 50%, #C800C8 100%)',
+        'gradient-church': 'linear-gradient(135deg, #3385FF 0%, #0066FF 50%, #0052CC 100%)',
+        'gradient-dark': 'linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 25%, #2d2d2d 50%, #1a1a1a 75%, #0a0a0a 100%)',
       },
       backgroundSize: {
         'dot-sm': '8px 8px',

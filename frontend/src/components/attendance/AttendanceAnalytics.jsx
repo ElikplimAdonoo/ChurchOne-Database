@@ -94,7 +94,7 @@ export default function AttendanceAnalytics({ currentRole }) {
     fetchAnalytics();
   }, [currentRole.unitName, currentRole.unitType]);
 
-  const COLORS = ['#0066FF', '#FF6B5A']; // Church Blue, Coral
+  const COLORS = ['#0066FF', '#10B981']; // Church Blue, Emerald
 
   if (loading) {
      return (
@@ -117,37 +117,37 @@ export default function AttendanceAnalytics({ currentRole }) {
   return (
     <div className="space-y-6">
        {/* KPI Cards */}
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-6 rounded-2xl border-4 border-church-blue-500 shadow-lg">
-                <div className="flex items-center gap-3 mb-2 text-church-blue-600">
-                    <TrendingUp size={24} />
-                    <span className="font-black uppercase text-xs tracking-wider">Attendance Rate</span>
+       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-5 px-6 rounded-2xl border-2 border-church-blue-500/40 text-church-blue-400 bg-church-blue-500/5 shadow-xl backdrop-blur-md flex flex-col gap-3 transition-all hover:scale-[1.02]">
+                <div className="flex items-center gap-2.5">
+                    <TrendingUp size={20} className="shrink-0" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">Attendance Rate</span>
                 </div>
-                <div className="text-4xl font-black text-gray-900 flex items-baseline gap-2">
+                <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2">
                     {stats.rate}%
-                    <span className="text-sm font-bold text-church-blue-500">Average</span>
+                    <span className="text-xs font-bold text-church-blue-400 opacity-60">Average</span>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border-4 border-church-purple-500 shadow-lg">
-                <div className="flex items-center gap-3 mb-2 text-church-purple-600">
-                    <Users size={24} />
-                    <span className="font-black uppercase text-xs tracking-wider">Total Present</span>
+            <div className="p-5 px-6 rounded-2xl border-2 border-emerald-500/40 text-emerald-400 bg-emerald-500/5 shadow-xl backdrop-blur-md flex flex-col gap-3 transition-all hover:scale-[1.02]">
+                <div className="flex items-center gap-2.5">
+                    <Users size={20} className="shrink-0" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">Total Present</span>
                 </div>
-                <div className="text-4xl font-black text-gray-900 flex items-baseline gap-2">
+                <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2">
                     {stats.present}
-                    <span className="text-sm font-bold text-gray-500">/ {stats.total} total</span>
+                    <span className="text-xs font-bold text-emerald-400 opacity-60">/ {stats.total} total</span>
                 </div>
             </div>
 
-            <div className="bg-white p-6 rounded-2xl border-4 border-church-coral-500 shadow-lg">
-                <div className="flex items-center gap-3 mb-2 text-church-coral-600">
-                    <Calendar size={24} />
-                    <span className="font-black uppercase text-xs tracking-wider">Sessions</span>
+            <div className="p-5 px-6 rounded-2xl border-2 border-yellow-500/40 text-yellow-400 bg-yellow-500/5 shadow-xl backdrop-blur-md flex flex-col gap-3 transition-all hover:scale-[1.02]">
+                <div className="flex items-center gap-2.5">
+                    <Calendar size={20} className="shrink-0" />
+                    <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">Sessions</span>
                 </div>
-                <div className="text-4xl font-black text-gray-900 flex items-baseline gap-2">
+                <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2">
                     {history.length}
-                    <span className="text-sm font-bold text-gray-500">Recorded</span>
+                    <span className="text-xs font-bold text-yellow-400 opacity-60">Recorded</span>
                 </div>
             </div>
        </div>
@@ -179,9 +179,9 @@ export default function AttendanceAnalytics({ currentRole }) {
             </div>
 
             {/* Distribution Chart */}
-            <div className="bg-white p-6 rounded-2xl border-4 border-church-purple-500 shadow-lg">
+            <div className="bg-slate-900/80 p-6 rounded-2xl border-2 border-church-blue-500/50 shadow-lg backdrop-blur-sm">
                 <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
-                    <Users size={24} className="text-church-purple-500" />
+                    <Users size={24} className="text-church-blue-400" />
                     Overall Distribution
                 </h3>
                 <div className="h-64 flex justify-center">

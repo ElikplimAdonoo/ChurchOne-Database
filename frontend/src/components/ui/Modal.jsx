@@ -31,11 +31,11 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
                     initial={{ scale: 0.95, opacity: 0, y: 20 }}
                     animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.95, opacity: 0, y: 20 }}
-                    className={`relative w-full ${maxWidth} bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]`}
+                    className={`relative w-full ${maxWidth} bg-slate-900 border-2 border-church-blue-500/50 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]`}
                 >
                     {/* Header */}
-                    <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between bg-slate-800/30">
-                        <h2 className="text-xl font-semibold text-white tracking-tight">{title}</h2>
+                    <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between bg-slate-800/50">
+                        <h2 className="text-xl font-black text-white tracking-tight">{title}</h2>
                         <button
                             onClick={onClose}
                             className="p-1 rounded-full hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"

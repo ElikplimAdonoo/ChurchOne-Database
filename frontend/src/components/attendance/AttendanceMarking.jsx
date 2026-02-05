@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Calendar, Save, UserCheck, UserX, Loader2, CheckCircle, Users } from 'lucide-react';
+import ImageModal from '../common/ImageModal';
 
 export default function AttendanceMarking({ currentRole }) {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
@@ -9,6 +10,7 @@ export default function AttendanceMarking({ currentRole }) {
   const [submitting, setSubmitting] = useState(false);
   const [attendance, setAttendance] = useState({}); // { personId: 'PRESENT' | 'ABSENT' }
   const [successMsg, setSuccessMsg] = useState('');
+  const [imageModalConfig, setImageModalConfig] = useState({ isOpen: false, src: '', title: '' });
 
   // Fetch members for the selected unit
   useEffect(() => {
@@ -134,24 +136,24 @@ export default function AttendanceMarking({ currentRole }) {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* Controls */}
-      <div className="flex items-center justify-between bg-church-blue-50 p-4 rounded-2xl border-4 border-church-blue-500">
-        <div className="flex items-center gap-4">
-            <div className="flex flex-col">
-                <label className="text-xs text-church-blue-700 uppercase font-black tracking-wider mb-1">Session Date</label>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/50 p-4 rounded-2xl border-2 border-church-blue-500/30 backdrop-blur-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 w-full md:w-auto">
+            <div className="flex flex-col w-full sm:w-auto">
+                <label className="text-xs text-church-blue-400 uppercase font-black tracking-wider mb-1">Session Date</label>
                 <div className="relative">
                     <input 
                         type="date" 
                         value={date}
                         max={new Date().toISOString().split('T')[0]}
                         onChange={(e) => setDate(e.target.value)}
-                        className="bg-white border-2 border-church-blue-300 text-gray-900 rounded-lg px-3 py-2 pl-10 focus:outline-none focus:ring-4 focus:ring-church-blue-200 focus:border-church-blue-500 font-semibold"
+                        className="w-full sm:w-auto bg-black/50 border-2 border-slate-700 text-white rounded-lg px-3 py-2 pl-10 focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500 font-semibold"
                     />
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-church-blue-500" size={16} />
                 </div>
             </div>
-            <div className="flex flex-col">
-                <label className="text-xs text-church-blue-700 uppercase font-black tracking-wider mb-1">Unit</label>
-                <span className="text-gray-900 font-bold px-3 py-2 bg-white rounded-lg border-2 border-church-blue-300">
+            <div className="flex flex-col w-full sm:w-auto">
+                <label className="text-xs text-church-blue-400 uppercase font-black tracking-wider mb-1">Unit</label>
+                <span className="text-white font-bold px-3 py-2 bg-black/50 rounded-lg border-2 border-slate-700 block text-center sm:text-left">
                     {currentRole.unitName}
                 </span>
             </div>
@@ -160,59 +162,61 @@ export default function AttendanceMarking({ currentRole }) {
         <button 
             onClick={handleSubmit}
             disabled={submitting || loading}
-            className="flex items-center gap-2 bg-gradient-church hover:opacity-90 text-white px-6 py-2.5 rounded-xl font-black transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-church-purple-600"
+            className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-church hover:opacity-90 text-white px-6 py-2.5 rounded-xl font-black transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed border-2 border-church-blue-600"
         >
             {submitting ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />}
-            <span>{submitting ? 'Saving...' : 'Submit Attendance'}</span>
+            <span>{submitting ? 'Saving...' : 'Submit'}</span>
         </button>
       </div>
 
       {successMsg && (
-        <div className="bg-church-blue-100 border-4 border-church-blue-500 text-church-blue-700 p-4 rounded-xl flex items-center gap-3 font-bold">
+        <div className="bg-church-blue-900/30 border-2 border-church-blue-500 text-church-blue-300 p-4 rounded-xl flex items-center gap-3 font-bold backdrop-blur-sm">
             <CheckCircle size={24} />
             {successMsg}
         </div>
       )}
 
       {/* Member List */}
-      <div className="bg-white rounded-2xl border-4 border-church-blue-500 overflow-hidden shadow-lg">
+      <div className="bg-slate-900/60 rounded-2xl border-2 border-church-blue-500/30 overflow-hidden shadow-lg backdrop-blur-sm">
         {loading ? (
             <div className="p-12 flex justify-center">
                 <Loader2 className="animate-spin text-church-blue-500" size={40} />
             </div>
         ) : members.length === 0 ? (
-            <div className="p-12 text-center text-gray-600 font-semibold">
+            <div className="p-12 text-center text-slate-400 font-semibold">
                 No members found in this cell.
             </div>
         ) : (
-            <div className="divide-y divide-church-blue-200">
-                <div className="hidden md:grid grid-cols-12 gap-4 p-4 bg-church-blue-100 text-xs font-black text-church-blue-700 uppercase tracking-wider">
+            <div className="divide-y divide-slate-700/50">
+                <div className="hidden md:grid grid-cols-12 gap-4 p-4 bg-slate-800/80 text-xs font-black text-church-blue-400 uppercase tracking-wider">
                     <div className="col-span-8">Member Name</div>
                     <div className="col-span-4 text-center">Status</div>
                 </div>
                 {members.map(member => (
-                    <div key={member.id} className="flex flex-col md:grid md:grid-cols-12 gap-4 p-4 items-center hover:bg-church-blue-50 transition-colors border-b border-church-blue-200 md:border-none">
+                    <div key={member.id} className="flex flex-col md:grid md:grid-cols-12 gap-4 p-4 items-center hover:bg-white/5 transition-colors border-b border-slate-700/50 md:border-none">
                         <div className="w-full md:col-span-8 flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-church-blue-100 overflow-hidden shrink-0 border-2 border-church-blue-500">
+                            <div 
+                                onClick={() => member.photo_url && setImageModalConfig({ isOpen: true, src: member.photo_url, title: member.full_name })}
+                                className={`w-12 h-12 rounded-full bg-slate-800 overflow-hidden shrink-0 border-2 border-church-blue-500/50 shadow-sm ${member.photo_url ? 'cursor-pointer' : ''}`}
+                            >
                                 {member.photo_url ? (
                                     <img src={member.photo_url} alt={member.full_name} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center text-church-blue-400">
-                                        <Users size={24} />
+                                        <Users size={20} />
                                     </div>
                                 )}
                             </div>
-                            <span className="font-bold text-gray-900">{member.full_name}</span>
+                            <span className="font-bold text-gray-200 text-lg md:text-base">{member.full_name}</span>
                         </div>
-                        <div className="w-full md:col-span-4 flex justify-between md:justify-center gap-2">
+                        <div className="w-full md:col-span-4 flex justify-center mt-3 md:mt-0">
                             <button
                                 onClick={() => toggleStatus(member.id)}
                                 className={`
-                                    relative flex items-center gap-2 px-5 py-2 rounded-full font-black text-sm transition-all shadow-md
+                                    w-full md:w-32 py-2.5 rounded-lg font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg
                                     ${attendance[member.id] === 'PRESENT' 
-                                        ? 'bg-church-blue-500 text-white border-2 border-church-blue-700' 
-                                        : 'bg-church-coral-500 text-white border-2 border-church-coral-700'
-                                    }
+                                        ? 'bg-church-blue-600 text-white hover:bg-church-blue-500' 
+                                        : 'bg-slate-800 text-slate-400 border-2 border-slate-600 hover:border-slate-500 hover:text-slate-300'}
                                 `}
                             >
                                 {attendance[member.id] === 'PRESENT' ? (
@@ -234,6 +238,12 @@ export default function AttendanceMarking({ currentRole }) {
         )}
       </div>
 
+      <ImageModal 
+                isOpen={imageModalConfig.isOpen}
+                onClose={() => setImageModalConfig(prev => ({ ...prev, isOpen: false }))}
+                imageSrc={imageModalConfig.src}
+                title={imageModalConfig.title}
+            />
     </div>
   );
 }

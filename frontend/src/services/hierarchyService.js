@@ -19,11 +19,12 @@ export const fetchHierarchyData = async () => {
         const { data: assignments, error: assignError } = await supabase
             .from('position_assignments')
             .select(`
-        unit_id,
-        is_primary,
-        people (full_name, photo_url, is_placeholder),
-        positions (title, level)
-      `)
+                id,
+                unit_id,
+                is_primary,
+                people (id, full_name, photo_url, is_placeholder),
+                positions (title, level, unit_type)
+            `)
             .eq('is_active', true);
 
         if (assignError) throw assignError;
@@ -31,17 +32,36 @@ export const fetchHierarchyData = async () => {
         const unitsWithPeople = units.map(unit => {
             const unitAssignments = assignments.filter(a => a.unit_id === unit.id);
 
-            // Sort assignments: Head/Shepherd first
-            unitAssignments.sort((a, b) => a.positions.level - b.positions.level);
-
-            return {
-                ...unit,
-                leaders: unitAssignments.map(a => ({
+            // Separate Leaders from Members for UI convenience
+            // though the mindmap might just want a flat list of people nodes.
+            // Level < 100 is usually a leader/shepherd. 
+            // Level 100+ or null is usually a member.
+            
+            const leaders = unitAssignments
+                .filter(a => a.positions.level < 100)
+                .sort((a, b) => a.positions.level - b.positions.level)
+                .map(a => ({
+                    id: a.people.id,
                     name: a.people.full_name,
                     role: a.positions.title,
                     photo: a.people.photo_url,
                     isPlaceholder: a.people.is_placeholder
-                }))
+                }));
+
+            const members = unitAssignments
+                .filter(a => a.positions.level >= 100 || !a.positions.level)
+                .map(a => ({
+                    id: a.people.id,
+                    name: a.people.full_name,
+                    role: a.positions.title,
+                    photo: a.people.photo_url,
+                    isPlaceholder: a.people.is_placeholder
+                }));
+
+            return {
+                ...unit,
+                leaders,
+                members
             };
         });
 
