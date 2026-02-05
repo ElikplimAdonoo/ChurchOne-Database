@@ -94,21 +94,21 @@ export default function AttendanceAnalytics({ currentRole }) {
     fetchAnalytics();
   }, [currentRole.unitName, currentRole.unitType]);
 
-  const COLORS = ['#10b981', '#ef4444']; // Emerald, Red
+  const COLORS = ['#0066FF', '#FF6B5A']; // Church Blue, Coral
 
   if (loading) {
      return (
         <div className="flex justify-center items-center h-64">
-            <Loader2 className="animate-spin text-emerald-500" size={32} />
+            <Loader2 className="animate-spin text-church-blue-500" size={40} />
         </div>
      );
   }
 
   if (!stats || stats.total === 0) {
       return (
-        <div className="flex flex-col items-center justify-center h-64 text-slate-400">
-            <TrendingUp size={48} className="mb-4 opacity-50" />
-            <p className="text-lg">No attendance data available yet.</p>
+        <div className="flex flex-col items-center justify-center h-64 text-gray-600">
+            <TrendingUp size={56} className="mb-4 opacity-50 text-church-blue-400" />
+            <p className="text-lg font-bold">No attendance data available yet.</p>
             <p className="text-sm">Mark some attendance to see analytics here.</p>
         </div>
       );
@@ -118,36 +118,36 @@ export default function AttendanceAnalytics({ currentRole }) {
     <div className="space-y-6">
        {/* KPI Cards */}
        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">
-                <div className="flex items-center gap-3 mb-2 text-slate-400">
-                    <TrendingUp size={20} />
-                    <span className="font-semibold uppercase text-xs tracking-wider">Attendance Rate</span>
+            <div className="bg-white p-6 rounded-2xl border-4 border-church-blue-500 shadow-lg">
+                <div className="flex items-center gap-3 mb-2 text-church-blue-600">
+                    <TrendingUp size={24} />
+                    <span className="font-black uppercase text-xs tracking-wider">Attendance Rate</span>
                 </div>
-                <div className="text-3xl font-bold text-white flex items-baseline gap-2">
+                <div className="text-4xl font-black text-gray-900 flex items-baseline gap-2">
                     {stats.rate}%
-                    <span className="text-sm font-normal text-emerald-400">Average</span>
+                    <span className="text-sm font-bold text-church-blue-500">Average</span>
                 </div>
             </div>
 
-            <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">
-                <div className="flex items-center gap-3 mb-2 text-slate-400">
-                    <Users size={20} />
-                    <span className="font-semibold uppercase text-xs tracking-wider">Total Present</span>
+            <div className="bg-white p-6 rounded-2xl border-4 border-church-purple-500 shadow-lg">
+                <div className="flex items-center gap-3 mb-2 text-church-purple-600">
+                    <Users size={24} />
+                    <span className="font-black uppercase text-xs tracking-wider">Total Present</span>
                 </div>
-                <div className="text-3xl font-bold text-white flex items-baseline gap-2">
+                <div className="text-4xl font-black text-gray-900 flex items-baseline gap-2">
                     {stats.present}
-                    <span className="text-sm font-normal text-slate-500">/ {stats.total} total</span>
+                    <span className="text-sm font-bold text-gray-500">/ {stats.total} total</span>
                 </div>
             </div>
 
-            <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700/50">
-                <div className="flex items-center gap-3 mb-2 text-slate-400">
-                    <Calendar size={20} />
-                    <span className="font-semibold uppercase text-xs tracking-wider">Sessions</span>
+            <div className="bg-white p-6 rounded-2xl border-4 border-church-coral-500 shadow-lg">
+                <div className="flex items-center gap-3 mb-2 text-church-coral-600">
+                    <Calendar size={24} />
+                    <span className="font-black uppercase text-xs tracking-wider">Sessions</span>
                 </div>
-                <div className="text-3xl font-bold text-white flex items-baseline gap-2">
+                <div className="text-4xl font-black text-gray-900 flex items-baseline gap-2">
                     {history.length}
-                    <span className="text-sm font-normal text-slate-500">Recorded</span>
+                    <span className="text-sm font-bold text-gray-500">Recorded</span>
                 </div>
             </div>
        </div>
@@ -156,9 +156,9 @@ export default function AttendanceAnalytics({ currentRole }) {
        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Trend Chart */}
-            <div className="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/50">
-                <h3 className="text-lg font-semibold text-slate-200 mb-6 flex items-center gap-2">
-                    <BarChart size={20} className="text-emerald-400" />
+            <div className="bg-white p-6 rounded-2xl border-4 border-church-blue-500 shadow-lg">
+                <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
+                    <BarChart size={24} className="text-church-blue-500" />
                     Attendance Trend
                 </h3>
                 <div className="h-64">
@@ -171,17 +171,17 @@ export default function AttendanceAnalytics({ currentRole }) {
                                 contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
                                 itemStyle={{ color: '#f8fafc' }}
                             />
-                            <Bar dataKey="present" name="Present" fill="#10b981" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="absent" name="Absent" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey="present" name="Present" fill="#0066FF" radius={[6, 6, 0, 0]} />
+                            <Bar dataKey="absent" name="Absent" fill="#FF6B5A" radius={[6, 6, 0, 0]} />
                         </BarChart>
                     </ResponsiveContainer>
                 </div>
             </div>
 
             {/* Distribution Chart */}
-            <div className="bg-slate-800/30 p-6 rounded-2xl border border-slate-700/50">
-                <h3 className="text-lg font-semibold text-slate-200 mb-6 flex items-center gap-2">
-                    <Users size={20} className="text-blue-400" />
+            <div className="bg-white p-6 rounded-2xl border-4 border-church-purple-500 shadow-lg">
+                <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
+                    <Users size={24} className="text-church-purple-500" />
                     Overall Distribution
                 </h3>
                 <div className="h-64 flex justify-center">
@@ -211,12 +211,12 @@ export default function AttendanceAnalytics({ currentRole }) {
                 </div>
                 <div className="flex justify-center gap-6 mt-4">
                     <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
-                        <span className="text-sm text-slate-400">Present</span>
+                        <div className="w-4 h-4 rounded-full bg-church-blue-500"></div>
+                        <span className="text-sm text-gray-700 font-semibold">Present</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                        <span className="text-sm text-slate-400">Absent</span>
+                        <div className="w-4 h-4 rounded-full bg-church-coral-500"></div>
+                        <span className="text-sm text-gray-700 font-semibold">Absent</span>
                     </div>
                 </div>
             </div>

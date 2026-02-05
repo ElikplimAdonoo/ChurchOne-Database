@@ -4,7 +4,25 @@
 
 @layer base {
   body {
-    @apply bg-slate-900 text-white min-h-screen;
+    @apply bg-white text-gray-900 min-h-screen;
     font-family: 'Inter', system-ui, sans-serif;
   }
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-gray-100;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-church-blue-400 rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-church-blue-500;
 }

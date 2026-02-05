@@ -15,11 +15,11 @@ function App() {
     <AuthProvider>
       <Router>
         {/* App Container: Fixed Screen Size, Flex Column */}
-        <div className="h-screen w-screen bg-slate-900 text-white font-sans selection:bg-emerald-500/30 flex flex-col overflow-hidden">
+        <div className="h-screen w-screen bg-gradient-to-br from-gray-50 to-church-blue-50 text-gray-900 font-sans selection:bg-church-yellow/30 flex flex-col overflow-hidden">
           <Navigation />
 
         {/* Main Content Area: Fills remaining space */}
-        <main className="flex-1 relative bg-slate-900/50">
+        <main className="flex-1 relative bg-white">
           <Routes>
             {/* Dashboard: Scrollable Overlay */}
             <Route path="/" element={
@@ -71,18 +71,18 @@ function App() {
 function Navigation() {
   return (
     // Changed from fixed to relative (flex item), but kept z-index for shadow/layering
-    <nav className="relative z-50 bg-slate-900 border-b border-slate-700/50 shadow-xl shrink-0">
+    <nav className="relative z-50 bg-white border-b-4 border-church-blue-500 shadow-xl shrink-0">
       <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center">
-            <Activity className="text-white" size={20} />
+          <div className="w-10 h-10 rounded-xl bg-gradient-church flex items-center justify-center shadow-lg">
+            <Activity className="text-white" size={24} />
           </div>
-          <span className="font-bold text-lg tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-            ChurchOne Database
+          <span className="font-black text-xl tracking-tight bg-gradient-church bg-clip-text text-transparent">
+            ChurchOne
           </span>
         </div>
 
-        <div className="flex items-center gap-1 bg-slate-800/50 p-1 rounded-xl border border-slate-700/50">
+        <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl border-2 border-church-blue-300">
           <NavItem to="/" icon={<LayoutDashboard size={18} />} label="Structure" />
           <NavItem to="/directory" icon={<Users size={18} />} label="Directory" />
           <NavItem to="/mindmap" icon={<List size={18} />} label="Graph" />
@@ -98,10 +98,10 @@ function NavItem({ to, icon, label }) {
     <NavLink
       to={to}
       className={({ isActive }) => `
-        flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200
+        flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg text-sm font-bold transition-all duration-200
         ${isActive
-          ? 'bg-slate-700 text-white shadow-lg shadow-black/20'
-          : 'text-slate-400 hover:text-white hover:bg-slate-800'
+          ? 'bg-gradient-church text-white shadow-lg'
+          : 'text-gray-700 hover:text-church-blue-600 hover:bg-white'
         }
       `}
     >
