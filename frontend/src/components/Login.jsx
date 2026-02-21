@@ -48,7 +48,7 @@ export default function Login() {
                 <Sparkles className="absolute -top-2 -right-2 text-church-blue-300" size={20} />
             </div>
             <h2 className="text-3xl font-black text-white">Welcome Back!</h2>
-            <p className="text-church-blue-400 font-semibold">Love Economy Church</p>
+            <p className="text-church-blue-400 font-semibold">ChurchOne</p>
         </div>
 
         {error && (

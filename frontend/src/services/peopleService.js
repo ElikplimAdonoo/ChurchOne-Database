@@ -16,6 +16,9 @@ export async function fetchPeople() {
             is_active,
             is_placeholder,
             assignments:position_assignments(
+                id,
+                unit_id,
+                position_id,
                 is_active,
                 position:positions(title, unit_type),
                 unit:organizational_units(name, unit_type)
@@ -36,6 +39,9 @@ export async function fetchPeople() {
             photo: person.photo_url,
             role: primaryAssignment?.position?.title || 'Unassigned',
             unit: primaryAssignment?.unit?.name || 'Unassigned',
+            unit_id: primaryAssignment?.unit_id,
+            position_id: primaryAssignment?.position_id,
+            assignment_id: primaryAssignment?.id,
             unit_type: primaryAssignment?.unit?.unit_type,
             status: person.is_active ? 'Active' : 'Inactive',
             is_placeholder: person.is_placeholder
@@ -53,8 +59,6 @@ export const createPerson = async (personData) => {
         .from('people')
         .insert([{
             full_name: personData.fullName,
-            email: personData.email,
-            phone: personData.phone,
             is_placeholder: false
         }])
         .select()
@@ -90,20 +94,45 @@ export const createPerson = async (personData) => {
 };
 
 export const updatePerson = async (id, updates) => {
-    // updates: { full_name, email, phone, is_active, ... }
-    const { data, error } = await supabase
+    // 1. Update Core Bio
+    const { data: person, error: personError } = await supabase
         .from('people')
-        .update(updates)
+        .update({
+            full_name: updates.fullName,
+            is_active: updates.is_active
+        })
         .eq('id', id)
         .select()
         .single();
 
-    if (error) throw error;
+    if (personError) throw personError;
+
+    // 2. Handle Assignment Update (Transfer)
+    if (updates.unitId && updates.positionId) {
+        // Deactivate old assignments
+        await supabase
+            .from('position_assignments')
+            .update({ is_active: false })
+            .eq('person_id', id);
+
+        // Create new one
+        const { error: assignError } = await supabase
+            .from('position_assignments')
+            .insert([{
+                person_id: id,
+                unit_id: updates.unitId,
+                position_id: updates.positionId,
+                is_active: true,
+                is_primary: true
+            }]);
+
+        if (assignError) throw assignError;
+    }
 
     // Invalidate Cache
     cacheService.remove(CACHE_KEYS.PEOPLE);
 
-    return data;
+    return person;
 };
 
 export const deletePerson = async (id) => {

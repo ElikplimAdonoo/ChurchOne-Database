@@ -37,31 +37,35 @@ export const fetchHierarchyData = async () => {
             // Level < 100 is usually a leader/shepherd. 
             // Level 100+ or null is usually a member.
             
-            const leaders = unitAssignments
-                .filter(a => a.positions.level < 100)
-                .sort((a, b) => a.positions.level - b.positions.level)
-                .map(a => ({
-                    id: a.people.id,
-                    name: a.people.full_name,
-                    role: a.positions.title,
-                    photo: a.people.photo_url,
-                    isPlaceholder: a.people.is_placeholder
-                }));
+            const leaders = [];
+            const members = [];
 
-            const members = unitAssignments
-                .filter(a => a.positions.level >= 100 || !a.positions.level)
-                .map(a => ({
-                    id: a.people.id,
-                    name: a.people.full_name,
-                    role: a.positions.title,
-                    photo: a.people.photo_url,
-                    isPlaceholder: a.people.is_placeholder
-                }));
+            unitAssignments.forEach(a => {
+                const person = {
+                    id: a.people?.id,
+                    name: a.people?.full_name || 'Unknown',
+                    role: a.positions?.title || 'Member',
+                    photo: a.people?.photo_url,
+                    isPlaceholder: a.people?.is_placeholder,
+                    level: a.positions?.level
+                };
+
+                // Level < 5 is a leader. 5+ or missing level is a member.
+                if (a.positions?.level !== undefined && a.positions?.level !== null && a.positions.level < 5) {
+                    leaders.push(person);
+                } else {
+                    members.push(person);
+                }
+            });
+
+            // Sort leaders by level
+            leaders.sort((a, b) => (a.level || 0) - (b.level || 0));
 
             return {
                 ...unit,
                 leaders,
-                members
+                members,
+                rawAssignmentCount: unitAssignments.length
             };
         });
 

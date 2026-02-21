@@ -168,43 +168,93 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                         {/* Quick Stats or Badges could go here */}
                     </div>
 
-                    {/* Leaders Section */}
+                    {/* Personnel Section (Tiers) */}
                     <AnimatePresence>
-                        {isOpen && node.leaders && node.leaders.length > 0 && (
+                        {isOpen && (
                             <motion.div
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: "auto", opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
                                 className="border-t border-white/10 bg-black/20"
                             >
-                                <div className="p-3 pl-11 space-y-2">
-                                    {node.leaders.map((leader, idx) => (
-                                        <div key={idx} className="flex items-center gap-3 group/leader">
+                                <div className="p-3 pl-11 space-y-4">
+                                    {/* Cell Shepherds Section (Luxurious Yellow) */}
+                                    {node.leaders?.filter(l => l.role.toLowerCase() === 'cell shepherd').map((leader, idx) => (
+                                        <div key={`lead-${idx}`} className="flex items-center gap-3 group">
                                             <div 
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     leader.photo && onImageClick && onImageClick(leader.photo, leader.name);
                                                 }}
-                                                className={`relative w-8 h-8 rounded-full bg-slate-700 overflow-hidden border border-slate-600 shadow-sm shrink-0 ${leader.photo ? 'cursor-pointer' : ''}`}
+                                                className={`relative w-8 h-8 rounded-full border-2 border-yellow-500/50 shadow-glow-yellow overflow-hidden bg-slate-800 shrink-0 transition-transform group-hover:scale-110 ${leader.photo ? 'cursor-pointer' : ''}`}
                                             >
                                                 {leader.photo ? (
                                                     <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-300 bg-slate-800">
-                                                        {leader.name.charAt(0)}
-                                                    </div>
-                                                )}
+                                                ) : <div className="w-full h-full flex items-center justify-center text-xs font-bold text-yellow-500">{leader.name.charAt(0)}</div>}
                                             </div>
                                             <div>
-                                                <p className={`text-sm font-medium ${leader.isPlaceholder ? 'text-yellow-400/70 italic' : 'text-slate-100'}`}>
-                                                    {leader.name}
-                                                </p>
-                                                <p className="text-[11px] text-slate-400 uppercase tracking-wider font-semibold">
-                                                    {leader.role}
-                                                </p>
+                                                <p className="text-sm font-bold text-white leading-tight group-hover:text-yellow-400 transition-colors uppercase tracking-tight">{leader.name}</p>
+                                                <p className="text-[10px] text-yellow-500/70 font-black uppercase tracking-[0.2em] decoration-yellow-500/30 underline underline-offset-2">Cell Shepherd</p>
                                             </div>
                                         </div>
                                     ))}
+
+                                    {/* Shepherds Section (Professional Blue/Emerald) */}
+                                    {node.leaders?.filter(l => l.role.toLowerCase() !== 'cell shepherd').map((leader, idx) => (
+                                        <div key={`asst-${idx}`} className="flex items-center gap-3 opacity-90 group">
+                                            <div 
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    leader.photo && onImageClick && onImageClick(leader.photo, leader.name);
+                                                }}
+                                                className={`relative w-7 h-7 rounded-full border border-emerald-500/50 shadow-glow-emerald overflow-hidden bg-slate-800 shrink-0 transition-transform group-hover:scale-105 ${leader.photo ? 'cursor-pointer' : ''}`}
+                                            >
+                                                {leader.photo ? (
+                                                    <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
+                                                ) : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-emerald-500">{leader.name.charAt(0)}</div>}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-100 leading-tight group-hover:text-emerald-400 transition-colors uppercase tracking-tighter">{leader.name}</p>
+                                                <p className="text-[9px] text-emerald-500/70 font-black uppercase tracking-widest mt-1">{leader.role}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+
+                                    {/* Hierarchy Separation / Operational Break */}
+                                    {node.members?.length > 0 && (
+                                        <div className="relative py-1">
+                                            <div className="absolute inset-x-0 top-1/2 h-px bg-white/5" />
+                                            <div className="relative flex justify-center">
+                                                <span className="bg-slate-900 border border-white/5 rounded-full px-2 py-0.5 text-[8px] font-black text-slate-600 uppercase tracking-widest">General Membership</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Members Section (Subtle Clean Slate) */}
+                                    {node.members && node.members.length > 0 && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between px-1 mb-2">
+                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Brethren</span>
+                                                <span className="text-[9px] font-bold text-slate-600 bg-slate-800/80 px-1.5 py-0.5 rounded-full border border-slate-700">{node.members.length}</span>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                                {node.members.map((member, idx) => (
+                                                    <div key={`mem-${idx}`} className="flex items-center gap-2 group p-1 rounded-lg hover:bg-white/5 transition-colors">
+                                                        <div 
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                member.photo && onImageClick && onImageClick(member.photo, member.name);
+                                                            }}
+                                                            className={`w-5 h-5 rounded-full bg-slate-700 border border-slate-600 overflow-hidden shrink-0 transition-all group-hover:border-slate-500 ${member.photo ? 'cursor-pointer' : ''}`}
+                                                        >
+                                                            {member.photo ? <img src={member.photo} alt="" className="w-full h-full object-cover grayscale-[30%] group-hover:grayscale-0" /> : null}
+                                                        </div>
+                                                        <span className="text-[10px] font-medium text-slate-500 truncate group-hover:text-slate-300 transition-colors">{member.name}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </motion.div>
                         )}

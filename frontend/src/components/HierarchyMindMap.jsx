@@ -19,6 +19,9 @@ import CollapsibleNode from './CollapsibleNode';
 import NodeDetailsPanel from './NodeDetailsPanel';
 import Modal from './ui/Modal';
 import ImageModal from './common/ImageModal';
+import FullRegistryModal from './FullRegistryModal';
+import AddUnitModal from './AddUnitModal';
+import { cacheService } from '../services/cacheService';
 
 const nodeTypes = {
     mindMapNode: CollapsibleNode
@@ -80,24 +83,9 @@ const layoutTree = (flatData, collapsedIds) => {
         const unit = dataMap.get(parentId);
         const unitKids = childrenMap.get(parentId) || [];
         
-        // Convert unit members to person nodes if the unit is not collapsed
-        const memberKids = (!collapsedIds.has(parentId) && unit?.members) 
-            ? unit.members.map(m => ({
-                id: `person-${m.id}`,
-                name: m.name,
-                unit_type: 'PERSON',
-                photo: m.photo,
-                role: m.role,
-                is_person_node: true
-            })) 
-            : [];
-
         const children = collapsedIds.has(parentId) 
             ? [] 
-            : [
-                ...unitKids.map(k => buildHierarchy(k.id)),
-                ...memberKids
-            ];
+            : unitKids.map(k => buildHierarchy(k.id));
 
         const result = {
             id: parentId,
@@ -118,36 +106,28 @@ const layoutTree = (flatData, collapsedIds) => {
     // 2. Compute Layout
     const root = hierarchy(hierarchyData);
 
-    // Separation: ensure nodes don't overlap vertically
-    const nodeSize = [250, 60]; // Width, Height (Spacing)
-
     // Tree Layout (Horizontal)
-    // nodeSize is [height, width] for horizontal tree in D3 terms
     const treeLayout = tree()
-        .nodeSize([80, 280]) // [Vertical Spacing, Horizontal Spacing]
-        .separation((a, b) => (a.parent === b.parent ? 1 : 1.2)); // More space between different branches
+        .nodeSize([80, 280]) // Revert to standard spacing
+        .separation((a, b) => (a.parent === b.parent ? 1 : 1.2));
 
     treeLayout(root);
 
     // 3. Convert back to ReactFlow
     root.descendants().forEach(d => {
-        // D3 xy is switched for horizontal layout usually, but nodeSize handles usage
-        // For horizontal: x=depth (y), y=breadth (x)
-        // Actually d3.tree produces x,y coordinates.
-        // For horizontal layour: d.y is horizontal position (depth), d.x is vertical (breadth)
-
         nodes.push({
             id: d.data.id,
             type: 'mindMapNode',
-            position: { x: d.y, y: d.x }, // Horizontal Tree
+            position: { x: d.y, y: d.x }, 
             data: {
                 label: d.data.name,
                 unit_type: d.data.unit_type,
-                hasChildren: (childrenMap.get(d.data.id)?.length > 0 || (d.data.members?.length > 0)),
+                hasChildren: (childrenMap.get(d.data.id)?.length > 0 || (d.data.members?.length > 0 || d.data.leaders?.length > 0)),
                 isCollapsed: collapsedIds.has(d.data.id),
                 leaders: d.data.leaders,
-                photo: d.data.photo, // For PERSON nodes
-                role: d.data.role,   // For PERSON nodes
+                members: d.data.members,
+                photo: d.data.photo, 
+                role: d.data.role,   
                 id: d.data.id
             },
             sourcePosition: Position.Right,
@@ -160,7 +140,7 @@ const layoutTree = (flatData, collapsedIds) => {
                 id: `e${d.parent.data.id}-${d.data.id}`,
                 source: d.parent.data.id,
                 target: d.data.id,
-                type: 'default', // Bezier is default
+                type: 'default',
                 style: { stroke: '#475569', strokeWidth: 2 },
                 animated: false
             });
@@ -233,31 +213,13 @@ const getStyle = (type, isSelected, role) => {
             borderLeftWidth: '4px', 
             background: isSelected ? '#2563eb' : '#222222' 
         };
-        case 'PERSON': {
-            const personBorderColor = isSelected 
-                ? (isCellShepherd ? '#EAB308' : '#3385FF') 
-                : (isCellShepherd ? '#EAB308' : '#333');
-            
-            const personBorderLeftColor = isCellShepherd 
-                ? '#EAB308' 
-                : (isSelected ? '#0066FF' : '#444');
-
-            return {
-                ...style,
-                background: isCellShepherd ? (isSelected ? '#422006' : '#1c1917') : (isSelected ? '#1e293b' : '#0f0f0f'),
-                borderTopColor: personBorderColor,
-                borderRightColor: personBorderColor,
-                borderBottomColor: personBorderColor,
-                borderLeftColor: personBorderLeftColor,
-                borderTopWidth: '2px',
-                borderRightWidth: '2px',
-                borderBottomWidth: '2px',
-                borderLeftWidth: '4px',
-                color: isCellShepherd ? '#FDE047' : '#94a3b8',
-                minWidth: '150px',
-                fontSize: '12px'
-            };
-        }
+        case 'PERSON': return {
+            ...style,
+            background: isCellShepherd ? (isSelected ? '#422006' : '#1c1917') : (isSelected ? '#1e293b' : '#0f0f0f'),
+            borderLeftWidth: '4px',
+            borderLeftColor: isCellShepherd ? '#EAB308' : '#444',
+            color: isCellShepherd ? '#FDE047' : '#94a3b8',
+        };
         default: return style;
     }
 };
@@ -277,6 +239,10 @@ export default function HierarchyMindMap() {
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [modalConfig, setModalConfig] = useState({ isOpen: false, src: '', title: '' });
+    
+    // Registry State
+    const [isRegistryOpen, setIsRegistryOpen] = useState(false);
+    const [registryData, setRegistryData] = useState({ unitName: '', people: [] });
 
     // Toggle Handler
     const handleToggle = useCallback((nodeId) => {
@@ -341,10 +307,10 @@ export default function HierarchyMindMap() {
     // Modal State
     const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
     const [targetParent, setTargetParent] = useState(null);
-    const { register, handleSubmit, reset, setValue } = useForm();
 
     // Data Fetching
     const refreshData = useCallback(() => {
+        cacheService.clear(); // Force fresh data
         fetchHierarchyData().then(units => {
             const hierarchyNodes = units.map(unit => ({
                 id: unit.id,
@@ -364,30 +330,19 @@ export default function HierarchyMindMap() {
 
     const handleAddChild = useCallback((parentNode) => {
         setTargetParent(parentNode);
-
-        // Auto-suggest child type
-        let childType = 'CELL';
-        const pType = parentNode.data.unit_type;
-        if (pType === 'ROOT') childType = 'ZONAL';
-        else if (pType === 'ZONAL') childType = 'MC';
-        else if (pType === 'MC') childType = 'BUSCENTA';
-        else if (pType === 'BUSCENTA') childType = 'CELL';
-
-        setValue('unit_type', childType);
         setIsUnitModalOpen(true);
-    }, [setValue]);
+    }, []);
 
     const onSubmitUnit = async (data) => {
         try {
             await createUnit({
                 name: data.name,
                 unit_type: data.unit_type,
-                parent_id: targetParent?.id,
-                order_index: 0 // Default for now
+                parent_id: data.parent_id,
+                order_index: 0
             });
             setIsUnitModalOpen(false);
-            reset();
-            refreshData(); // Reload tree
+            refreshData();
         } catch (error) {
             console.error('Failed to create unit:', error);
         }
@@ -441,6 +396,35 @@ export default function HierarchyMindMap() {
         return nodes.find(n => n.id === selectedNodeId);
     }, [nodes, selectedNodeId]);
 
+    // Registry Helper
+    const handleViewRegistry = useCallback((node) => {
+        const unitId = node.id;
+        const subTreePeople = [];
+
+        // Recursive traversal of flatData to find all descendants
+        const findDescendants = (id) => {
+            const unit = flatData.find(u => u.id === id);
+            if (!unit) return;
+
+            // Add leaders
+            (unit.leaders || []).forEach(l => subTreePeople.push({ ...l, type: 'LEADER', unitName: unit.name }));
+            // Add members
+            (unit.members || []).forEach(m => subTreePeople.push({ ...m, type: 'MEMBER', unitName: unit.name }));
+
+            // Find children units
+            const children = flatData.filter(u => u.parent_id === id);
+            children.forEach(child => findDescendants(child.id));
+        };
+
+        findDescendants(unitId);
+
+        setRegistryData({
+            unitName: node.data.label,
+            people: subTreePeople
+        });
+        setIsRegistryOpen(true);
+    }, [flatData]);
+
     return (
         <div className="h-full w-full bg-gradient-dark relative overflow-hidden">
             {/* Decorative Dot Pattern */}
@@ -490,54 +474,18 @@ export default function HierarchyMindMap() {
                             node={selectedNodeData}
                             onClose={() => setSelectedNodeId(null)}
                             onAddChild={handleAddChild}
+                            onViewRegistry={handleViewRegistry}
                         />
                     </div>
                 </div>
             )}
 
-            {/* Add Unit Modal */}
-            <Modal isOpen={isUnitModalOpen} onClose={() => setIsUnitModalOpen(false)} title={`Add Child to ${targetParent?.data?.label || 'Unit'}`}>
-                <form onSubmit={handleSubmit(onSubmitUnit)} className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-black text-slate-300 mb-1">Unit Name</label>
-                        <input
-                            {...register('name', { required: true })}
-                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 font-medium"
-                            placeholder="e.g. North Zone, Cell Alpha..."
-                            autoFocus
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-black text-slate-300 mb-1">Unit Type</label>
-                        <select
-                            {...register('unit_type')}
-                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 font-medium"
-                        >
-                            <option value="ZONAL">ZONAL</option>
-                            <option value="MC">MC</option>
-                            <option value="BUSCENTA">BUSCENTA</option>
-                            <option value="CELL">CELL</option>
-                        </select>
-                    </div>
-
-                    <div className="pt-4 flex gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setIsUnitModalOpen(false)}
-                            className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors font-bold border border-slate-600"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="flex-1 py-2 rounded-lg bg-gradient-church text-white font-black hover:opacity-90 transition-all border border-church-blue-600"
-                        >
-                            Create Unit
-                        </button>
-                    </div>
-                </form>
-            </Modal>
+            <AddUnitModal
+                isOpen={isUnitModalOpen}
+                onClose={() => setIsUnitModalOpen(false)}
+                parentNode={targetParent}
+                onSubmit={onSubmitUnit}
+            />
 
             <ReactFlow
                 onInit={setRfInstance}
@@ -573,6 +521,13 @@ export default function HierarchyMindMap() {
                 onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
                 imageSrc={modalConfig.src}
                 title={modalConfig.title}
+            />
+
+            <FullRegistryModal
+                isOpen={isRegistryOpen}
+                onClose={() => setIsRegistryOpen(false)}
+                unitName={registryData.unitName}
+                people={registryData.people}
             />
         </div>
     );

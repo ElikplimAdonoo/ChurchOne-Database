@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 import { Activity, Database, Users, LayoutDashboard, List, Menu, CheckCircle2 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import HierarchyTree from './components/HierarchyTree'
 import PeopleDirectory from './components/PeopleDirectory'
 import HierarchyMindMap from './components/HierarchyMindMap'
@@ -118,53 +119,147 @@ function NavItem({ to, icon, label }) {
 
 // DASHBOARD / HIERARCHY PAGE
 function Dashboard() {
-  const [stats, setStats] = useState({ people: 0, units: 0 })
+  const [stats, setStats] = useState({ 
+    people: 0, 
+    units: 0, 
+    assigned: 0, 
+    leaders: 0 
+  })
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchStats() {
-      const { count: peopleCount } = await supabase.from('people').select('*', { count: 'exact', head: true })
-      const { count: unitsCount } = await supabase.from('organizational_units').select('*', { count: 'exact', head: true })
-      setStats({ people: peopleCount || 0, units: unitsCount || 0 })
-      setLoading(false)
+      try {
+        // 1. Total People
+        const { count: peopleCount } = await supabase.from('people').select('*', { count: 'exact', head: true })
+        
+        // 2. Total Units
+        const { count: unitsCount } = await supabase.from('organizational_units').select('*', { count: 'exact', head: true })
+        
+        // 3. Assigned People (Unique people in position_assignments)
+        // Note: distinct on person_id is more accurate for "placement rate"
+        const { data: assignments } = await supabase
+          .from('position_assignments')
+          .select('person_id')
+          .eq('is_active', true)
+        
+        const uniqueAssigned = new Set(assignments?.map(a => a.person_id)).size
+
+        // 4. Leaders (People in specific leadership roles - logic simplified for dashboard)
+        // We look for assignments where position title doesn't contain 'member' or 'shepherd' if that's the convention
+        // Actually, let's just count people assigned to ANY position for now as "Engaged"
+        // Better: count people in organizational_units.leaders arrays if we had them or query positions
+        const { count: leaderCount } = await supabase
+          .from('position_assignments')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_active', true)
+          .not('position_id', 'is', null) // Simplified proxy for leadership for now
+
+        setStats({ 
+          people: peopleCount || 0, 
+          units: unitsCount || 0, 
+          assigned: uniqueAssigned || 0,
+          leaders: uniqueAssigned // Using uniqueAssigned as a proxy for "Engaged Members"
+        })
+      } catch (err) {
+        console.error("Failed to fetch dashboard stats:", err)
+      } finally {
+        setLoading(false)
+      }
     }
     fetchStats()
   }, [])
 
+  const placementRate = stats.people > 0 ? Math.round((stats.assigned / stats.people) * 100) : 0
+
   return (
     <div className="space-y-8">
       {/* Quick Stats Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        <StatCard label="Total Members" value={stats.people} icon={<Users size={20} />} color="blue" />
-        <StatCard label="Active Units" value={stats.units} icon={<Database size={20} />} color="emerald" />
-        <StatCard label="System Status" value="Online" icon={<Activity size={20} />} color="yellow" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StatCard 
+          label="Total Members" 
+          value={stats.people} 
+          icon={<Users size={20} />} 
+          color="blue" 
+          subText="Registered in system"
+        />
+        <StatCard 
+          label="Active Units" 
+          value={stats.units} 
+          icon={<LayoutDashboard size={20} />} 
+          color="emerald" 
+          subText="Current hierarchy depth"
+        />
+        <StatCard 
+          label="Placement Rate" 
+          value={`${placementRate}%`} 
+          icon={<CheckCircle2 size={20} />} 
+          color="yellow" 
+          subText={`${stats.assigned} members assigned`}
+        />
+        <StatCard 
+          label="System Health" 
+          value="Optimal" 
+          icon={<Activity size={20} />} 
+          color="purple" 
+          subText="All services running"
+        />
       </div>
 
-      {/* Hierarchy Tree */}
-      <div className="bg-slate-900/50 border-2 border-church-blue-500/30 rounded-3xl p-1 shadow-xl backdrop-blur-sm">
-        <HierarchyTree />
-      </div>
+      {/* Hierarchy Tree Card */}
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-slate-900/50 border-2 border-church-blue-500/30 rounded-3xl p-1 shadow-2xl backdrop-blur-md overflow-hidden"
+      >
+        <div className="bg-slate-950/40 p-1 rounded-[1.4rem]">
+            <HierarchyTree />
+        </div>
+      </motion.div>
     </div>
   )
 }
 
-function StatCard({ label, value, icon, color }) {
+function StatCard({ label, value, icon, color, subText }) {
   const themes = {
-    blue: 'border-church-blue-500/40 text-church-blue-400 bg-church-blue-500/5',
-    emerald: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/5',
-    yellow: 'border-yellow-500/40 text-yellow-400 bg-yellow-500/5',
-    purple: 'border-purple-500/40 text-purple-400 bg-purple-500/5',
-    coral: 'border-coral-500/40 text-coral-400 bg-coral-500/5',
+    blue: 'border-church-blue-500/40 text-church-blue-400 bg-church-blue-500/10 shadow-church-blue-500/10',
+    emerald: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10 shadow-emerald-500/10',
+    yellow: 'border-amber-500/40 text-amber-400 bg-amber-500/10 shadow-amber-500/10',
+    purple: 'border-purple-500/40 text-purple-400 bg-purple-500/10 shadow-purple-500/10',
+  }
+
+  const iconGradients = {
+    blue: 'bg-church-blue-500/20 text-church-blue-400',
+    emerald: 'bg-emerald-500/20 text-emerald-400',
+    yellow: 'bg-amber-500/20 text-amber-400',
+    purple: 'bg-purple-500/20 text-purple-400',
   }
 
   return (
-    <div className={`p-5 px-6 rounded-2xl border-2 ${themes[color] || themes.blue} shadow-xl backdrop-blur-md flex flex-col gap-3 transition-all hover:scale-[1.02] hover:bg-opacity-10`}>
-      <div className="flex items-center gap-2.5">
-        <div className="shrink-0">{icon}</div>
-        <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">{label}</span>
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ y: -5, scale: 1.02 }}
+      className={`relative p-6 rounded-3xl border-2 ${themes[color] || themes.blue} shadow-2xl backdrop-blur-xl flex flex-col gap-4 transition-all overflow-hidden group`}
+    >
+      {/* Decorative Background Glow */}
+      <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity ${iconGradients[color]}`}></div>
+
+      <div className="flex items-center justify-between">
+        <div className={`p-3 rounded-2xl ${iconGradients[color]} shadow-inner`}>
+           {icon}
+        </div>
+        <div className="flex flex-col items-end">
+             <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">{label}</span>
+             <span className="text-2xl font-black text-white tracking-tighter mt-1">{value}</span>
+        </div>
       </div>
-      <span className="text-3xl font-black text-white tracking-tight">{value}</span>
-    </div>
+      
+      <div className="flex items-center gap-2 mt-2 pt-4 border-t border-white/5">
+        <div className="w-1.5 h-1.5 rounded-full bg-current animate-pulse"></div>
+        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{subText}</span>
+      </div>
+    </motion.div>
   )
 }
 

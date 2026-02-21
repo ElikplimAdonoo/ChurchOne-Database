@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState } from 'react';
 import ImageModal from './common/ImageModal';
 
-export default function NodeDetailsPanel({ node, onClose, onAddChild }) {
+export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegistry }) {
     const [modalConfig, setModalConfig] = useState({ isOpen: false, src: '', title: '' });
 
     if (!node) return null;
@@ -49,17 +49,19 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild }) {
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
                         {/* Leaders & Members Section */}
                         <div className="space-y-8">
-                            {/* Primary Oversight (Cell Shepherds) */}
-                            {node.data.leaders && node.data.leaders.some(l => l.role.toLowerCase() === 'cell shepherd') && (
-                                <div className="space-y-3">
-                                    <div className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.2em] px-1 opacity-80">Primary Oversight</div>
+                            {/* Leads (Luxurious Yellow) - Anyone who is a leader but NOT a Shepherd */}
+                            {node.data.leaders && node.data.leaders.some(l => l.role.toLowerCase() !== 'shepherd') && (
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between px-1">
+                                        <div className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.2em] opacity-80 decoration-yellow-500/30 underline underline-offset-4">Lead</div>
+                                    </div>
                                     {node.data.leaders
-                                        .filter(l => l.role.toLowerCase() === 'cell shepherd')
+                                        .filter(l => l.role.toLowerCase() !== 'shepherd')
                                         .map((leader, i) => (
-                                            <div key={`cell-${i}`} className="p-4 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-slate-800 border-2 border-yellow-500/50 flex items-center gap-4 shadow-lg shadow-yellow-500/10 transition-all">
+                                            <div key={`cell-p-${i}`} className="p-4 rounded-2xl bg-gradient-to-br from-yellow-500/20 via-slate-800 to-slate-900 border-2 border-yellow-500/50 flex items-center gap-4 shadow-xl shadow-yellow-500/10 transition-all group hover:scale-[1.02] hover:border-yellow-400 hover:shadow-yellow-500/20">
                                                 <div
                                                     onClick={(e) => leader.photo && openImage(e, leader.photo, leader.name)}
-                                                    className="w-14 h-14 rounded-full border-2 border-yellow-400 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer shadow-glow-yellow"
+                                                    className="w-14 h-14 rounded-full border-2 border-yellow-400 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer shadow-glow-yellow transition-transform group-hover:scale-105"
                                                 >
                                                     {leader.photo ? (
                                                         <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
@@ -67,9 +69,9 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild }) {
                                                         <User size={24} className="text-yellow-400" />
                                                     )}
                                                 </div>
-                                                <div>
-                                                    <p className="font-black text-lg text-white leading-tight">{leader.name}</p>
-                                                    <p className="text-xs font-bold uppercase tracking-wider text-yellow-300">{leader.role}</p>
+                                                <div className="min-w-0">
+                                                    <p className="font-black text-lg text-white leading-tight truncate">{leader.name}</p>
+                                                    <p className="text-xs font-bold uppercase tracking-widest text-yellow-400 drop-shadow-sm">{leader.role}</p>
                                                 </div>
                                             </div>
                                         ))
@@ -77,28 +79,28 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild }) {
                                 </div>
                             )}
 
-                            {/* Service Team (Other Shepherds) */}
-                            {node.data.leaders && node.data.leaders.some(l => l.role.toLowerCase() !== 'cell shepherd' && l.role.toLowerCase().includes('shepherd')) && (
+                            {/* Assistants (Professional Blue/Emerald) - Only Shepherds */}
+                            {node.data.leaders && node.data.leaders.some(l => l.role.toLowerCase() === 'shepherd') && (
                                 <div className="space-y-3">
-                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1 opacity-80">Service Team</div>
+                                    <div className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] px-1 opacity-80 decoration-emerald-400/30 underline underline-offset-4">Assistants</div>
                                     <div className="grid grid-cols-1 gap-3">
                                         {node.data.leaders
-                                            .filter(l => l.role.toLowerCase() !== 'cell shepherd' && l.role.toLowerCase().includes('shepherd'))
+                                            .filter(l => l.role.toLowerCase() === 'shepherd')
                                             .map((leader, i) => (
-                                                <div key={`shep-${i}`} className="p-3.5 rounded-xl bg-slate-800/40 border border-slate-700/50 flex items-center gap-3 hover:bg-slate-800/60 transition-colors">
+                                                <div key={`lead-a-${i}`} className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/10 to-church-blue-500/10 border border-emerald-500/30 flex items-center gap-3 hover:bg-emerald-500/20 hover:border-emerald-400 transition-all group shadow-lg shadow-emerald-500/5">
                                                     <div
                                                         onClick={(e) => leader.photo && openImage(e, leader.photo, leader.name)}
-                                                        className="w-10 h-10 rounded-full border border-slate-600 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer"
+                                                        className="w-10 h-10 rounded-full border-2 border-emerald-500/40 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer group-hover:border-emerald-400 transition-colors shadow-glow-emerald"
                                                     >
                                                         {leader.photo ? (
                                                             <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
                                                         ) : (
-                                                            <User size={18} className="text-slate-500" />
+                                                            <User size={18} className="text-emerald-400" />
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-slate-200 text-sm leading-tight">{leader.name}</p>
-                                                        <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wider font-mono">{leader.role}</p>
+                                                        <p className="font-bold text-slate-100 text-sm leading-tight group-hover:text-white transition-colors uppercase tracking-tighter">{leader.name}</p>
+                                                        <p className="text-[9px] font-black uppercase text-emerald-500/80 tracking-widest mt-0.5">{leader.role}</p>
                                                     </div>
                                                 </div>
                                             ))
@@ -106,25 +108,31 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild }) {
                                     </div>
                                 </div>
                             )}
-
-                            {/* Unit Members */}
+                    
+                            {/* Members (Subtle Clean Slate) */}
                             {node.data.members && node.data.members.length > 0 && (
-                                <div className="space-y-3">
-                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] px-1 opacity-80">Unit Members</div>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between px-1">
+                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] opacity-80 decoration-slate-500/30 underline underline-offset-4">Brethren</div>
+                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-full border border-slate-700/50">{node.data.members.length}</span>
+                                    </div>
                                     <div className="grid grid-cols-1 gap-2">
                                         {node.data.members.map((member, i) => (
-                                            <div key={`mem-${i}`} className="p-2.5 rounded-xl bg-slate-800/20 border border-white/5 flex items-center gap-3 hover:bg-slate-800/40 transition-colors group">
+                                            <div key={`mem-${i}`} className="p-2.5 rounded-xl bg-slate-800/20 border border-slate-700/30 flex items-center gap-3 hover:bg-slate-700/20 hover:border-slate-600/50 transition-all group">
                                                 <div
                                                     onClick={(e) => member.photo && openImage(e, member.photo, member.name)}
-                                                    className={`w-8 h-8 rounded-full bg-slate-700 overflow-hidden border border-slate-600 flex items-center justify-center shrink-0 ${member.photo ? 'cursor-pointer' : ''}`}
+                                                    className={`w-9 h-9 rounded-full bg-slate-900/50 overflow-hidden border border-slate-700/50 flex items-center justify-center shrink-0 transition-all group-hover:border-slate-500 ${member.photo ? 'cursor-pointer' : ''}`}
                                                 >
                                                     {member.photo ? (
-                                                        <img src={member.photo} alt={member.name} className="w-full h-full object-cover" />
+                                                        <img src={member.photo} alt={member.name} className="w-full h-full object-cover grayscale-[20%] group-hover:grayscale-0 transition-all" />
                                                     ) : (
-                                                        <User size={14} className="text-slate-500" />
+                                                        <User size={15} className="text-slate-600 group-hover:text-slate-400 transition-colors" />
                                                     )}
                                                 </div>
-                                                <p className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">{member.name}</p>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-semibold text-slate-400 group-hover:text-slate-200 transition-colors truncate">{member.name}</p>
+                                                    <p className="text-[9px] font-medium text-slate-600 uppercase tracking-widest">Member</p>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -134,16 +142,22 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild }) {
 
                         {/* Actions */}
                         <div className="space-y-3 pt-4 border-t border-slate-800">
-                            {unit_type !== 'PERSON' && (
+                            {unit_type !== 'PERSON' && unit_type !== 'CELL' && (
                                 <button
                                     onClick={() => onAddChild(node)}
                                     className="w-full py-3 px-4 bg-gradient-church hover:opacity-90 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 border-2 border-church-blue-600"
                                 >
                                     <Plus size={18} />
-                                    Add Sub-Unit
+                                    {unit_type === 'ROOT' ? 'Add Zone' : 
+                                     unit_type === 'ZONE' ? 'Add new MC' : 
+                                     unit_type === 'MC' ? 'Add Buscenta' : 
+                                     unit_type === 'BUSCENTA' ? 'Add Cell' : 'Add Sub-Unit'}
                                 </button>
                             )}
-                            <button className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 border border-slate-700">
+                            <button 
+                                onClick={() => onViewRegistry(node)}
+                                className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 border border-slate-700"
+                            >
                                 <Users size={18} />
                                 Full Registry
                             </button>

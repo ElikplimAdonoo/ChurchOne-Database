@@ -2,10 +2,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { fetchPeople, createPerson, updatePerson, deletePerson } from '../services/peopleService';
 import { fetchHierarchyData, fetchPositions } from '../services/hierarchyService';
-import { Search, Filter, ArrowUpDown, MoreHorizontal, User, Plus, Edit, Trash2 } from 'lucide-react';
+import { Search, Filter, ArrowUpDown, MoreHorizontal, User, Plus, Edit, Trash2, Mail, Phone, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Modal from './ui/Modal';
 import ImageModal from './common/ImageModal';
+import PersonActionModal from './PersonActionModal';
 
 export default function PeopleDirectory() {
     const [people, setPeople] = useState([]);
@@ -17,9 +18,9 @@ export default function PeopleDirectory() {
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
     // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isActionModalOpen, setIsActionModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState('add'); // 'add' | 'edit'
-    const [editingPerson, setEditingPerson] = useState(null);
+    const [selectedPerson, setSelectedPerson] = useState(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deletingPerson, setDeletingPerson] = useState(null);
     const [imageModalConfig, setImageModalConfig] = useState({ isOpen: false, src: '', title: '' });
@@ -87,19 +88,15 @@ export default function PeopleDirectory() {
     // Handlers
     const openAddModal = () => {
         setModalMode('add');
-        setEditingPerson(null);
-        reset({ fullName: '', email: '', phone: '', unitId: '', positionId: '' });
-        setIsModalOpen(true);
+        setSelectedPerson(null);
+        reset({ fullName: '', unitId: '', positionId: '' });
+        setIsActionModalOpen(true);
     };
 
     const openEditModal = (person) => {
         setModalMode('edit');
-        setEditingPerson(person);
-        // Populating existing unit/role is hard because we only have their names in flat 'person' object.
-        // We'd need to find the unit ID by name, position by title... fragile.
-        // For now, let's keep Edit simple (Name/Email/Phone only).
-        setValue('fullName', person.name);
-        setIsModalOpen(true);
+        setSelectedPerson(person);
+        setIsActionModalOpen(true);
     };
 
     const handleDelete = (person) => {
@@ -120,36 +117,27 @@ export default function PeopleDirectory() {
         }
     };
 
-    const onSubmit = async (data) => {
+    const handleActionSubmit = async (data) => {
         try {
             if (modalMode === 'add') {
-                const newPerson = await createPerson({
-                    fullName: data.fullName,
-                    email: data.email,
-                    phone: data.phone,
-                    unitId: data.unitId,
-                    positionId: data.positionId
-                });
-
-                // We need to re-fetch people to get the correct joined unit/role names
-                // Or we can cheat and look them up from our units/positions lists
-                const unitName = units.find(u => u.id === data.unitId)?.name || 'Unassigned';
-                const roleName = positions.find(p => p.id === data.positionId)?.title || 'Unassigned';
-
+                const newPerson = await createPerson(data);
                 setPeople(prev => [...prev, {
-                    id: newPerson.id,
+                    ...newPerson,
                     name: newPerson.full_name,
-                    role: roleName,
-                    unit: unitName,
-                    status: 'Active',
-                    is_placeholder: false
+                    role: positions.find(p => p.id === data.positionId)?.title || 'Unassigned',
+                    unit: units.find(u => u.id === data.unitId)?.name || 'Unassigned',
+                    status: 'Active'
                 }]);
             } else {
-                await updatePerson(editingPerson.id, { full_name: data.fullName });
-                setPeople(prev => prev.map(p => p.id === editingPerson.id ? { ...p, name: data.fullName } : p));
+                const updated = await updatePerson(selectedPerson.id, data);
+                setPeople(prev => prev.map(p => p.id === selectedPerson.id ? { 
+                    ...p, 
+                    name: updated.full_name,
+                    role: positions.find(pos => pos.id === data.positionId)?.title || p.role,
+                    unit: units.find(un => un.id === data.unitId)?.name || p.unit
+                } : p));
             }
-            setIsModalOpen(false);
-            reset();
+            setIsActionModalOpen(false);
         } catch (err) {
             console.error("Failed to save:", err);
             alert("Failed to save changes");
@@ -198,96 +186,95 @@ export default function PeopleDirectory() {
                 </button>
             </div>
 
-            {/* Table */}
-            <div className="bg-slate-800/50 rounded-2xl border-2 border-church-blue-500/50 overflow-hidden shadow-lg backdrop-blur-sm">
+            {/* Premium Table / Card List */}
+            <div className="bg-slate-900/40 rounded-3xl border border-white/5 overflow-hidden shadow-2xl backdrop-blur-3xl">
                 <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-300">
-                        <thead className="bg-slate-900/50 text-church-blue-400 uppercase tracking-wider font-black">
+                        <thead className="bg-slate-950/50 text-[10px] text-slate-500 uppercase tracking-[0.2em] font-black border-b border-white/5">
                             <tr>
-                                <th onClick={() => handleSort('name')} className="p-4 cursor-pointer hover:text-church-blue-300 transition-colors">
+                                <th onClick={() => handleSort('name')} className="p-6 cursor-pointer hover:text-church-blue-400 transition-colors">
                                     <div className="flex items-center gap-2">
-                                        Name
-                                        {sortConfig.key === 'name' ? (
-                                            <ArrowUpDown size={14} className={sortConfig.direction === 'asc' ? 'text-church-blue-400' : 'text-church-blue-400 rotate-180'} />
-                                        ) : (
-                                            <ArrowUpDown size={14} className="text-slate-600" />
+                                        Member Identity
+                                        {sortConfig.key === 'name' && (
+                                            <ArrowUpDown size={12} className={sortConfig.direction === 'asc' ? 'text-church-blue-400' : 'text-church-blue-400 rotate-180'} />
                                         )}
                                     </div>
                                 </th>
-                                <th onClick={() => handleSort('role')} className="p-4 cursor-pointer hover:text-emerald-400 transition-colors">
+                                <th onClick={() => handleSort('role')} className="p-6 cursor-pointer hover:text-emerald-400 transition-colors">
                                     <div className="flex items-center gap-2">
-                                        Role
-                                        {sortConfig.key === 'role' ? (
-                                            <ArrowUpDown size={14} className={sortConfig.direction === 'asc' ? 'text-emerald-400' : 'text-emerald-400 rotate-180'} />
-                                        ) : (
-                                            <ArrowUpDown size={14} className="text-slate-600" />
+                                        Assignments
+                                        {sortConfig.key === 'role' && (
+                                            <ArrowUpDown size={12} className={sortConfig.direction === 'asc' ? 'text-emerald-400' : 'text-emerald-400 rotate-180'} />
                                         )}
                                     </div>
                                 </th>
-                                <th onClick={() => handleSort('unit')} className="p-4 cursor-pointer hover:text-emerald-400 transition-colors">
-                                    <div className="flex items-center gap-2">
-                                        Unit
-                                        {sortConfig.key === 'unit' ? (
-                                            <ArrowUpDown size={14} className={sortConfig.direction === 'asc' ? 'text-emerald-400' : 'text-emerald-400 rotate-180'} />
-                                        ) : (
-                                            <ArrowUpDown size={14} className="text-slate-600" />
-                                        )}
-                                    </div>
-                                </th>
-                                <th className="p-4 text-center">Status</th>
-                                <th className="p-4 text-center">Actions</th>
+                                <th className="p-6 text-center">Status</th>
+                                <th className="p-6 text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-700/50">
+                        <tbody className="divide-y divide-white/[0.02]">
                             {filteredPeople.map((person) => (
                                 <motion.tr
                                     key={person.id}
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    className="hover:bg-slate-700/30 transition-colors group"
+                                    layout
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="hover:bg-white/[0.02] transition-all group/row"
                                 >
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
+                                    <td className="p-6">
+                                        <div className="flex items-center gap-4">
                                             <div 
                                                 onClick={() => person.photo && setImageModalConfig({ isOpen: true, src: person.photo, title: person.name })}
-                                                className={`w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden border border-slate-600 transition-transform hover:scale-105 ${person.photo ? 'cursor-pointer' : ''}`}
+                                                className={`w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center overflow-hidden border border-white/5 transition-all group-hover/row:scale-105 group-hover/row:shadow-lg group-hover/row:border-church-blue-500/30 ${person.photo ? 'cursor-pointer' : ''}`}
                                             >
                                                 {person.photo ? (
                                                     <img src={person.photo} alt={person.name} className="w-full h-full object-cover" />
                                                 ) : (
-                                                    <User size={20} className="text-slate-400" />
+                                                    <User size={24} className="text-slate-600" />
                                                 )}
                                             </div>
-                                            <div>
-                                                <div className="font-bold text-slate-100">{person.name}</div>
-                                                {person.is_placeholder && (
-                                                    <div className="text-[10px] text-yellow-400/80 font-semibold">Pending Identity</div>
+                                            <div className="space-y-0.5">
+                                                <div className="font-black text-slate-100 text-base">{person.name}</div>
+                                                {person.is_placeholder ? (
+                                                    <div className="text-[10px] text-amber-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                                                        <span className="w-1 h-1 bg-amber-500 rounded-full animate-pulse"></span> Virtual Placeholder
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-xs text-slate-500 font-medium">Verified Account</div>
                                                 )}
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="p-4 text-slate-300 font-medium">{person.role}</td>
-                                    <td className="p-4 text-slate-300 font-medium">{person.unit}</td>
-                                    <td className="p-4 text-center">
-                                        <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold
-                                            ${person.status === 'Active' ? 'bg-church-blue-500/20 text-church-blue-400 border border-church-blue-500/50 font-bold' : 'bg-church-coral-500/20 text-church-coral-400 border border-church-coral-500/50 font-bold'}
+                                    <td className="p-6">
+                                        <div className="space-y-1">
+                                            <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-black uppercase inline-block">
+                                                {person.role}
+                                            </div>
+                                            <div className="text-xs text-slate-400 font-bold flex items-center gap-1.5 ml-0.5">
+                                                <MapPin size={12} className="text-slate-600" /> {person.unit}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-6 text-center">
+                                        <span className={`inline-flex px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest
+                                            ${person.status === 'Active' ? 'bg-church-blue-500/10 text-church-blue-400 border border-church-blue-500/20' : 'bg-slate-800 text-slate-500 border border-white/5'}
                                         `}>
                                             {person.status}
                                         </span>
                                     </td>
-                                    <td className="p-4 text-center">
-                                        <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <td className="p-6 text-right">
+                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-all transform translate-x-2 group-hover/row:translate-x-0">
                                             <button
                                                 onClick={() => openEditModal(person)}
-                                                className="p-1.5 rounded-lg hover:bg-blue-500/20 text-slate-400 hover:text-blue-400 transition-colors"
-                                                title="Edit"
+                                                className="p-2.5 rounded-xl bg-slate-800 hover:bg-church-blue-500/20 text-slate-400 hover:text-church-blue-400 transition-all border border-white/5 shadow-xl"
+                                                title="Edit Profile"
                                             >
                                                 <Edit size={16} />
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(person)}
-                                                className="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
-                                                title="Delete"
+                                                className="p-2.5 rounded-xl bg-slate-800 hover:bg-church-coral-500/20 text-slate-400 hover:text-church-coral-400 transition-all border border-white/5 shadow-xl"
+                                                title="Remove Member"
                                             >
                                                 <Trash2 size={16} />
                                             </button>
@@ -299,159 +286,91 @@ export default function PeopleDirectory() {
                     </table>
                 </div>
 
-                {/* Mobile Card List */}
-                <div className="md:hidden divide-y divide-slate-700/50">
+                {/* Mobile View: High-Fidelity Cards */}
+                <div className="md:hidden grid grid-cols-1 gap-4 p-4">
                     {filteredPeople.map((person) => (
-                        <div key={person.id} className="p-4 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div 
-                                        onClick={() => person.photo && setImageModalConfig({ isOpen: true, src: person.photo, title: person.name })}
-                                        className={`w-12 h-12 rounded-full bg-slate-700 flex items-center justify-center overflow-hidden border border-slate-600 shadow-lg ${person.photo ? 'cursor-pointer' : ''}`}
-                                    >
-                                        {person.photo ? (
-                                            <img src={person.photo} alt={person.name} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <User size={24} className="text-slate-400" />
-                                        )}
+                        <div key={person.id} className="p-5 rounded-3xl bg-slate-900 border border-white/5 space-y-4 shadow-xl">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center overflow-hidden">
+                                        {person.photo ? <img src={person.photo} className="w-full h-full object-cover" /> : <User size={24} className="text-slate-600" />}
                                     </div>
                                     <div>
-                                        <div className="font-bold text-slate-100 text-lg">{person.name}</div>
-                                        <div className="text-slate-400 text-sm font-medium">{person.role}</div>
+                                        <div className="font-black text-white text-lg">{person.name}</div>
+                                        <div className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase inline-block border border-emerald-500/20">
+                                            {person.role}
+                                        </div>
                                     </div>
                                 </div>
-                                <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-wider
-                                    ${person.status === 'Active' ? 'bg-church-blue-500/20 text-church-blue-400 border border-church-blue-500/50' : 'bg-church-coral-500/20 text-church-coral-400 border border-church-coral-500/50'}
-                                `}>
+                                <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${person.status === 'Active' ? 'bg-church-blue-500/10 text-church-blue-400' : 'bg-slate-800 text-slate-500'}`}>
                                     {person.status}
                                 </span>
                             </div>
-                            <div className="flex items-center justify-between bg-black/20 p-3 rounded-xl border border-white/5">
-                                <div className="text-xs text-slate-500 uppercase font-black tracking-widest">Unit: <span className="text-slate-200 ml-1">{person.unit}</span></div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => openEditModal(person)} className="p-2 rounded-lg bg-blue-500/10 text-blue-400"><Edit size={16}/></button>
-                                    <button onClick={() => handleDelete(person)} className="p-2 rounded-lg bg-red-500/10 text-red-400"><Trash2 size={16}/></button>
-                                </div>
+                            
+                            <div className="flex gap-3">
+                                <button onClick={() => openEditModal(person)} className="flex-1 py-3 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm border border-white/5 flex items-center justify-center gap-2"><Edit size={16}/> Edit</button>
+                                <button onClick={() => handleDelete(person)} className="flex-1 py-3 rounded-2xl bg-church-coral-500/10 text-church-coral-400 font-bold text-sm border border-church-coral-500/20 flex items-center justify-center gap-2"><Trash2 size={16}/> Remove</button>
                             </div>
                         </div>
                     ))}
                 </div>
 
                 {filteredPeople.length === 0 && (
-                    <div className="p-12 text-center text-slate-500">
-                        <User size={48} className="mx-auto mb-4 opacity-50" />
-                        <p>No people found matching your criteria.</p>
-                    </div>
+                    <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }}
+                        className="p-20 text-center space-y-4"
+                    >
+                        <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center mx-auto border border-white/5 shadow-2xl">
+                             <User size={32} className="text-slate-700" />
+                        </div>
+                        <div>
+                            <p className="text-slate-100 font-black text-xl">No members found</p>
+                            <p className="text-slate-500 text-sm">Try adjusting your search or filters.</p>
+                        </div>
+                    </motion.div>
                 )}
             </div>
 
-            {/* Modal */}
-            <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={modalMode === 'add' ? "Add New Member" : "Edit Member"}>
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* Modals */}
+            <PersonActionModal
+                isOpen={isActionModalOpen}
+                onClose={() => setIsActionModalOpen(false)}
+                mode={modalMode}
+                person={selectedPerson}
+                units={units}
+                positions={positions}
+                onSubmit={handleActionSubmit}
+            />
 
-                    <div>
-                        <label className="block text-sm font-bold text-slate-300 mb-1">Full Name</label>
-                        <input
-                            {...register('fullName', { required: 'Name is required' })}
-                            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 font-medium"
-                            placeholder="e.g. John Doe"
-                        />
-                        {errors.fullName && <span className="text-church-coral-400 text-xs font-semibold">{errors.fullName.message}</span>}
-                    </div>
-
-                    {modalMode === 'add' && (
-                        <>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-300 mb-1">Unit</label>
-                                    <select
-                                        {...register('unitId')}
-                                        className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 font-medium"
-                                    >
-                                        <option value="">Select Unit...</option>
-                                        {units.map(u => (
-                                            <option key={u.id} value={u.id}>{u.name} ({u.unit_type})</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-300 mb-1">Role</label>
-                                    <select
-                                        {...register('positionId')}
-                                        className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 font-medium"
-                                        disabled={!availablePositions.length}
-                                    >
-                                        <option value="">Select Role...</option>
-                                        {availablePositions.map(p => (
-                                            <option key={p.id} value={p.id}>{p.title}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-slate-300 mb-1">Email <span className="text-slate-500">(Optional)</span></label>
-                                <input
-                                    {...register('email')}
-                                    className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 font-medium"
-                                    placeholder="john@example.com"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-slate-300 mb-1">Phone <span className="text-slate-500">(Optional)</span></label>
-                                <input
-                                    {...register('phone')}
-                                    className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 font-medium"
-                                    placeholder="+1 (555) 000-0000"
-                                />
-                            </div>
-                        </>
-                    )}
-
-                    <div className="pt-4 flex gap-3">
-                        <button
-                            type="button"
-                            onClick={() => setIsModalOpen(false)}
-                            className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors border border-slate-600 font-bold"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="flex-1 py-2 rounded-lg bg-gradient-church text-white font-black hover:opacity-90 transition-all disabled:opacity-50"
-                        >
-                            {isSubmitting ? 'Saving...' : (modalMode === 'add' ? 'Add Member' : 'Save Changes')}
-                        </button>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* Delete Confirmation Modal */}
             <Modal
                 isOpen={isDeleteModalOpen}
                 onClose={() => setIsDeleteModalOpen(false)}
-                title="Confirm Deletion"
+                title="De-register Member"
                 maxWidth="max-w-sm"
             >
-                <div className="space-y-4">
-                    <p className="text-slate-300">
-                        Are you sure you want to remove <span className="text-white font-bold">{deletingPerson?.name}</span>?
-                        This action cannot be undone.
-                    </p>
-                    <div className="flex gap-3 justify-end pt-2">
+                <div className="space-y-6">
+                    <div className="w-16 h-16 bg-church-coral-500/10 rounded-2xl flex items-center justify-center mx-auto border border-church-coral-500/20">
+                         <Trash2 size={24} className="text-church-coral-400" />
+                    </div>
+                    <div className="text-center space-y-2">
+                        <p className="text-slate-100 font-black text-lg">Are you sure?</p>
+                        <p className="text-slate-400 text-sm leading-relaxed">
+                            You are about to remove <span className="text-white font-bold">{deletingPerson?.name}</span> from the system. This action cannot be reversed.
+                        </p>
+                    </div>
+                    <div className="flex gap-3 pt-2">
                         <button
                             onClick={() => setIsDeleteModalOpen(false)}
-                            className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors text-sm border border-slate-600 font-bold"
+                            className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all font-bold"
                         >
                             Cancel
                         </button>
                         <button
                             onClick={confirmDelete}
-                            className="px-4 py-2 rounded-lg bg-church-coral-500 text-white font-black hover:bg-church-coral-600 transition-colors text-sm"
+                            className="flex-1 py-3 rounded-xl bg-church-coral-500 text-white font-black hover:bg-church-coral-600 transition-all shadow-lg shadow-church-coral-500/20 active:scale-95"
                         >
-                            Delete Member
+                            Confirm Deletion
                         </button>
                     </div>
                 </div>
