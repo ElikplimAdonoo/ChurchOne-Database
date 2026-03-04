@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Users, BarChart3, CheckCircle2, AlertCircle, LogOut } from 'lucide-react';
-import AttendanceMarking from './AttendanceMarking';
-import AttendanceAnalytics from './AttendanceAnalytics';
+import AttendanceMarking from '../components/attendance/AttendanceMarking';
+import AttendanceAnalytics from '../components/attendance/AttendanceAnalytics';
 
 export default function AttendancePage() {
   const { user, userRole, signOut } = useAuth();

@@ -33,19 +33,40 @@ export async function fetchPeople() {
         // Get primary active assignment
         const primaryAssignment = person.assignments?.find(a => a.is_active);
 
-        return {
-            id: person.id,
-            name: person.full_name,
-            photo: person.photo_url,
-            role: primaryAssignment?.position?.title || 'Unassigned',
-            unit: primaryAssignment?.unit?.name || 'Unassigned',
-            unit_id: primaryAssignment?.unit_id,
-            position_id: primaryAssignment?.position_id,
-            assignment_id: primaryAssignment?.id,
-            unit_type: primaryAssignment?.unit?.unit_type,
-            status: person.is_active ? 'Active' : 'Inactive',
-            is_placeholder: person.is_placeholder
-        };
+            // Smart status derivation:
+            // - Pending: members whose names indicate they are pending identity (contains 'pending'), 
+            //            or placeholders that are NOT system unit placeholders (ending in ' - Leader')
+            // - Inactive: person.is_active is false
+            // - Active: real, active member
+            
+            const isSystemUnitPlaceholder = person.is_placeholder && person.full_name.includes(' - Leader');
+            const hasPendingName = person.full_name.toLowerCase().includes('pending');
+            
+            let status;
+            if (hasPendingName || (person.is_placeholder && !isSystemUnitPlaceholder)) {
+                status = 'Pending';
+            } else if (!person.is_active && !isSystemUnitPlaceholder) {
+                status = 'Inactive';
+            } else if (isSystemUnitPlaceholder) {
+                // System unit placeholders shouldn't really be in the directory, but if they are, keep them out of Pending
+                status = 'System'; 
+            } else {
+                status = 'Active';
+            }
+
+            return {
+                id: person.id,
+                name: person.full_name,
+                photo: person.photo_url,
+                role: primaryAssignment?.position?.title || 'Unassigned',
+                unit: primaryAssignment?.unit?.name || 'Unassigned',
+                unit_id: primaryAssignment?.unit_id,
+                position_id: primaryAssignment?.position_id,
+                assignment_id: primaryAssignment?.id,
+                unit_type: primaryAssignment?.unit?.unit_type,
+                status,
+                is_placeholder: person.is_placeholder
+            };
     });
 
     cacheService.set(CACHE_KEYS.PEOPLE, result);

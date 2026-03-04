@@ -15,12 +15,12 @@ import { Search, ChevronRight } from 'lucide-react';
 import 'reactflow/dist/style.css';
 import { useForm } from 'react-hook-form';
 import { createUnit, fetchHierarchyData } from '../services/hierarchyService';
-import CollapsibleNode from './CollapsibleNode';
-import NodeDetailsPanel from './NodeDetailsPanel';
-import Modal from './ui/Modal';
-import ImageModal from './common/ImageModal';
-import FullRegistryModal from './FullRegistryModal';
-import AddUnitModal from './AddUnitModal';
+import CollapsibleNode from '../components/CollapsibleNode';
+import NodeDetailsPanel from '../components/NodeDetailsPanel';
+import Modal from '../components/ui/Modal';
+import ImageModal from '../components/common/ImageModal';
+import FullRegistryModal from '../components/FullRegistryModal';
+import AddUnitModal from '../components/AddUnitModal';
 import { cacheService } from '../services/cacheService';
 
 const nodeTypes = {
@@ -426,7 +426,10 @@ export default function HierarchyMindMap() {
     }, [flatData]);
 
     return (
-        <div className="h-full w-full bg-gradient-dark relative overflow-hidden">
+        <div 
+            className="w-full bg-slate-900/40 relative overflow-hidden rounded-3xl border border-slate-700/50 shadow-2xl"
+            style={{ height: 'calc(100vh - 180px)', minHeight: '600px' }}
+        >
             {/* Decorative Dot Pattern */}
             <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none z-0"></div>
 

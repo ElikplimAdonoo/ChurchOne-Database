@@ -209,27 +209,26 @@ export default function AttendanceMarking({ currentRole }) {
                             </div>
                             <span className="font-bold text-gray-200 text-lg md:text-base">{member.full_name}</span>
                         </div>
-                        <div className="w-full md:col-span-4 flex justify-center mt-3 md:mt-0">
+                        <div className="md:col-span-4 flex items-center justify-end gap-2 ml-auto">
                             <button
-                                onClick={() => toggleStatus(member.id)}
-                                className={`
-                                    w-full md:w-32 py-2.5 rounded-lg font-black text-sm flex items-center justify-center gap-2 transition-all shadow-lg
-                                    ${attendance[member.id] === 'PRESENT' 
-                                        ? 'bg-church-blue-600 text-white hover:bg-church-blue-500' 
-                                        : 'bg-slate-800 text-slate-400 border-2 border-slate-600 hover:border-slate-500 hover:text-slate-300'}
-                                `}
+                                onClick={() => setAttendance(prev => ({ ...prev, [member.id]: 'PRESENT' }))}
+                                className={`p-2 rounded-lg transition-all ${
+                                    attendance[member.id] === 'PRESENT'
+                                        ? 'bg-emerald-500/20 text-emerald-400 ring-2 ring-emerald-500/50'
+                                        : 'bg-slate-800 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10'
+                                }`}
                             >
-                                {attendance[member.id] === 'PRESENT' ? (
-                                    <>
-                                        <UserCheck size={16} />
-                                        <span>Present</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <UserX size={16} />
-                                        <span>Absent</span>
-                                    </>
-                                )}
+                                <UserCheck size={18} />
+                            </button>
+                            <button
+                                onClick={() => setAttendance(prev => ({ ...prev, [member.id]: 'ABSENT' }))}
+                                className={`p-2 rounded-lg transition-all ${
+                                    attendance[member.id] === 'ABSENT'
+                                        ? 'bg-red-500/20 text-red-400 ring-2 ring-red-500/50'
+                                        : 'bg-slate-800 text-slate-500 hover:text-red-400 hover:bg-red-500/10'
+                                }`}
+                            >
+                                <UserX size={18} />
                             </button>
                         </div>
                     </div>

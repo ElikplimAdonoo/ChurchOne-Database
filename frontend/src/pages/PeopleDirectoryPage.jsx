@@ -4,9 +4,9 @@ import { fetchPeople, createPerson, updatePerson, deletePerson } from '../servic
 import { fetchHierarchyData, fetchPositions } from '../services/hierarchyService';
 import { Search, Filter, ArrowUpDown, MoreHorizontal, User, Plus, Edit, Trash2, Mail, Phone, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
-import Modal from './ui/Modal';
-import ImageModal from './common/ImageModal';
-import PersonActionModal from './PersonActionModal';
+import Modal from '../components/ui/Modal';
+import ImageModal from '../components/common/ImageModal';
+import PersonActionModal from '../components/PersonActionModal';
 
 export default function PeopleDirectory() {
     const [people, setPeople] = useState([]);
@@ -15,6 +15,7 @@ export default function PeopleDirectory() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterRole, setFilterRole] = useState('All');
+    const [filterStatus, setFilterStatus] = useState('All');
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
     // Modal State
@@ -59,14 +60,27 @@ export default function PeopleDirectory() {
     }, [people]);
 
     // Filter & Sort
+    // Status counts for filter tabs
+    const statusCounts = useMemo(() => {
+        const counts = { All: people.length, Active: 0, Inactive: 0, Pending: 0 };
+        people.forEach(p => {
+            const s = (p.status || 'Active').toLowerCase();
+            if (s === 'active') counts.Active++;
+            else if (s === 'inactive') counts.Inactive++;
+            else if (s === 'pending') counts.Pending++;
+        });
+        return counts;
+    }, [people]);
+
     const filteredPeople = useMemo(() => {
         let filtered = people.filter(p => {
             const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 p.unit.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesRole = filterRole === 'All' || p.role === filterRole;
-            return matchesSearch && matchesRole;
+            const matchesStatus = filterStatus === 'All' || 
+                (p.status || 'Active').toLowerCase() === filterStatus.toLowerCase();
+            return matchesSearch && matchesRole && matchesStatus;
         });
-
 
         return filtered.sort((a, b) => {
             const valA = (a[sortConfig.key] || '').toString().toLowerCase();
@@ -76,7 +90,7 @@ export default function PeopleDirectory() {
             if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [people, searchTerm, filterRole, sortConfig]);
+    }, [people, searchTerm, filterRole, filterStatus, sortConfig]);
 
     const handleSort = (key) => {
         setSortConfig(current => ({
@@ -184,6 +198,30 @@ export default function PeopleDirectory() {
                     <Plus size={18} />
                     Add Member
                 </button>
+            </div>
+
+            {/* Status Filter Tabs */}
+            <div className="flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-white/5 w-fit">
+                {['All', 'Active', 'Inactive', 'Pending'].map(status => (
+                    <button
+                        key={status}
+                        onClick={() => setFilterStatus(status)}
+                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-2 ${
+                            filterStatus === status
+                                ? 'bg-gradient-church text-white shadow-lg'
+                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                        }`}
+                    >
+                        {status}
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                            filterStatus === status
+                                ? 'bg-white/20 text-white'
+                                : 'bg-slate-800 text-slate-500'
+                        }`}>
+                            {statusCounts[status]}
+                        </span>
+                    </button>
+                ))}
             </div>
 
             {/* Premium Table / Card List */}

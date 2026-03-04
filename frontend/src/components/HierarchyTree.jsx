@@ -14,52 +14,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import ImageModal from "./common/ImageModal";
 
-// ================================
-// UTILS
-// ================================
-function buildTree(flatUnits) {
-    const map = {};
-    const roots = [];
-
-    // Initialize map
-    flatUnits.forEach((unit) => {
-        map[unit.id] = { ...unit, children: [] };
-    });
-
-    // Connect parents/children
-    flatUnits.forEach((unit) => {
-        if (unit.parent_id && map[unit.parent_id]) {
-            map[unit.parent_id].children.push(map[unit.id]);
-        } else {
-            roots.push(map[unit.id]);
-        }
-    });
-
-    return roots;
-}
-
-// Recursive Search Filter
-// Returns true if node or any child matches search
-const filterNodes = (nodes, term) => {
-    if (!term) return nodes;
-
-    return nodes.reduce((acc, node) => {
-        const matchesSelf = node.name.toLowerCase().includes(term.toLowerCase()) ||
-            node.leaders?.some(l => l.name.toLowerCase().includes(term.toLowerCase()));
-
-        const filteredChildren = filterNodes(node.children, term);
-
-        if (matchesSelf || filteredChildren.length > 0) {
-            acc.push({
-                ...node,
-                children: filteredChildren,
-                // Force open if children matched or self matched? 
-                // We'll handle forceOpen via prop based on search term existence
-            });
-        }
-        return acc;
-    }, []);
-};
+import { buildTree, filterNodes } from "../utils/treeUtils";
 
 // ================================
 // TREE NODE COMPONENT
@@ -154,7 +109,7 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                             {/* Icon & Name */}
                             <div className="flex items-center gap-2">
                                 {style.icon}
-                                <span className={`font-semibold tracking-wide ${style.text}`}>
+                                <span className={`font-semibold tracking-wide text-sm md:text-base ${style.text}`}>
                                     {node.name}
                                 </span>
                                 {node.is_placeholder && (
@@ -193,8 +148,8 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                                                 ) : <div className="w-full h-full flex items-center justify-center text-xs font-bold text-yellow-500">{leader.name.charAt(0)}</div>}
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-white leading-tight group-hover:text-yellow-400 transition-colors uppercase tracking-tight">{leader.name}</p>
-                                                <p className="text-[10px] text-yellow-500/70 font-black uppercase tracking-[0.2em] decoration-yellow-500/30 underline underline-offset-2">Cell Shepherd</p>
+                                                <p className="text-xs md:text-sm font-bold text-white leading-tight group-hover:text-yellow-400 transition-colors uppercase tracking-tight">{leader.name}</p>
+                                                <p className="text-[9px] md:text-[10px] text-yellow-500/70 font-black uppercase tracking-[0.2em] decoration-yellow-500/30 underline underline-offset-2">Cell Shepherd</p>
                                             </div>
                                         </div>
                                     ))}
@@ -214,8 +169,8 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                                                 ) : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-emerald-500">{leader.name.charAt(0)}</div>}
                                             </div>
                                             <div>
-                                                <p className="text-xs font-bold text-slate-100 leading-tight group-hover:text-emerald-400 transition-colors uppercase tracking-tighter">{leader.name}</p>
-                                                <p className="text-[9px] text-emerald-500/70 font-black uppercase tracking-widest mt-1">{leader.role}</p>
+                                                <p className="text-[11px] md:text-xs font-bold text-slate-100 leading-tight group-hover:text-emerald-400 transition-colors uppercase tracking-tighter">{leader.name}</p>
+                                                <p className="text-[8px] md:text-[9px] text-emerald-500/70 font-black uppercase tracking-widest mt-1">{leader.role}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -334,7 +289,7 @@ export default function HierarchyTree() {
     return (
         <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
             {/* Header / Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-800/50 p-6 rounded-2xl border-2 border-church-blue-500/50 backdrop-blur-xl shadow-lg">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
                 <div>
                     <h2 className="text-3xl font-black bg-gradient-church bg-clip-text text-transparent">
                         Organizational Structure
