@@ -7,8 +7,10 @@ import { motion } from 'framer-motion';
 import Modal from '../components/ui/Modal';
 import ImageModal from '../components/common/ImageModal';
 import PersonActionModal from '../components/PersonActionModal';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function PeopleDirectory() {
+    const { user } = useAuth();
     const [people, setPeople] = useState([]);
     const [units, setUnits] = useState([]);
     const [positions, setPositions] = useState([]);
@@ -190,14 +192,6 @@ export default function PeopleDirectory() {
                     </div>
                 </div>
 
-                {/* Actions */}
-                <button
-                    onClick={openAddModal}
-                    className="bg-gradient-church hover:opacity-90 text-white px-4 py-2.5 rounded-xl font-black flex items-center gap-2 transition-all shadow-lg active:scale-95 whitespace-nowrap border-2 border-church-blue-600"
-                >
-                    <Plus size={18} />
-                    Add Member
-                </button>
             </div>
 
             {/* Status Filter Tabs */}
@@ -301,22 +295,24 @@ export default function PeopleDirectory() {
                                         </span>
                                     </td>
                                     <td className="p-6 text-right">
-                                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-all transform translate-x-2 group-hover/row:translate-x-0">
-                                            <button
-                                                onClick={() => openEditModal(person)}
-                                                className="p-2.5 rounded-xl bg-slate-800 hover:bg-church-blue-500/20 text-slate-400 hover:text-church-blue-400 transition-all border border-white/5 shadow-xl"
-                                                title="Edit Profile"
-                                            >
-                                                <Edit size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(person)}
-                                                className="p-2.5 rounded-xl bg-slate-800 hover:bg-church-coral-500/20 text-slate-400 hover:text-church-coral-400 transition-all border border-white/5 shadow-xl"
-                                                title="Remove Member"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        </div>
+                                        {user && (
+                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-all transform translate-x-2 group-hover/row:translate-x-0">
+                                                <button
+                                                    onClick={() => openEditModal(person)}
+                                                    className="p-2.5 rounded-xl bg-slate-800 hover:bg-church-blue-500/20 text-slate-400 hover:text-church-blue-400 transition-all border border-white/5 shadow-xl"
+                                                    title="Edit Profile"
+                                                >
+                                                    <Edit size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDelete(person)}
+                                                    className="p-2.5 rounded-xl bg-slate-800 hover:bg-church-coral-500/20 text-slate-400 hover:text-church-coral-400 transition-all border border-white/5 shadow-xl"
+                                                    title="Remove Member"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </td>
                                 </motion.tr>
                             ))}
@@ -345,10 +341,12 @@ export default function PeopleDirectory() {
                                 </span>
                             </div>
                             
-                            <div className="flex gap-3">
-                                <button onClick={() => openEditModal(person)} className="flex-1 py-3 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm border border-white/5 flex items-center justify-center gap-2"><Edit size={16}/> Edit</button>
-                                <button onClick={() => handleDelete(person)} className="flex-1 py-3 rounded-2xl bg-church-coral-500/10 text-church-coral-400 font-bold text-sm border border-church-coral-500/20 flex items-center justify-center gap-2"><Trash2 size={16}/> Remove</button>
-                            </div>
+                            {user && (
+                                <div className="flex gap-3">
+                                    <button onClick={() => openEditModal(person)} className="flex-1 py-3 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm border border-white/5 flex items-center justify-center gap-2"><Edit size={16}/> Edit</button>
+                                    <button onClick={() => handleDelete(person)} className="flex-1 py-3 rounded-2xl bg-church-coral-500/10 text-church-coral-400 font-bold text-sm border border-church-coral-500/20 flex items-center justify-center gap-2"><Trash2 size={16}/> Remove</button>
+                                </div>
+                            )}
                         </div>
                     ))}
                 </div>
@@ -413,6 +411,17 @@ export default function PeopleDirectory() {
                     </div>
                 </div>
             </Modal>
+
+            {/* Floating Action Button (FAB) for Add Member - Protected */}
+            {user && (
+                <button
+                    onClick={openAddModal}
+                    className="fixed bottom-24 right-6 md:bottom-8 md:right-8 z-50 bg-gradient-church hover:opacity-90 text-white p-4 rounded-full font-black flex items-center justify-center transition-all shadow-xl shadow-church-blue-500/30 active:scale-95 border-2 border-church-blue-400 hover:scale-105 group"
+                    title="Add Member"
+                >
+                    <Plus size={28} className="group-hover:rotate-90 transition-transform duration-300" />
+                </button>
+            )}
 
             <ImageModal
                 isOpen={imageModalConfig.isOpen}

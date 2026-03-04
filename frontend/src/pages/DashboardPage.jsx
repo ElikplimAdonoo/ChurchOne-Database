@@ -92,7 +92,7 @@ export default function DashboardPage() {
           label="Placement Rate" 
           value={`${stats.members > 0 ? Math.round((stats.assigned / stats.members) * 100) : 0}%`} 
           icon={<CheckCircle2 size={20} />} 
-          color="amber" 
+          color="purple" 
           subText={`${stats.assigned} members assigned`}
         />
       </div>

@@ -1,5 +1,5 @@
 import { AuthProvider } from './contexts/AuthContext'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './components/Login'
 import MainLayout from './components/layout/MainLayout'
@@ -18,12 +18,16 @@ function App() {
           {/* Public Routes */}
           <Route path="/login" element={<Login />} />
 
-          {/* Protected Main Layout Routes */}
-          <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
+          {/* Public Main Layout Routes */}
+          <Route element={<MainLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="directory" element={<PeopleDirectoryPage />} />
             <Route path="mindmap" element={<HierarchyMindMapPage />} />
-            <Route path="attendance" element={<AttendancePage />} />
+            
+            {/* Protected Routes */}
+            <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+              <Route path="attendance" element={<AttendancePage />} />
+            </Route>
           </Route>
         </Routes>
       </Router>
