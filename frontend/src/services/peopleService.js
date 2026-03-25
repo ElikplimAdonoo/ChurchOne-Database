@@ -87,10 +87,9 @@ export const createPerson = async (personData) => {
 
     if (error) throw error;
 
-
-
-    // Invalidate Cache
+    // Invalidate People + Hierarchy caches (dashboard counts change)
     cacheService.remove(CACHE_KEYS.PEOPLE);
+    cacheService.remove(CACHE_KEYS.HIERARCHY);
 
     // 2. Create Assignment (if unit/position provided)
     if (personData.unitId && personData.positionId) {
@@ -105,9 +104,9 @@ export const createPerson = async (personData) => {
             }]);
 
         if (assignError) {
-            console.error("Failed to assign person:", assignError);
-            // Optional: delete person to rollback? Or just throw.
-            // For now, let's just log it.
+            // OI-3: Log clearly — person exists but has no placement. Surface this.
+            console.error("Person created but assignment failed:", assignError);
+            throw new Error(`Member was added but could not be placed in the selected unit. Please edit the member to assign them manually. (Details: ${assignError.message})`);
         }
     }
 
@@ -150,20 +149,45 @@ export const updatePerson = async (id, updates) => {
         if (assignError) throw assignError;
     }
 
-    // Invalidate Cache
+    // Invalidate People + Hierarchy caches
     cacheService.remove(CACHE_KEYS.PEOPLE);
+    cacheService.remove(CACHE_KEYS.HIERARCHY);
 
     return person;
 };
 
-export const deletePerson = async (id) => {
+export const deactivatePerson = async (id) => {
+    const { error } = await supabase
+        .from('people')
+        .update({ is_active: false })
+        .eq('id', id);
+
+    if (error) throw error;
+    cacheService.remove(CACHE_KEYS.PEOPLE);
+    cacheService.remove(CACHE_KEYS.HIERARCHY);
+    return true;
+};
+
+export const reactivatePerson = async (id) => {
+    const { error } = await supabase
+        .from('people')
+        .update({ is_active: true })
+        .eq('id', id);
+
+    if (error) throw error;
+    cacheService.remove(CACHE_KEYS.PEOPLE);
+    cacheService.remove(CACHE_KEYS.HIERARCHY);
+    return true;
+};
+
+// Hard delete - reserved for admin cleanup only (not exposed in UI)
+export const hardDeletePerson = async (id) => {
     const { error } = await supabase
         .from('people')
         .delete()
         .eq('id', id);
 
     if (error) throw error;
-    // Invalidate Cache
     cacheService.remove(CACHE_KEYS.PEOPLE);
     return true;
 };

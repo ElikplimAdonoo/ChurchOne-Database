@@ -20,12 +20,13 @@ function App() {
 
           {/* Public Main Layout Routes */}
           <Route element={<MainLayout />}>
+            {/* Public but inside MainLayout */}
             <Route index element={<DashboardPage />} />
-            <Route path="directory" element={<PeopleDirectoryPage />} />
-            <Route path="mindmap" element={<HierarchyMindMapPage />} />
             
             {/* Protected Routes */}
             <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+              <Route path="directory" element={<PeopleDirectoryPage />} />
+              <Route path="mindmap" element={<HierarchyMindMapPage />} />
               <Route path="attendance" element={<AttendancePage />} />
             </Route>
           </Route>

@@ -43,12 +43,23 @@ export default function Login() {
       
       <div className="bg-black/60 backdrop-blur-xl border-2 border-church-blue-500/30 p-8 rounded-3xl w-full max-w-md shadow-2xl relative z-10">
         <div className="flex flex-col items-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-church flex items-center justify-center mb-4 shadow-lg relative">
-                <Lock className="text-white" size={32} />
-                <Sparkles className="absolute -top-2 -right-2 text-church-blue-300" size={20} />
+            <div className="w-24 h-24 rounded-3xl flex items-center justify-center mb-4 shadow-2xl overflow-hidden border-2 border-church-blue-500/30 bg-black/30 backdrop-blur-sm relative">
+                <img
+                    src="/lec-logo.png"
+                    alt="LEC Logo"
+                    className="w-full h-full object-contain p-1"
+                    onError={(e) => {
+                        // Fallback to icon if logo fails to load
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                    }}
+                />
+                <div className="hidden w-full h-full bg-gradient-church items-center justify-center">
+                    <Lock className="text-white" size={32} />
+                </div>
             </div>
             <h2 className="text-3xl font-black text-white">Welcome Back!</h2>
-            <p className="text-church-blue-400 font-semibold">ChurchOne</p>
+            <p className="text-church-blue-400 font-semibold text-sm mt-1">Love Economy Church · ChurchOne</p>
         </div>
 
         {error && (

@@ -1,17 +1,19 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
-import { fetchPeople, createPerson, updatePerson, deletePerson } from '../services/peopleService';
+import { fetchPeople, createPerson, updatePerson, deactivatePerson, reactivatePerson } from '../services/peopleService';
 import { fetchHierarchyData, fetchPositions } from '../services/hierarchyService';
-import { Search, Filter, ArrowUpDown, MoreHorizontal, User, Plus, Edit, Trash2, Mail, Phone, MapPin } from 'lucide-react';
+import { Search, ArrowUpDown, User, Plus, Edit, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
-import Modal from '../components/ui/Modal';
 import ImageModal from '../components/common/ImageModal';
 import PersonActionModal from '../components/PersonActionModal';
+import StatusDropdown from '../components/ui/StatusDropdown';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function PeopleDirectory() {
-    const { user } = useAuth();
+    const { user, userRole, getManagedUnits } = useAuth();
     const [people, setPeople] = useState([]);
+    const [managedUnitIds, setManagedUnitIds] = useState(new Set());
+    const [isAllManaged, setIsAllManaged] = useState(false);
     const [units, setUnits] = useState([]);
     const [positions, setPositions] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -20,12 +22,10 @@ export default function PeopleDirectory() {
     const [filterStatus, setFilterStatus] = useState('All');
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
 
-    // Modal State
     const [isActionModalOpen, setIsActionModalOpen] = useState(false);
-    const [modalMode, setModalMode] = useState('add'); // 'add' | 'edit'
+    const [modalMode, setModalMode] = useState('add');
     const [selectedPerson, setSelectedPerson] = useState(null);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [deletingPerson, setDeletingPerson] = useState(null);
+    const [changingStatusId, setChangingStatusId] = useState(null);
     const [imageModalConfig, setImageModalConfig] = useState({ isOpen: false, src: '', title: '' });
     
     const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm();
@@ -48,12 +48,31 @@ export default function PeopleDirectory() {
             fetchPeople(),
             fetchHierarchyData(),
             fetchPositions()
-        ]).then(([peopleData, unitsData, positionsData]) => {
+        ]).then(async ([peopleData, unitsData, positionsData]) => {
             setPeople(peopleData);
             setUnits(unitsData); // This is flat array of units
             setPositions(positionsData);
+            
+            // Pre-calculate which units this user is allowed to manage (RBAC)
+            if (userRole) {
+                 try {
+                     const allowed = await getManagedUnits();
+                     if (allowed === 'ALL') {
+                         setIsAllManaged(true);
+                         setManagedUnitIds(new Set());
+                     } else {
+                         setIsAllManaged(false);
+                         setManagedUnitIds(allowed);
+                     }
+                 } catch(e) {
+                     console.error("Failed to load managed units:", e);
+                     setIsAllManaged(false);
+                     setManagedUnitIds(new Set());
+                 }
+            }
+            
         }).finally(() => setLoading(false));
-    }, []);
+    }, [userRole, getManagedUnits]);
 
     // Unique Roles for Filter
     const roles = useMemo(() => {
@@ -115,21 +134,23 @@ export default function PeopleDirectory() {
         setIsActionModalOpen(true);
     };
 
-    const handleDelete = (person) => {
-        setDeletingPerson(person);
-        setIsDeleteModalOpen(true);
-    };
-
-    const confirmDelete = async () => {
-        if (!deletingPerson) return;
+    const handleStatusChange = async (person, newStatus) => {
+        setChangingStatusId(person.id);
         try {
-            await deletePerson(deletingPerson.id);
-            setPeople(prev => prev.filter(p => p.id !== deletingPerson.id));
-            setIsDeleteModalOpen(false);
-            setDeletingPerson(null);
+            if (newStatus === 'Inactive') {
+                await deactivatePerson(person.id);
+            } else if (newStatus === 'Active') {
+                await reactivatePerson(person.id);
+            }
+            // Update local state
+            setPeople(prev => prev.map(p =>
+                p.id === person.id ? { ...p, status: newStatus } : p
+            ));
         } catch (err) {
-            console.error("Failed to delete:", err);
-            alert("Failed to delete member");
+            console.error(`Failed to change status to ${newStatus}:`, err);
+            alert(`Failed to update status`);
+        } finally {
+            setChangingStatusId(null);
         }
     };
 
@@ -232,11 +253,11 @@ export default function PeopleDirectory() {
                                         )}
                                     </div>
                                 </th>
-                                <th onClick={() => handleSort('role')} className="p-6 cursor-pointer hover:text-emerald-400 transition-colors">
+                                <th onClick={() => handleSort('role')} className="p-6 cursor-pointer hover:text-church-blue-400 transition-colors">
                                     <div className="flex items-center gap-2">
                                         Assignments
                                         {sortConfig.key === 'role' && (
-                                            <ArrowUpDown size={12} className={sortConfig.direction === 'asc' ? 'text-emerald-400' : 'text-emerald-400 rotate-180'} />
+                                            <ArrowUpDown size={12} className={sortConfig.direction === 'asc' ? 'text-church-blue-400' : 'text-church-blue-400 rotate-180'} />
                                         )}
                                     </div>
                                 </th>
@@ -279,7 +300,7 @@ export default function PeopleDirectory() {
                                     </td>
                                     <td className="p-6">
                                         <div className="space-y-1">
-                                            <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[11px] font-black uppercase inline-block">
+                                            <div className="px-2.5 py-1 rounded-lg bg-church-blue-500/10 text-church-blue-400 border border-church-blue-500/20 text-[11px] font-black uppercase inline-block">
                                                 {person.role}
                                             </div>
                                             <div className="text-xs text-slate-400 font-bold flex items-center gap-1.5 ml-0.5">
@@ -288,14 +309,15 @@ export default function PeopleDirectory() {
                                         </div>
                                     </td>
                                     <td className="p-6 text-center">
-                                        <span className={`inline-flex px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest
-                                            ${person.status === 'Active' ? 'bg-church-blue-500/10 text-church-blue-400 border border-church-blue-500/20' : 'bg-slate-800 text-slate-500 border border-white/5'}
-                                        `}>
-                                            {person.status}
-                                        </span>
+                                        <StatusDropdown
+                                            status={person.status}
+                                            canManage={user && (isAllManaged || managedUnitIds.has(person.unit_id))}
+                                            onStatusChange={(newStatus) => handleStatusChange(person, newStatus)}
+                                            loading={changingStatusId === person.id}
+                                        />
                                     </td>
                                     <td className="p-6 text-right">
-                                        {user && (
+                                        {user && (isAllManaged || managedUnitIds.has(person.unit_id)) && (
                                             <div className="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-all transform translate-x-2 group-hover/row:translate-x-0">
                                                 <button
                                                     onClick={() => openEditModal(person)}
@@ -303,13 +325,6 @@ export default function PeopleDirectory() {
                                                     title="Edit Profile"
                                                 >
                                                     <Edit size={16} />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(person)}
-                                                    className="p-2.5 rounded-xl bg-slate-800 hover:bg-church-coral-500/20 text-slate-400 hover:text-church-coral-400 transition-all border border-white/5 shadow-xl"
-                                                    title="Remove Member"
-                                                >
-                                                    <Trash2 size={16} />
                                                 </button>
                                             </div>
                                         )}
@@ -320,33 +335,51 @@ export default function PeopleDirectory() {
                     </table>
                 </div>
 
-                {/* Mobile View: High-Fidelity Cards */}
-                <div className="md:hidden grid grid-cols-1 gap-4 p-4">
+                {/* Mobile View: High-Fidelity Cards (Minimalist) */}
+                <div className="md:hidden grid grid-cols-1 gap-3 p-4">
                     {filteredPeople.map((person) => (
-                        <div key={person.id} className="p-5 rounded-3xl bg-slate-900 border border-white/5 space-y-4 shadow-xl">
-                            <div className="flex items-start justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="w-14 h-14 rounded-2xl bg-slate-800 border border-white/5 flex items-center justify-center overflow-hidden">
-                                        {person.photo ? <img src={person.photo} className="w-full h-full object-cover" /> : <User size={24} className="text-slate-600" />}
+                        <div key={person.id} className="p-4 rounded-3xl bg-slate-900 border border-white/5 shadow-xl transition-transform active:scale-[0.98]">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <div 
+                                        onClick={() => person.photo && setImageModalConfig({ isOpen: true, src: person.photo, title: person.name })}
+                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 
+                                            bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 shadow-inner
+                                            ${person.photo ? 'cursor-pointer' : ''}`}
+                                    >
+                                        {person.photo ? <img src={person.photo} className="w-full h-full object-cover" /> : <User size={20} className="text-slate-600" />}
                                     </div>
-                                    <div>
-                                        <div className="font-black text-white text-lg">{person.name}</div>
-                                        <div className="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase inline-block border border-emerald-500/20">
-                                            {person.role}
+                                    <div className="overflow-hidden space-y-0.5">
+                                        <div className="font-extrabold text-slate-100 text-base truncate leading-tight" title={person.name}>{person.name}</div>
+                                        <div className="flex flex-col gap-0.5 items-start">
+                                            <div className="text-[9px] font-black uppercase text-church-blue-400 truncate max-w-full tracking-widest">
+                                                {person.role}
+                                            </div>
+                                            <div className="text-[9px] text-slate-500 font-bold flex items-center gap-1">
+                                                <MapPin size={8} /> <span className="truncate">{person.unit}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-                                <span className={`px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-widest ${person.status === 'Active' ? 'bg-church-blue-500/10 text-church-blue-400' : 'bg-slate-800 text-slate-500'}`}>
-                                    {person.status}
-                                </span>
-                            </div>
-                            
-                            {user && (
-                                <div className="flex gap-3">
-                                    <button onClick={() => openEditModal(person)} className="flex-1 py-3 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm border border-white/5 flex items-center justify-center gap-2"><Edit size={16}/> Edit</button>
-                                    <button onClick={() => handleDelete(person)} className="flex-1 py-3 rounded-2xl bg-church-coral-500/10 text-church-coral-400 font-bold text-sm border border-church-coral-500/20 flex items-center justify-center gap-2"><Trash2 size={16}/> Remove</button>
+                                
+                                {/* Right Side Actions: Edit + Status */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                    <StatusDropdown
+                                        status={person.status}
+                                        canManage={user && (isAllManaged || managedUnitIds.has(person.unit_id))}
+                                        onStatusChange={(newStatus) => handleStatusChange(person, newStatus)}
+                                        loading={changingStatusId === person.id}
+                                    />
+                                    {user && (isAllManaged || managedUnitIds.has(person.unit_id)) && (
+                                        <button 
+                                            onClick={() => openEditModal(person)} 
+                                            className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-church-blue-500/20 text-slate-500 hover:text-church-blue-400 transition-colors flex items-center justify-center border border-white/5"
+                                        >
+                                            <Edit size={12} />
+                                        </button>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                         </div>
                     ))}
                 </div>
@@ -374,46 +407,14 @@ export default function PeopleDirectory() {
                 onClose={() => setIsActionModalOpen(false)}
                 mode={modalMode}
                 person={selectedPerson}
-                units={units}
+                units={user && !isAllManaged ? units.filter(u => managedUnitIds.has(u.id)) : units}
                 positions={positions}
                 onSubmit={handleActionSubmit}
             />
 
-            <Modal
-                isOpen={isDeleteModalOpen}
-                onClose={() => setIsDeleteModalOpen(false)}
-                title="De-register Member"
-                maxWidth="max-w-sm"
-            >
-                <div className="space-y-6">
-                    <div className="w-16 h-16 bg-church-coral-500/10 rounded-2xl flex items-center justify-center mx-auto border border-church-coral-500/20">
-                         <Trash2 size={24} className="text-church-coral-400" />
-                    </div>
-                    <div className="text-center space-y-2">
-                        <p className="text-slate-100 font-black text-lg">Are you sure?</p>
-                        <p className="text-slate-400 text-sm leading-relaxed">
-                            You are about to remove <span className="text-white font-bold">{deletingPerson?.name}</span> from the system. This action cannot be reversed.
-                        </p>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                        <button
-                            onClick={() => setIsDeleteModalOpen(false)}
-                            className="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 hover:bg-slate-700 transition-all font-bold"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={confirmDelete}
-                            className="flex-1 py-3 rounded-xl bg-church-coral-500 text-white font-black hover:bg-church-coral-600 transition-all shadow-lg shadow-church-coral-500/20 active:scale-95"
-                        >
-                            Confirm Deletion
-                        </button>
-                    </div>
-                </div>
-            </Modal>
 
-            {/* Floating Action Button (FAB) for Add Member - Protected */}
-            {user && (
+            {/* Floating Action Button (FAB) for Add Member - Protected by RBAC */}
+            {user && (isAllManaged || managedUnitIds.size > 0) && (
                 <button
                     onClick={openAddModal}
                     className="fixed bottom-24 right-6 md:bottom-8 md:right-8 z-50 bg-gradient-church hover:opacity-90 text-white p-4 rounded-full font-black flex items-center justify-center transition-all shadow-xl shadow-church-blue-500/30 active:scale-95 border-2 border-church-blue-400 hover:scale-105 group"

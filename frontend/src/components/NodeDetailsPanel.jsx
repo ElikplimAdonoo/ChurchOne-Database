@@ -1,12 +1,21 @@
 import { X, User, Users, MapPin, ChevronRight, Activity, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ImageModal from './common/ImageModal';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegistry }) {
-    const { user } = useAuth();
+    const { user, canManage } = useAuth();
     const [modalConfig, setModalConfig] = useState({ isOpen: false, src: '', title: '' });
+    const [hasPermission, setHasPermission] = useState(false);
+
+    useEffect(() => {
+        if (node && user) {
+            canManage(node.id).then(setHasPermission);
+        } else {
+            setHasPermission(false);
+        }
+    }, [node, user, canManage]);
 
     if (!node) return null;
 
@@ -144,7 +153,7 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
 
                         {/* Actions */}
                         <div className="space-y-3 pt-4 border-t border-slate-800">
-                            {user && unit_type !== 'PERSON' && unit_type !== 'CELL' && (
+                            {user && hasPermission && unit_type !== 'PERSON' && unit_type !== 'CELL' && (
                                 <button
                                     onClick={() => onAddChild(node)}
                                     className="w-full py-3 px-4 bg-gradient-church hover:opacity-90 text-white rounded-xl font-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 border-2 border-church-blue-600"

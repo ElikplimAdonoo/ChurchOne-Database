@@ -1,9 +1,11 @@
 import { useForm } from 'react-hook-form';
 import { Plus, Layout, Info } from 'lucide-react';
 import Modal from './ui/Modal';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function AddUnitModal({ isOpen, onClose, parentNode, onSubmit }) {
-    const { register, handleSubmit, reset, formState: { errors } } = useForm();
+    const { register, handleSubmit, reset, setError, formState: { errors, isSubmitting } } = useForm();
+    const { canManage } = useAuth();
 
     if (!parentNode) return null;
 
@@ -19,8 +21,16 @@ export default function AddUnitModal({ isOpen, onClose, parentNode, onSubmit }) 
     else if (parentType === 'MC') { childType = 'BUSCENTA'; childLabel = 'Buscenta'; }
     else if (parentType === 'BUSCENTA') { childType = 'CELL'; childLabel = 'Cell'; }
 
-    const handleInternalSubmit = (data) => {
-        onSubmit({
+    const handleInternalSubmit = async (data) => {
+        // Final security check before attempting creation
+        const hasAccess = await canManage(parentNode.id);
+        
+        if (!hasAccess) {
+             setError('root', { type: 'manual', message: 'You do not have permission to add structures here.' });
+             return;
+        }
+
+        await onSubmit({
             ...data,
             unit_type: childType,
             parent_id: parentNode.id
@@ -56,6 +66,12 @@ export default function AddUnitModal({ isOpen, onClose, parentNode, onSubmit }) 
                     {errors.name && <span className="text-church-coral-400 text-[10px] font-bold uppercase ml-1">{errors.name.message}</span>}
                 </div>
 
+                {errors.root && (
+                    <div className="p-3 rounded-lg bg-church-coral-500/10 border border-church-coral-500/30 text-church-coral-400 text-xs font-bold font-black uppercase tracking-widest text-center">
+                        {errors.root.message}
+                    </div>
+                )}
+
                 <div className="pt-2 flex gap-3">
                     <button
                         type="button"
@@ -66,10 +82,13 @@ export default function AddUnitModal({ isOpen, onClose, parentNode, onSubmit }) 
                     </button>
                     <button
                         type="submit"
-                        className="flex-1 py-3 rounded-xl bg-gradient-church text-white font-black hover:opacity-90 transition-all shadow-lg border-2 border-church-blue-600 active:scale-95 flex items-center justify-center gap-2"
+                        disabled={isSubmitting}
+                        className="flex-1 py-3 rounded-xl bg-gradient-church text-white font-black hover:opacity-90 transition-all shadow-lg border-2 border-church-blue-600 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        <Plus size={18} />
-                        Create Unit
+                        {isSubmitting ? (
+                             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-b-transparent"></div>
+                        ) : <Plus size={18} />}
+                        {isSubmitting ? 'Creating...' : 'Create Unit'}
                     </button>
                 </div>
             </form>

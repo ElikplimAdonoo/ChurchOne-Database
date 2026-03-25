@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { canManageUnit, getManagedUnitIds } from '../utils/permissionsUtils';
 
 const AuthContext = createContext({});
 
@@ -69,12 +70,24 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const canManage = useCallback(async (targetUnitId) => {
+      if (!userRole) return false;
+      return await canManageUnit(userRole, targetUnitId);
+  }, [userRole]);
+
+  const getManagedUnits = useCallback(async () => {
+      if (!userRole) return new Set();
+      return await getManagedUnitIds(userRole);
+  }, [userRole]);
+
   const value = {
     session,
     user,
     userRole,
     loading,
     signOut: () => supabase.auth.signOut(),
+    canManage,
+    getManagedUnits,
   };
 
   return (

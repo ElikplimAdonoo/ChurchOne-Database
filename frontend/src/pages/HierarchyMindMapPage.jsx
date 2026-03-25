@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useState, useMemo } from 'react';
+import { useWindowSize } from '../hooks/useWindowSize';
 import ReactFlow, {
     useNodesState,
     useEdgesState,
@@ -226,6 +227,8 @@ const getStyle = (type, isSelected, role) => {
 
 
 export default function HierarchyMindMap() {
+    const { width } = useWindowSize();
+    const isMobile = width < 768;
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
     const [rfInstance, setRfInstance] = useState(null);
@@ -428,13 +431,13 @@ export default function HierarchyMindMap() {
     return (
         <div 
             className="w-full bg-slate-900/40 relative overflow-hidden rounded-3xl border border-slate-700/50 shadow-2xl"
-            style={{ height: 'calc(100vh - 180px)', minHeight: '600px' }}
+            style={{ height: 'calc(100dvh - 220px)', minHeight: '500px' }}
         >
             {/* Decorative Dot Pattern */}
             <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none z-0"></div>
 
             {/* Search Overlay */}
-            <div className="absolute top-6 left-6 z-50 w-80">
+            <div className="absolute top-4 left-4 z-50 w-[calc(100%-2rem)] md:w-80">
                 <div className="relative group">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={18} />
                     <input
@@ -496,7 +499,7 @@ export default function HierarchyMindMap() {
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
+                onConnect={null}
                 onNodeClick={onNodeClick}
                 onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
@@ -504,18 +507,22 @@ export default function HierarchyMindMap() {
                 attributionPosition="bottom-right"
                 minZoom={0.1}
                 edgesFocusable={false}
+                edgesUpdatable={false}
                 nodesDraggable={false}
             >
-                <Controls className="!bg-black/80 !text-gray-300 !border !border-gray-700 !rounded-xl !left-6 !bottom-6" />
-                <MiniMap
-                    nodeColor={(n) => {
-                        if (n.data.unit_type === 'PERSON') return '#1a1a1a';
-                        if (n.id === selectedNodeId) return '#3385FF';
-                        return '#0066FF';
-                    }}
-                    maskColor="rgba(0, 0, 0, 0.85)"
-                    className="!bg-black/80 !border !border-gray-700 !rounded-xl !bottom-6 !right-6"
-                />
+                <Controls className="!bg-black/80 !text-gray-300 !border !border-gray-700 !rounded-xl !left-4 !bottom-4" />
+                {/* MiniMap: fully removed from DOM on mobile to prevent overlap */}
+                {!isMobile && (
+                    <MiniMap
+                        nodeColor={(n) => {
+                            if (n.data.unit_type === 'PERSON') return '#1a1a1a';
+                            if (n.id === selectedNodeId) return '#3385FF';
+                            return '#0066FF';
+                        }}
+                        maskColor="rgba(0, 0, 0, 0.85)"
+                        className="!bg-black/80 !border !border-gray-700 !rounded-xl !bottom-4 !right-4"
+                    />
+                )}
                 <Background color="#1a1a1a" gap={30} size={1} variant="dots" />
             </ReactFlow>
 

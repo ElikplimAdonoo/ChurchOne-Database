@@ -1,8 +1,9 @@
 import React, { useRef } from 'react'
 import { NavLink, useLocation, Outlet } from 'react-router-dom'
-import { Activity, LayoutDashboard, Users, List, CheckCircle2 } from 'lucide-react'
+import { Home, Users, List, CheckCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation'
+import InstallBanner from '../InstallBanner'
 
 const ROUTES = ['/', '/directory', '/mindmap', '/attendance']
 
@@ -20,38 +21,55 @@ export default function MainLayout() {
         {/* Desktop Navigation */}
         <nav className="hidden md:block relative z-50 bg-black/60 backdrop-blur-md border-b border-church-blue-500/30 shadow-2xl shrink-0">
           <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-church flex items-center justify-center shadow-lg">
-                <Activity className="text-white" size={24} />
+            {/* <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl overflow-hidden border border-church-blue-500/30 bg-black/30 shadow-lg flex items-center justify-center">
+                <img
+                  src="/lec-logo.png"
+                  alt="LEC"
+                  className="w-full h-full object-contain p-0.5"
+                  onError={(e) => { e.target.style.display='none'; }}
+                />
               </div>
-              <span className="font-black text-xl tracking-tight bg-gradient-church bg-clip-text text-transparent">
-                ChurchOne
-              </span>
-            </div>
+              <div>
+                <span className="font-black text-xl tracking-tight bg-gradient-church bg-clip-text text-transparent block leading-none">
+                  ChurchOne
+                </span>
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+                  LEC · Love Economy
+                </span>
+              </div> 
+            </div>*/}
 
             <div className="flex items-center gap-1 bg-black/40 p-1.5 rounded-2xl border border-white/5 shadow-inner">
-              <NavItem to="/" icon={<LayoutDashboard size={18} />} label="Structure" />
+              <NavItem to="/" icon={<Home size={18} />} label="Home" />
               <NavItem to="/directory" icon={<Users size={18} />} label="Directory" />
-              <NavItem to="/mindmap" icon={<List size={18} />} label="Graph" />
+              <NavItem to="/mindmap" icon={<List size={18} />} label="Map" />
               <NavItem to="/attendance" icon={<CheckCircle2 size={18} />} label="Attendance" />
             </div>
           </div>
         </nav>
 
         {/* Mobile Header */}
-        <header className="md:hidden relative z-50 bg-black/60 backdrop-blur-md border-b border-church-blue-500/20 px-6 h-14 flex items-center shrink-0">
+        <header className="md:hidden relative z-50 bg-black/60 backdrop-blur-md border-b border-church-blue-500/20 px-6 h-14 flex items-center gap-3 shrink-0">
+          {/* <div className="w-8 h-8 rounded-lg overflow-hidden border border-church-blue-500/30 bg-black/30 flex items-center justify-center">
+            <img src="/lec-logo.png" alt="LEC" className="w-full h-full object-contain p-0.5"
+              onError={(e) => { e.target.style.display='none'; }} />
+          </div>
           <span className="font-black text-lg tracking-tight bg-gradient-church bg-clip-text text-transparent">
             ChurchOne
-          </span>
+          </span> */}
         </header>
 
         {/* Content Area */}
         <main
           className="flex-1 overflow-y-auto custom-scrollbar touch-pan-y"
           onTouchStart={(e) => {
+            // Disable swipe navigation on mindmap — ReactFlow needs touch for panning
+            if (location.pathname === '/mindmap') return;
             mainTouchStart.current = e.touches[0].clientX
           }}
           onTouchEnd={(e) => {
+            if (location.pathname === '/mindmap') return;
             if (mainTouchStart.current === null) return
             const diff = e.changedTouches[0].clientX - mainTouchStart.current
             const swipeThreshold = 80
@@ -68,12 +86,14 @@ export default function MainLayout() {
         {/* Mobile Bottom Tabs */}
         <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm">
           <div className="bg-black/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-2 flex items-center justify-around shadow-2xl">
-            <TabItem to="/" icon={<LayoutDashboard size={22} />} />
+            <TabItem to="/" icon={<Home size={22} />} />
             <TabItem to="/directory" icon={<Users size={22} />} />
             <TabItem to="/mindmap" icon={<List size={22} />} />
             <TabItem to="/attendance" icon={<CheckCircle2 size={22} />} />
           </div>
         </nav>
+        {/* PWA Install Banner */}
+        <InstallBanner />
       </div>
     </div>
   )

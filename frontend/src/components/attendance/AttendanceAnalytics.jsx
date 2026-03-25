@@ -1,227 +1,320 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Loader2, TrendingUp, Users, Calendar } from 'lucide-react';
+import {
+  AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell,
+} from 'recharts';
+import { Loader2, TrendingUp, Users, Calendar, UserX, Activity, UserPlus, Sparkles } from 'lucide-react';
 
-export default function AttendanceAnalytics({ currentRole }) {
+// ─── Custom Tooltip ─────────────────────────────────────────────────────────
+function CustomTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 shadow-2xl">
+      <p className="text-xs text-slate-400 mb-2 font-semibold">{label}</p>
+      {payload.map((p) => (
+        <p key={p.name} className="text-sm font-bold" style={{ color: p.color }}>
+          {p.name}: <span className="text-white">{p.value}</span>
+        </p>
+      ))}
+    </div>
+  );
+}
+
+// ─── KPI Card ────────────────────────────────────────────────────────────────
+function KpiCard({ icon: Icon, label, value, sub, borderColor, iconColor, bgColor }) {
+  return (
+    <div
+      className={`p-5 px-6 rounded-2xl border-2 shadow-xl backdrop-blur-md flex flex-col gap-3 transition-all hover:scale-[1.02] ${borderColor} ${bgColor}`}
+    >
+      <div className={`flex items-center gap-2.5 ${iconColor}`}>
+        <Icon size={18} className="shrink-0" />
+        <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">{label}</span>
+      </div>
+      <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2">
+        {value}
+        {sub && <span className={`text-xs font-bold opacity-60 ${iconColor}`}>{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+export default function AttendanceAnalytics({ currentRole, overrideUnitId = null, overrideUnitType = null }) {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
   const [history, setHistory] = useState([]);
 
   useEffect(() => {
     async function fetchAnalytics() {
-      if (!currentRole.unitName) return;
+      const effectiveUnitId = overrideUnitId || currentRole.unitId;
+      const effectiveUnitType = overrideUnitType || currentRole.unitType;
+
+      if (!effectiveUnitId) return;
       setLoading(true);
 
       try {
-        // 1. Get Unit ID
-        const { data: unitData } = await supabase
-          .from('organizational_units')
-          .select('id')
-          .eq('name', currentRole.unitName)
-          .single();
+        let unitIds = [effectiveUnitId];
 
-        if (!unitData) throw new Error("Unit not found");
+        if (effectiveUnitType !== 'CELL') {
+          const { data: managedData, error: managedError } = await supabase
+            .rpc('get_managed_units', { root_parent_id: effectiveUnitId });
 
-        // 2. Determine Query Scope based on Role Type
-        // If Zonal Head -> Get stats for all MCs under Zone
-        // If MC Head -> Get stats for all Buscentas under MC
-        // If Buscenta Head -> Get stats for all Cells under Buscenta
-        // If Cell Shepherd -> Get stats for this Cell only
-        
-        let subUnitsQuery = supabase.from('organizational_units').select('id, name');
-        
-        if (currentRole.unitType === 'CELL') {
-             // For cell, we just want history of this cell
-             // Logic handled below
-        } else {
-             subUnitsQuery = subUnitsQuery.eq('parent_id', unitData.id);
+          if (!managedError && managedData) {
+            unitIds = managedData.map((row) =>
+              typeof row === 'object' ? (row.id || row.get_managed_units || Object.values(row)[0]) : row
+            );
+          } else {
+            console.error('Failed to fetch managed units for analytics:', managedError);
+            unitIds = [];
+          }
         }
 
-        const { data: subUnits } = await subUnitsQuery;
-        
-        // 3. Fetch Attendance Data (Simplified for Demo)
-        // In a real app we would use the 'attendance_analytics_view' and aggregate
-        // For now, let's fetch sessions for the relevant units
-        
-        const unitIds = currentRole.unitType === 'CELL' 
-            ? [unitData.id] 
-            : subUnits?.map(u => u.id) || [];
+        if (unitIds.length === 0) {
+          setLoading(false);
+          setStats({ total: 0 });
+          return;
+        }
 
         const { data: sessionData } = await supabase
-            .from('attendance_analytics_view')
-            .select('*')
-            .in('unit_id', unitIds)
-            .order('session_date', { ascending: true });
+          .from('attendance_analytics_view')
+          .select('*')
+          .in('unit_id', unitIds)
+          .order('session_date', { ascending: true });
 
-        // Process Data for Charts
         if (sessionData) {
-            // Aggregate totals
-            const totalScheduled = sessionData.reduce((acc, curr) => acc + (curr.total_marked || 0), 0);
-            const totalPresent = sessionData.reduce((acc, curr) => acc + (curr.total_present || 0), 0);
-            const rate = totalScheduled ? Math.round((totalPresent / totalScheduled) * 100) : 0;
+          const totalScheduled = sessionData.reduce((acc, curr) => acc + (curr.total_marked || 0), 0);
+          const totalPresent = sessionData.reduce((acc, curr) => acc + (curr.total_present || 0), 0);
+          const rate = totalScheduled ? Math.round((totalPresent / totalScheduled) * 100) : 0;
 
-            setStats({
-                rate,
-                total: totalScheduled,
-                present: totalPresent,
-                absent: totalScheduled - totalPresent
-            });
+          const totalFirstTimers = sessionData.reduce((acc, curr) => acc + (curr.first_timers_count || 0), 0);
+          const totalSoulsWon = sessionData.reduce((acc, curr) => acc + (curr.souls_won_count || 0), 0);
 
-            // Prepare History Chart Data (Group by Month or Date)
-            // Simple mapping for now
-            const historyMap = {};
-            sessionData.forEach(s => {
-                const date = s.session_date;
-                if (!historyMap[date]) {
-                    historyMap[date] = { date, present: 0, absent: 0, total: 0 };
-                }
-                historyMap[date].present += s.total_present || 0;
-                historyMap[date].absent += s.total_absent || 0;
-                historyMap[date].total += s.total_marked || 0;
-            });
+          setStats({ rate, total: totalScheduled, present: totalPresent, absent: totalScheduled - totalPresent, firstTimers: totalFirstTimers, soulsWon: totalSoulsWon });
 
-            setHistory(Object.values(historyMap).sort((a,b) => new Date(a.date) - new Date(b.date)));
+          const historyMap = {};
+          sessionData.forEach((s) => {
+            const date = s.session_date;
+            if (!historyMap[date]) historyMap[date] = { date, present: 0, absent: 0, total: 0 };
+            historyMap[date].present += s.total_present || 0;
+            historyMap[date].absent += s.total_absent || 0;
+            historyMap[date].total += s.total_marked || 0;
+          });
+
+          setHistory(Object.values(historyMap).sort((a, b) => new Date(a.date) - new Date(b.date)));
         }
-
       } catch (error) {
-        console.error("Error fetching analytics:", error);
+        console.error('Error fetching analytics:', error);
       } finally {
         setLoading(false);
       }
     }
 
     fetchAnalytics();
-  }, [currentRole.unitName, currentRole.unitType]);
+  }, [currentRole.unitId, currentRole.unitType, overrideUnitId, overrideUnitType]);
 
-  const COLORS = ['#0066FF', '#10B981']; // Church Blue, Emerald
+  const PIE_COLORS = ['#0066FF', '#FF6B5A'];
 
+  // ── Loading ──
   if (loading) {
-     return (
-        <div className="flex justify-center items-center h-64">
-            <Loader2 className="animate-spin text-church-blue-500" size={40} />
-        </div>
-     );
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="animate-spin text-church-blue-500" size={40} />
+      </div>
+    );
   }
 
+  // ── Empty State ──
   if (!stats || stats.total === 0) {
-      return (
-        <div className="flex flex-col items-center justify-center h-64 text-gray-600">
-            <TrendingUp size={56} className="mb-4 opacity-50 text-church-blue-400" />
-            <p className="text-lg font-bold">No attendance data available yet.</p>
-            <p className="text-sm">Mark some attendance to see analytics here.</p>
-        </div>
-      );
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-slate-400">
+        <TrendingUp size={56} className="mb-4 opacity-40 text-church-blue-400" />
+        <p className="text-lg font-bold text-slate-200">No attendance data yet.</p>
+        <p className="text-sm mt-1">Mark some attendance to see analytics here.</p>
+      </div>
+    );
   }
 
+  // ── Main View ──
   return (
     <div className="space-y-6">
-       {/* KPI Cards */}
-       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-5 px-6 rounded-2xl border-2 border-church-blue-500/40 text-church-blue-400 bg-church-blue-500/5 shadow-xl backdrop-blur-md flex flex-col gap-3 transition-all hover:scale-[1.02]">
-                <div className="flex items-center gap-2.5">
-                    <TrendingUp size={20} className="shrink-0" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">Attendance Rate</span>
-                </div>
-                <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2">
-                    {stats.rate}%
-                    <span className="text-xs font-bold text-church-blue-400 opacity-60">Average</span>
-                </div>
-            </div>
 
-            <div className="p-5 px-6 rounded-2xl border-2 border-emerald-500/40 text-emerald-400 bg-emerald-500/5 shadow-xl backdrop-blur-md flex flex-col gap-3 transition-all hover:scale-[1.02]">
-                <div className="flex items-center gap-2.5">
-                    <Users size={20} className="shrink-0" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">Total Present</span>
-                </div>
-                <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2">
-                    {stats.present}
-                    <span className="text-xs font-bold text-emerald-400 opacity-60">/ {stats.total} total</span>
-                </div>
-            </div>
+      {/* ── KPI Cards Row 1: Attendance stats ── */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <KpiCard
+          icon={TrendingUp}
+          label="Attendance Rate"
+          value={`${stats.rate}%`}
+          sub="Average"
+          borderColor="border-church-blue-500/40"
+          iconColor="text-church-blue-400"
+          bgColor="bg-church-blue-500/5"
+        />
+        <KpiCard
+          icon={Users}
+          label="Total Present"
+          value={stats.present}
+          sub={`/ ${stats.total} total`}
+          borderColor="border-emerald-500/40"
+          iconColor="text-emerald-400"
+          bgColor="bg-emerald-500/5"
+        />
+        <KpiCard
+          icon={UserX}
+          label="Total Absent"
+          value={stats.absent}
+          sub={`/ ${stats.total} total`}
+          borderColor="border-church-coral-500/40"
+          iconColor="text-church-coral-400"
+          bgColor="bg-church-coral-500/5"
+        />
+        <KpiCard
+          icon={Calendar}
+          label="Sessions"
+          value={history.length}
+          sub="Recorded"
+          borderColor="border-yellow-500/40"
+          iconColor="text-yellow-400"
+          bgColor="bg-yellow-500/5"
+        />
+      </div>
 
-            <div className="p-5 px-6 rounded-2xl border-2 border-yellow-500/40 text-yellow-400 bg-yellow-500/5 shadow-xl backdrop-blur-md flex flex-col gap-3 transition-all hover:scale-[1.02]">
-                <div className="flex items-center gap-2.5">
-                    <Calendar size={20} className="shrink-0" />
-                    <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">Sessions</span>
-                </div>
-                <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2">
-                    {history.length}
-                    <span className="text-xs font-bold text-yellow-400 opacity-60">Recorded</span>
-                </div>
-            </div>
-       </div>
+      {/* ── KPI Cards Row 2: Growth metrics ── */}
+      <div className="grid grid-cols-2 gap-4">
+        <KpiCard
+          icon={UserPlus}
+          label="First Timers"
+          value={stats.firstTimers ?? 0}
+          sub="This period"
+          borderColor="border-emerald-500/40"
+          iconColor="text-emerald-400"
+          bgColor="bg-emerald-500/5"
+        />
+        <KpiCard
+          icon={Sparkles}
+          label="Souls Won"
+          value={stats.soulsWon ?? 0}
+          sub="This period"
+          borderColor="border-church-yellow-500/40"
+          iconColor="text-church-yellow-400"
+          bgColor="bg-church-yellow-500/5"
+        />
+      </div>
 
-       {/* Charts Info */}
-       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            
-            {/* Trend Chart */}
-            <div className="bg-white p-6 rounded-2xl border-4 border-church-blue-500 shadow-lg">
-                <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
-                    <BarChart size={24} className="text-church-blue-500" />
-                    Attendance Trend
-                </h3>
-                <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={history}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
-                            <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickFormatter={(val) => val.substring(5)} />
-                            <YAxis stroke="#94a3b8" fontSize={12} />
-                            <Tooltip 
-                                contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
-                                itemStyle={{ color: '#f8fafc' }}
-                            />
-                            <Bar dataKey="present" name="Present" fill="#0066FF" radius={[6, 6, 0, 0]} />
-                            <Bar dataKey="absent" name="Absent" fill="#FF6B5A" radius={[6, 6, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
+      {/* ── Charts Row ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-            {/* Distribution Chart */}
-            <div className="bg-slate-900/80 p-6 rounded-2xl border-2 border-church-blue-500/50 shadow-lg backdrop-blur-sm">
-                <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
-                    <Users size={24} className="text-church-blue-400" />
-                    Overall Distribution
-                </h3>
-                <div className="h-64 flex justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={[
-                                    { name: 'Present', value: stats.present },
-                                    { name: 'Absent', value: stats.absent }
-                                ]}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={60}
-                                outerRadius={80}
-                                paddingAngle={5}
-                                dataKey="value"
-                            >
-                                {[{ name: 'Present', value: stats.present }, { name: 'Absent', value: stats.absent }].map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip 
-                                contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f8fafc' }}
-                            />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
-                <div className="flex justify-center gap-6 mt-4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded-full bg-church-blue-500"></div>
-                        <span className="text-sm text-gray-700 font-semibold">Present</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded-full bg-church-coral-500"></div>
-                        <span className="text-sm text-gray-700 font-semibold">Absent</span>
-                    </div>
-                </div>
-            </div>
+        {/* Trend Area Chart */}
+        <div className="bg-slate-900/80 p-6 rounded-2xl border-2 border-church-blue-500/30 shadow-lg backdrop-blur-sm">
+          <h3 className="text-base font-black text-white mb-5 flex items-center gap-2">
+            <Activity size={20} className="text-church-blue-400" />
+            Attendance Trend
+          </h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={history} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradPresent" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#0066FF" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#0066FF" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gradAbsent" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#FF6B5A" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#FF6B5A" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis
+                  dataKey="date"
+                  stroke="#475569"
+                  fontSize={11}
+                  tickFormatter={(val) => val.substring(5)}
+                  tick={{ fill: '#94a3b8' }}
+                />
+                <YAxis stroke="#475569" fontSize={11} tick={{ fill: '#94a3b8' }} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend
+                  wrapperStyle={{ fontSize: '12px', color: '#94a3b8', paddingTop: '12px' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="present"
+                  name="Present"
+                  stroke="#0066FF"
+                  strokeWidth={2.5}
+                  fill="url(#gradPresent)"
+                  dot={{ r: 3, fill: '#0066FF', strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#0066FF' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="absent"
+                  name="Absent"
+                  stroke="#FF6B5A"
+                  strokeWidth={2.5}
+                  fill="url(#gradAbsent)"
+                  dot={{ r: 3, fill: '#FF6B5A', strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#FF6B5A' }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
 
-       </div>
+        {/* Distribution Donut Chart */}
+        <div className="bg-slate-900/80 p-6 rounded-2xl border-2 border-church-blue-500/30 shadow-lg backdrop-blur-sm">
+          <h3 className="text-base font-black text-white mb-5 flex items-center gap-2">
+            <Users size={20} className="text-church-blue-400" />
+            Overall Distribution
+          </h3>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Present', value: stats.present },
+                    { name: 'Absent', value: stats.absent },
+                  ]}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={62}
+                  outerRadius={86}
+                  paddingAngle={4}
+                  dataKey="value"
+                  strokeWidth={0}
+                >
+                  {PIE_COLORS.map((color, index) => (
+                    <Cell key={`cell-${index}`} fill={color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#0f172a',
+                    borderColor: '#334155',
+                    color: '#f8fafc',
+                    borderRadius: '0.75rem',
+                    fontSize: '13px',
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          {/* Center label overlay */}
+          <div className="flex justify-center gap-6 -mt-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#0066FF' }} />
+              <span className="text-xs text-slate-300 font-semibold">Present ({stats.present})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FF6B5A' }} />
+              <span className="text-xs text-slate-300 font-semibold">Absent ({stats.absent})</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
+

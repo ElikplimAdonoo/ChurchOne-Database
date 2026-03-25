@@ -1,48 +1,95 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Users, Church, CalendarCheck, CheckCircle2 } from 'lucide-react'
+import { fetchPeople } from '../services/peopleService'
+import { Users, CalendarCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import HierarchyTree from '../components/HierarchyTree'
+import { useLocation } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 export default function DashboardPage() {
+  const { user, getManagedUnits } = useAuth()
   const [stats, setStats] = useState({ 
     members: 0, 
     activeCells: 0,
     assigned: 0,
-    totalUnits: 0
+    totalUnits: 0,
+    unitBreakdown: ''
   })
   const [loading, setLoading] = useState(true)
+  const location = useLocation()
 
   useEffect(() => {
     async function fetchStats() {
       try {
-        // Total registered members
-        const { count: memberCount } = await supabase
-          .from('people')
-          .select('*', { count: 'exact', head: true })
+        // If guest (no user), fetch all stats globally. Otherwise, use scoped permissions.
+        const managedUnits = user ? await getManagedUnits() : 'ALL'
+        
+        // Quick exit if not admin and has zero managed units
+        if (managedUnits !== 'ALL' && managedUnits.size === 0) {
+            setStats({ 
+              members: 0, 
+              activeCells: 0, 
+              assigned: 0, 
+              totalUnits: 0, 
+              unitBreakdown: '0 Zones · 0 MCs · 0 Buscentas · 0 Cells' 
+            })
+            setLoading(false)
+            return
+        }
 
-        // All organizational units
-        const { data: units } = await supabase
+        const unitIdsArray = managedUnits === 'ALL' ? null : Array.from(managedUnits)
+
+        // Use the same fetchPeople service the Directory uses so counts are identical
+        const allPeople = await fetchPeople()
+        let memberCount = 0;
+        
+        if (unitIdsArray) {
+            const unitIdsSet = new Set(unitIdsArray);
+            memberCount = allPeople.filter(p => p.status === 'Active' && unitIdsSet.has(p.unit_id)).length;
+        } else {
+            memberCount = allPeople.filter(p => p.status === 'Active').length;
+        }
+
+        // All organizational units in jurisdiction
+        let unitsQuery = supabase
           .from('organizational_units')
           .select('id, name, unit_type')
 
-        // Active position assignments
-        const { data: assignments } = await supabase
+        if (unitIdsArray) unitsQuery = unitsQuery.in('id', unitIdsArray)
+        const { data: units } = await unitsQuery
+
+        // Active position assignments in jurisdiction
+        let assignsQuery = supabase
           .from('position_assignments')
           .select('unit_id, person_id')
           .eq('is_active', true)
 
+        if (unitIdsArray) assignsQuery = assignsQuery.in('unit_id', unitIdsArray)
+        const { data: assignments } = await assignsQuery
+
         const totalUnits = units?.length || 0
         const cells = units?.filter(u => u.unit_type === 'CELL') || []
+        
+        // Breakdown calculations
+        const zonesCount = units?.filter(u => u.unit_type === 'ZONE').length || 0
+        const mcsCount = units?.filter(u => u.unit_type === 'MC').length || 0
+        const buscentasCount = units?.filter(u => u.unit_type === 'BUSCENTA').length || 0
+        const cellsCount = cells.length
+        
+        const unitBreakdown = `${zonesCount} Zones · ${mcsCount} MCs · ${buscentasCount} Buscentas · ${cellsCount} Cells`
+
         const assignedUnitIds = new Set(assignments?.map(a => a.unit_id) || [])
         const cellsWithLeaders = cells.filter(c => assignedUnitIds.has(c.id)).length
-        const uniqueAssigned = new Set(assignments?.map(a => a.person_id) || []).size
+        const uniquePersonIds = new Set(assignments?.map(a => a.person_id) || [])
+        const uniqueAssigned = uniquePersonIds.size
 
         setStats({ 
           members: memberCount || 0, 
           activeCells: cellsWithLeaders,
           assigned: uniqueAssigned,
-          totalUnits
+          totalUnits,
+          unitBreakdown
         })
       } catch (err) {
         console.error("Failed to fetch dashboard stats:", err)
@@ -51,22 +98,52 @@ export default function DashboardPage() {
       }
     }
     fetchStats()
-  }, [])
+  }, [location.pathname, getManagedUnits])
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Welcome Header */}
+      {/* Banner — matches reference design */}
       <div>
-        <h1 className="text-3xl font-black bg-gradient-church bg-clip-text text-transparent">
-          Welcome Home
-        </h1>
-        <p className="text-slate-400 mt-1 text-sm font-medium">
-          Here's what's happening in your church
-        </p>
-      </div>
+  {/* Top header */}
+  <div className="bg-[#0A0F1F] px-6 py-6 flex items-center justify-center gap-4 md:gap-5 border-b border-[#18488E]/40">
+    
+    <img 
+      src="/lec-shield-v2.png" 
+      alt="LEC Shield" 
+      className="w-14 h-14 md:w-16 md:h-16 object-contain" 
+    />
+
+    {/* Divider */}
+    <div className="w-px h-14 md:h-16 bg-[#18488E]/60"></div>
+
+  <div className="text-left">
+
+            <p className="text-white font-black text-sm tracking-wider uppercase leading-tight">Love Economy</p>
+
+            <p className="text-white font-black text-sm tracking-wider uppercase leading-tight">Church</p>
+
+
+          </div>
+  </div>
+
+  {/* Blue band */}
+<div className="bg-[#1D4ED8] px-8 py-5 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 relative overflow-hidden">
+  
+  {/* Glow effect - adjusted color for better contrast against lighter blue */}
+  <div className="absolute inset-0 bg-gradient-to-r from-blue-300/0 via-blue-200/20 to-blue-300/0 opacity-60"></div>
+
+  <span className="text-white/70 text-xs md:text-sm font-bold uppercase tracking-[0.4em] relative z-10">
+    Church One
+  </span>
+
+  <h1 className="text-white text-3xl md:text-4xl font-black relative z-10">
+    Structure
+  </h1>
+</div>
+</div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <StatCard 
           label="My Members" 
           value={stats.members} 
@@ -75,25 +152,11 @@ export default function DashboardPage() {
           subText="Registered in church"
         />
         <StatCard 
-          label="Active Cells" 
-          value={stats.activeCells} 
-          icon={<Church size={20} />} 
-          color="emerald" 
-          subText="Cells with shepherds"
-        />
-        <StatCard 
           label="Total Units" 
           value={stats.totalUnits} 
           icon={<CalendarCheck size={20} />} 
           color="amber" 
-          subText="Across all levels"
-        />
-        <StatCard 
-          label="Placement Rate" 
-          value={`${stats.members > 0 ? Math.round((stats.assigned / stats.members) * 100) : 0}%`} 
-          icon={<CheckCircle2 size={20} />} 
-          color="cyan" 
-          subText={`${stats.assigned} members assigned`}
+          subText={stats.unitBreakdown || "Across all levels"}
         />
       </div>
 
@@ -117,6 +180,7 @@ function StatCard({ label, value, icon, color, subText }) {
     emerald: 'bg-emerald-500/10 text-emerald-400',
     amber: 'bg-amber-500/10 text-amber-400',
     red: 'bg-red-500/10 text-red-400',
+    violet: 'bg-church-purple-500/10 text-church-purple-400',
   }
 
   return (

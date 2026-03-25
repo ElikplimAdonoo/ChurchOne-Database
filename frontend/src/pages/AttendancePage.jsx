@@ -3,10 +3,18 @@ import { useAuth } from '../contexts/AuthContext';
 import { Users, BarChart3, CheckCircle2, AlertCircle, LogOut } from 'lucide-react';
 import AttendanceMarking from '../components/attendance/AttendanceMarking';
 import AttendanceAnalytics from '../components/attendance/AttendanceAnalytics';
+import UnitScopeSelector from '../components/attendance/UnitScopeSelector';
 
 export default function AttendancePage() {
   const { user, userRole, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('marking');
+  
+  // Drill-down scope selected by the user (defaults to their own unit, updated by the selector)
+  const [scope, setScope] = useState({ 
+    id: userRole?.unitId, 
+    type: userRole?.unitType, 
+    name: userRole?.unitName 
+  });
 
   // If user is logged in but hasn't been linked to a person/role yet
   if (!userRole) {
@@ -100,11 +108,27 @@ export default function AttendancePage() {
 
       {/* Content Area */}
       <div className="bg-slate-900/50 border-2 border-church-blue-500/30 rounded-3xl p-6 min-h-[500px] shadow-xl backdrop-blur-sm">
+        
+        {/* Hierarchical Scope Selector */}
+        <UnitScopeSelector 
+            userRole={userRole} 
+            onScopeChange={(id, type, name) => setScope({ id, type, name })} 
+        />
+
         {activeTab === 'marking' && (
-          <AttendanceMarking currentRole={userRole} />
+          <AttendanceMarking 
+            currentRole={userRole} 
+            overrideUnitId={scope.id} 
+            overrideUnitName={scope.name} 
+            overrideUnitType={scope.type}
+          />
         )}
         {activeTab === 'analytics' && (
-          <AttendanceAnalytics currentRole={userRole} />
+          <AttendanceAnalytics 
+            currentRole={userRole} 
+            overrideUnitId={scope.id} 
+            overrideUnitType={scope.type} // pass type so analytics can choose how to aggregate
+          />
         )}
       </div>
       </div>
