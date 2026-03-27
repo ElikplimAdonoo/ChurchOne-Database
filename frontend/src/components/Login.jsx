@@ -45,7 +45,7 @@ export default function Login() {
         <div className="flex flex-col items-center mb-8">
             <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center mb-4 relative">
                 <img
-                    src="/lec-shield-v2.PNG"
+                    src="/lec-shield-logo.png"
                     alt="LEC Logo"
                     className="w-full h-full object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-500 scale-110"
                     onError={(e) => {

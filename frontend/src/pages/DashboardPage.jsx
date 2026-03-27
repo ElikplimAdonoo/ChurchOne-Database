@@ -125,10 +125,10 @@ export default function DashboardPage() {
         className="flex flex-col md:flex-row md:items-end justify-between gap-4"
       >
         <div>
-          <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.3em] mb-1">
+          <p className="text-slate-500 text-[10px] md:text-xs font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] mb-1">
             {greeting}
           </p>
-          <h1 className="text-3xl md:text-4xl font-black text-white leading-tight">
+          <h1 className="text-2xl md:text-4xl font-black text-white leading-tight">
             {dashboardTitle} <span className="text-slate-500 font-bold">Dashboard</span>
           </h1>
           <div className="flex items-center gap-2 mt-2 text-slate-500">
@@ -147,7 +147,7 @@ export default function DashboardPage() {
         variants={stagger} 
         initial="hidden" 
         animate="show" 
-        className="grid grid-cols-2 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4"
       >
         <motion.div variants={fadeUp}>
           <StatCard 
