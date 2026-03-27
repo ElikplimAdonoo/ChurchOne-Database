@@ -1,14 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchPeople } from '../services/peopleService'
-import { Users, CalendarCheck } from 'lucide-react'
+import { Users, CalendarCheck, Clock, Zap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import HierarchyTree from '../components/HierarchyTree'
-import { useLocation } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { useAnimatedCounter } from '../hooks/useAnimatedCounter'
+
+const stagger = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.12 } }
+}
+
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } }
+}
 
 export default function DashboardPage() {
-  const { user, getManagedUnits } = useAuth()
+  const { user, userRole, getManagedUnits } = useAuth()
+  const navigate = useNavigate()
   const [stats, setStats] = useState({ 
     members: 0, 
     activeCells: 0,
@@ -22,10 +34,8 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchStats() {
       try {
-        // If guest (no user), fetch all stats globally. Otherwise, use scoped permissions.
         const managedUnits = user ? await getManagedUnits() : 'ALL'
         
-        // Quick exit if not admin and has zero managed units
         if (managedUnits !== 'ALL' && managedUnits.size === 0) {
             setStats({ 
               members: 0, 
@@ -40,7 +50,6 @@ export default function DashboardPage() {
 
         const unitIdsArray = managedUnits === 'ALL' ? null : Array.from(managedUnits)
 
-        // Use the same fetchPeople service the Directory uses so counts are identical
         const allPeople = await fetchPeople()
         let memberCount = 0;
         
@@ -51,7 +60,6 @@ export default function DashboardPage() {
             memberCount = allPeople.filter(p => p.status === 'Active').length;
         }
 
-        // All organizational units in jurisdiction
         let unitsQuery = supabase
           .from('organizational_units')
           .select('id, name, unit_type')
@@ -59,7 +67,6 @@ export default function DashboardPage() {
         if (unitIdsArray) unitsQuery = unitsQuery.in('id', unitIdsArray)
         const { data: units } = await unitsQuery
 
-        // Active position assignments in jurisdiction
         let assignsQuery = supabase
           .from('position_assignments')
           .select('unit_id, person_id')
@@ -71,7 +78,6 @@ export default function DashboardPage() {
         const totalUnits = units?.length || 0
         const cells = units?.filter(u => u.unit_type === 'CELL') || []
         
-        // Breakdown calculations
         const zonesCount = units?.filter(u => u.unit_type === 'ZONE').length || 0
         const mcsCount = units?.filter(u => u.unit_type === 'MC').length || 0
         const buscentasCount = units?.filter(u => u.unit_type === 'BUSCENTA').length || 0
@@ -100,70 +106,74 @@ export default function DashboardPage() {
     fetchStats()
   }, [location.pathname, getManagedUnits])
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours()
+    if (hour < 12) return 'Good Morning'
+    if (hour < 17) return 'Good Afternoon'
+    return 'Good Evening'
+  }, [])
+
+  const dashboardTitle = userRole?.unitName || 'ChurchOne'
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      {/* Banner — matches reference design */}
-      <div>
-  {/* Top header */}
-  <div className="bg-[#0A0F1F] px-6 py-6 flex items-center justify-center gap-4 md:gap-5 border-b border-[#18488E]/40">
-    
-    <img 
-      src="/lec-shield-v2.png" 
-      alt="LEC Shield" 
-      className="w-14 h-14 md:w-16 md:h-16 object-contain" 
-    />
+    <div className="space-y-10 animate-in fade-in duration-500">
 
-    {/* Divider */}
-    <div className="w-px h-14 md:h-16 bg-[#18488E]/60"></div>
-
-  <div className="text-left">
-
-            <p className="text-white font-black text-sm tracking-wider uppercase leading-tight">Love Economy</p>
-
-            <p className="text-white font-black text-sm tracking-wider uppercase leading-tight">Church</p>
-
-
+      {/* ── Command Center Header ── */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }} 
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col md:flex-row md:items-end justify-between gap-4"
+      >
+        <div>
+          <p className="text-slate-500 text-xs font-bold uppercase tracking-[0.3em] mb-1">
+            {greeting}
+          </p>
+          <h1 className="text-3xl md:text-4xl font-black text-white leading-tight">
+            {dashboardTitle} <span className="text-slate-500 font-bold">Dashboard</span>
+          </h1>
+          <div className="flex items-center gap-2 mt-2 text-slate-500">
+           
+            <span className="text-[11px] font-semibold">
+              Here is what is happening in your church
+            </span>
           </div>
-  </div>
+        </div>
 
-  {/* Blue band */}
-<div className="bg-[#1D4ED8] px-8 py-5 flex flex-col md:flex-row items-center justify-center gap-2 md:gap-4 relative overflow-hidden">
   
-  {/* Glow effect - adjusted color for better contrast against lighter blue */}
-  <div className="absolute inset-0 bg-gradient-to-r from-blue-300/0 via-blue-200/20 to-blue-300/0 opacity-60"></div>
+      </motion.div>
 
-  <span className="text-white/70 text-xs md:text-sm font-bold uppercase tracking-[0.4em] relative z-10">
-    Church One
-  </span>
+      {/* ── Stats Cards ── */}
+      <motion.div 
+        variants={stagger} 
+        initial="hidden" 
+        animate="show" 
+        className="grid grid-cols-2 gap-4"
+      >
+        <motion.div variants={fadeUp}>
+          <StatCard 
+            label="My Members" 
+            value={stats.members} 
+            icon={<Users size={20} />} 
+            color="blue" 
+            subText="Registered in church"
+          />
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <StatCard 
+            label="Total Units" 
+            value={stats.totalUnits} 
+            icon={<CalendarCheck size={20} />} 
+            color="amber" 
+            subText={stats.unitBreakdown || "Across all levels"}
+          />
+        </motion.div>
+      </motion.div>
 
-  <h1 className="text-white text-3xl md:text-4xl font-black relative z-10">
-    Structure
-  </h1>
-</div>
-</div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard 
-          label="My Members" 
-          value={stats.members} 
-          icon={<Users size={20} />} 
-          color="blue" 
-          subText="Registered in church"
-        />
-        <StatCard 
-          label="Total Units" 
-          value={stats.totalUnits} 
-          icon={<CalendarCheck size={20} />} 
-          color="amber" 
-          subText={stats.unitBreakdown || "Across all levels"}
-        />
-      </div>
-
-      {/* Hierarchy Tree Card */}
+      {/* ── Hierarchy Tree Card ── */}
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
         className="bg-slate-900/50 border border-slate-700/50 rounded-2xl p-1 shadow-xl overflow-hidden"
       >
         <div className="bg-slate-950/40 p-1 rounded-xl">
@@ -175,6 +185,8 @@ export default function DashboardPage() {
 }
 
 function StatCard({ label, value, icon, color, subText }) {
+  const animatedValue = useAnimatedCounter(value)
+
   const iconBg = {
     blue: 'bg-church-blue-500/10 text-church-blue-400',
     emerald: 'bg-emerald-500/10 text-emerald-400',
@@ -184,12 +196,12 @@ function StatCard({ label, value, icon, color, subText }) {
   }
 
   return (
-    <div className={`p-4 rounded-lg bg-slate-800/50 flex flex-col gap-3`}>
+    <div className="p-4 rounded-xl bg-slate-800/50 flex flex-col gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20 cursor-default group">
       <div className="flex items-center justify-between">
-        <div className={`p-2 rounded-lg ${iconBg[color]}`}>
+        <div className={`p-2 rounded-lg ${iconBg[color]} transition-transform duration-300 group-hover:scale-110`}>
            {icon}
         </div>
-        <span className="text-2xl font-black text-white">{value}</span>
+        <span className="text-2xl font-black text-white tabular-nums">{animatedValue}</span>
       </div>
       
       <div>

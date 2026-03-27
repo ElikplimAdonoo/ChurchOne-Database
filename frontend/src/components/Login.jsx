@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle2, Lock, Mail, Loader2, Sparkles } from 'lucide-react';
+import { CheckCircle2, Lock, Mail, Loader2 } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -45,7 +45,7 @@ export default function Login() {
         <div className="flex flex-col items-center mb-8">
             <div className="w-24 h-24 rounded-3xl flex items-center justify-center mb-4 shadow-2xl overflow-hidden border-2 border-church-blue-500/30 bg-black/30 backdrop-blur-sm relative">
                 <img
-                    src="/lec-logo.png"
+                    src="/lec-shield-v2.PNG"
                     alt="LEC Logo"
                     className="w-full h-full object-contain p-1"
                     onError={(e) => {

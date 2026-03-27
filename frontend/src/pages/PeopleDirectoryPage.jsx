@@ -74,27 +74,36 @@ export default function PeopleDirectory() {
         }).finally(() => setLoading(false));
     }, [userRole, getManagedUnits]);
 
+    // Base filtered people (RBAC applied)
+    const basePeople = useMemo(() => {
+        return people.filter(p => {
+            if (user && !isAllManaged && !managedUnitIds.has(p.unit_id)) {
+                return false;
+            }
+            return true;
+        });
+    }, [people, user, isAllManaged, managedUnitIds]);
+
     // Unique Roles for Filter
     const roles = useMemo(() => {
-        const unique = new Set(people.map(p => p.role));
+        const unique = new Set(basePeople.map(p => p.role));
         return ['All', ...Array.from(unique).sort()];
-    }, [people]);
+    }, [basePeople]);
 
-    // Filter & Sort
     // Status counts for filter tabs
     const statusCounts = useMemo(() => {
-        const counts = { All: people.length, Active: 0, Inactive: 0, Pending: 0 };
-        people.forEach(p => {
+        const counts = { All: basePeople.length, Active: 0, Inactive: 0, Pending: 0 };
+        basePeople.forEach(p => {
             const s = (p.status || 'Active').toLowerCase();
             if (s === 'active') counts.Active++;
             else if (s === 'inactive') counts.Inactive++;
             else if (s === 'pending') counts.Pending++;
         });
         return counts;
-    }, [people]);
+    }, [basePeople]);
 
     const filteredPeople = useMemo(() => {
-        let filtered = people.filter(p => {
+        let filtered = basePeople.filter(p => {
             const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 p.unit.toLowerCase().includes(searchTerm.toLowerCase());
             const matchesRole = filterRole === 'All' || p.role === filterRole;
@@ -111,7 +120,7 @@ export default function PeopleDirectory() {
             if (valA > valB) return sortConfig.direction === 'asc' ? 1 : -1;
             return 0;
         });
-    }, [people, searchTerm, filterRole, filterStatus, sortConfig]);
+    }, [basePeople, searchTerm, filterRole, filterStatus, sortConfig]);
 
     const handleSort = (key) => {
         setSortConfig(current => ({

@@ -21,24 +21,15 @@ export default function MainLayout() {
         {/* Desktop Navigation */}
         <nav className="hidden md:block relative z-50 bg-black/60 backdrop-blur-md border-b border-church-blue-500/30 shadow-2xl shrink-0">
           <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
-            {/* <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl overflow-hidden border border-church-blue-500/30 bg-black/30 shadow-lg flex items-center justify-center">
-                <img
-                  src="/lec-logo.png"
-                  alt="LEC"
-                  className="w-full h-full object-contain p-0.5"
-                  onError={(e) => { e.target.style.display='none'; }}
-                />
+            {/* Desktop Brand */}
+            <div className="flex items-center gap-3">
+              <img src="/lec-shield-v2.PNG" alt="LEC Shield" className="w-10 h-10 object-contain" />
+              <div className="w-px h-10 bg-[#18488E]/60"></div>
+              <div className="text-left">
+                <p className="text-white font-black text-xs tracking-wider uppercase leading-tight">Love Economy</p>
+                <p className="text-white font-black text-xs tracking-wider uppercase leading-tight">Church</p>
               </div>
-              <div>
-                <span className="font-black text-xl tracking-tight bg-gradient-church bg-clip-text text-transparent block leading-none">
-                  ChurchOne
-                </span>
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                  LEC · Love Economy
-                </span>
-              </div> 
-            </div>*/}
+            </div>
 
             <div className="flex items-center gap-1 bg-black/40 p-1.5 rounded-2xl border border-white/5 shadow-inner">
               <NavItem to="/" icon={<Home size={18} />} label="Home" />
@@ -50,14 +41,13 @@ export default function MainLayout() {
         </nav>
 
         {/* Mobile Header */}
-        <header className="md:hidden relative z-50 bg-black/60 backdrop-blur-md border-b border-church-blue-500/20 px-6 h-14 flex items-center gap-3 shrink-0">
-          {/* <div className="w-8 h-8 rounded-lg overflow-hidden border border-church-blue-500/30 bg-black/30 flex items-center justify-center">
-            <img src="/lec-logo.png" alt="LEC" className="w-full h-full object-contain p-0.5"
-              onError={(e) => { e.target.style.display='none'; }} />
+        <header className="md:hidden relative z-50 bg-black/60 backdrop-blur-md border-b border-church-blue-500/20 px-6 h-16 flex items-center gap-3 shrink-0">
+          <img src="/lec-shield-v2.PNG" alt="LEC Shield" className="w-10 h-10 object-contain" />
+          <div className="w-px h-10 bg-[#18488E]/60"></div>
+          <div className="text-left">
+            <p className="text-white font-black text-xs tracking-wider uppercase leading-tight">Love Economy</p>
+            <p className="text-white font-black text-xs tracking-wider uppercase leading-tight">Church</p>
           </div>
-          <span className="font-black text-lg tracking-tight bg-gradient-church bg-clip-text text-transparent">
-            ChurchOne
-          </span> */}
         </header>
 
         {/* Content Area */}
@@ -84,8 +74,8 @@ export default function MainLayout() {
         </main>
 
         {/* Mobile Bottom Tabs */}
-        <nav className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-sm">
-          <div className="bg-black/90 backdrop-blur-2xl border border-white/10 rounded-[2rem] p-2 flex items-center justify-around shadow-2xl">
+        <nav className="md:hidden fixed bottom-0 left-0 z-50 w-full">
+          <div className="bg-black/95 backdrop-blur-2xl border-t border-white/10 px-4 pt-3 pb-6 flex items-center justify-around shadow-[0_-20px_40px_-20px_rgba(0,0,0,0.5)]">
             <TabItem to="/" icon={<Home size={22} />} />
             <TabItem to="/directory" icon={<Users size={22} />} />
             <TabItem to="/mindmap" icon={<List size={22} />} />

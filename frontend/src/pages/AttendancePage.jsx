@@ -42,14 +42,14 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="bg-gradient-dark min-h-[calc(100vh-4rem)] text-gray-100 p-4 md:p-8 space-y-6 relative overflow-hidden">
+    <div className="bg-gradient-dark min-h-[calc(100vh-4rem)] text-gray-100 p-4 md:p-8 space-y-8 relative overflow-hidden">
       {/* Decorative Dot Pattern */}
       <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none"></div>
 
-      <div className="relative z-10 space-y-6">
+      <div className="relative z-10 space-y-8">
       
       {/* Header & User Info */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-church-blue-500/30 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6">
         <div>
           <h1 className="text-4xl font-black bg-gradient-church bg-clip-text text-transparent">
             Attendance Tracking
@@ -72,7 +72,7 @@ export default function AttendancePage() {
             )}
             <button 
                 onClick={signOut}
-                className="px-4 py-2 bg-black/50 hover:bg-red-900/50 hover:text-red-300 text-gray-300 rounded-xl text-sm font-bold transition-all border-2 border-gray-700 hover:border-red-500/50 flex items-center gap-2"
+                className="px-4 py-2 bg-black/50 hover:bg-red-900/50 hover:text-red-300 text-gray-300 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95 border-2 border-gray-700 hover:border-red-500/50 flex items-center gap-2"
             >
                 <LogOut size={16} />
                 <span className="hidden md:inline">Log Out</span>
@@ -81,13 +81,13 @@ export default function AttendancePage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 bg-slate-800/50 p-1.5 rounded-xl w-fit border-2 border-church-blue-500/50 shadow-lg backdrop-blur-sm">
+      <div className="flex gap-2 p-1.5 rounded-xl w-fit shadow-lg backdrop-blur-sm">
         <button
           onClick={() => setActiveTab('marking')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-black transition-all ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-black transition-all duration-200 active:scale-95 ${
             activeTab === 'marking' 
-              ? 'bg-gradient-church text-white shadow-lg' 
-              : 'text-slate-400 hover:text-church-blue-400 hover:bg-slate-700'
+              ? 'bg-gradient-church text-white shadow-lg shadow-church-blue-500/20' 
+              : 'text-slate-400 hover:text-church-blue-400 hover:bg-slate-800/60'
           }`}
         >
           <CheckCircle2 size={20} />
@@ -95,10 +95,10 @@ export default function AttendancePage() {
         </button>
         <button
           onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-lg text-sm font-black transition-all ${
+          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-black transition-all duration-200 active:scale-95 ${
             activeTab === 'analytics' 
-              ? 'bg-gradient-church text-white shadow-lg' 
-              : 'text-slate-400 hover:text-church-blue-400 hover:bg-slate-700'
+              ? 'bg-gradient-church text-white shadow-lg shadow-church-blue-500/20' 
+              : 'text-slate-400 hover:text-church-blue-400 hover:bg-slate-800/60'
           }`}
         >
           <BarChart3 size={20} />
@@ -107,7 +107,7 @@ export default function AttendancePage() {
       </div>
 
       {/* Content Area */}
-      <div className="bg-slate-900/50 border-2 border-church-blue-500/30 rounded-3xl p-6 min-h-[500px] shadow-xl backdrop-blur-sm">
+      <div className="bg-slate-900/50 rounded-2xl p-6 min-h-[500px] shadow-xl backdrop-blur-sm">
         
         {/* Hierarchical Scope Selector */}
         <UnitScopeSelector 

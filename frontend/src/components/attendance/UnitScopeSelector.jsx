@@ -118,7 +118,7 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
     const targetCells = units.filter(u => u.unit_type === 'CELL' && u.parent_id === selectedBuscenta);
 
     return (
-        <div className="bg-slate-900/60 p-4 rounded-2xl border border-church-blue-500/20 shadow-lg backdrop-blur-md mb-6">
+        <div className="bg-slate-900/60 p-4 rounded-2xl shadow-lg backdrop-blur-md mb-6">
             <div className="flex items-center gap-2 mb-3">
                 <LayoutGrid size={16} className="text-church-blue-400" />
                 <h3 className="text-sm font-bold text-slate-200">Scope Selection</h3>

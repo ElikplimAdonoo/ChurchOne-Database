@@ -1,16 +1,16 @@
-import { X, User, Users, MapPin, ChevronRight, Activity, Plus } from 'lucide-react';
+import { X, User, Users, MapPin, ChevronRight, Activity, Plus, Shield } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import ImageModal from './common/ImageModal';
 import { useAuth } from '../contexts/AuthContext';
 
-export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegistry }) {
+export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegistry, onViewPersonDetails }) {
     const { user, canManage } = useAuth();
     const [modalConfig, setModalConfig] = useState({ isOpen: false, src: '', title: '' });
     const [hasPermission, setHasPermission] = useState(false);
 
     useEffect(() => {
-        if (node && user) {
+        if (node && user && node.data?.unit_type !== 'PERSON') {
             canManage(node.id).then(setHasPermission);
         } else {
             setHasPermission(false);
@@ -58,7 +58,42 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
 
                     {/* Content */}
                     <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
-                        {/* Leaders & Members Section */}
+                        {unit_type === 'PERSON' ? (
+                            <div className="flex flex-col items-center p-2 space-y-6 mt-4">
+                                {/* Large Avatar */}
+                                <div className="w-32 h-32 rounded-full border-4 border-slate-700/50 shadow-2xl overflow-hidden bg-slate-800 flex items-center justify-center relative">
+                                    {node.data.photo ? (
+                                        <img src={node.data.photo} alt={label} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <User size={64} className="text-slate-600" />
+                                    )}
+                                </div>
+
+                                {/* Name & Badge */}
+                                <div className="text-center space-y-1">
+                                    <h2 className="text-2xl font-black text-white">{label}</h2>
+                                    <span className="inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest bg-church-blue-500/10 border border-church-blue-500/20 text-church-blue-400">
+                                        {node.data.role || 'Member'}
+                                    </span>
+                                </div>
+
+                                {/* Info Cards */}
+                                <div className="w-full space-y-3 pt-4 border-t border-slate-800">
+                                    <InfoCard 
+                                        label="Assigned Role" 
+                                        value={node.data.role || 'Member'} 
+                                        icon={<Shield size={18} />} 
+                                        color="blue" 
+                                    />
+                                    <InfoCard 
+                                        label="Church Unit" 
+                                        value={node.data.unitName || 'Unknown Unit'} 
+                                        icon={<MapPin size={18} />} 
+                                        color="purple" 
+                                    />
+                                </div>
+                            </div>
+                        ) : (
                         <div className="space-y-8">
                             {/* Leads (Luxurious Yellow) - Anyone who is a leader but NOT a Shepherd */}
                             {node.data.leaders && node.data.leaders.some(l => l.role.toLowerCase() !== 'shepherd') && (
@@ -69,10 +104,14 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
                                     {node.data.leaders
                                         .filter(l => l.role.toLowerCase() !== 'shepherd')
                                         .map((leader, i) => (
-                                            <div key={`cell-p-${i}`} className="p-4 rounded-2xl bg-gradient-to-br from-yellow-500/20 via-slate-800 to-slate-900 border-2 border-yellow-500/50 flex items-center gap-4 shadow-xl shadow-yellow-500/10 transition-all group hover:scale-[1.02] hover:border-yellow-400 hover:shadow-yellow-500/20">
+                                            <div 
+                                                key={`cell-p-${i}`} 
+                                                onClick={() => onViewPersonDetails && onViewPersonDetails({ ...leader, unitName: label })}
+                                                className="p-4 rounded-2xl bg-gradient-to-br from-yellow-500/20 via-slate-800 to-slate-900 border-2 border-yellow-500/50 flex items-center gap-4 shadow-xl shadow-yellow-500/10 transition-all group hover:scale-[1.02] hover:border-yellow-400 hover:shadow-yellow-500/20 cursor-pointer"
+                                            >
                                                 <div
-                                                    onClick={(e) => leader.photo && openImage(e, leader.photo, leader.name)}
-                                                    className="w-14 h-14 rounded-full border-2 border-yellow-400 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer shadow-glow-yellow transition-transform group-hover:scale-105"
+                                                    onClick={(e) => { e.stopPropagation(); leader.photo && openImage(e, leader.photo, leader.name); }}
+                                                    className={`w-14 h-14 rounded-full border-2 border-yellow-400 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 shadow-glow-yellow transition-transform group-hover:scale-105 ${leader.photo ? 'cursor-pointer' : ''}`}
                                                 >
                                                     {leader.photo ? (
                                                         <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
@@ -98,10 +137,14 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
                                         {node.data.leaders
                                             .filter(l => l.role.toLowerCase() === 'shepherd')
                                             .map((leader, i) => (
-                                                <div key={`lead-a-${i}`} className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/10 to-church-blue-500/10 border border-emerald-500/30 flex items-center gap-3 hover:bg-emerald-500/20 hover:border-emerald-400 transition-all group shadow-lg shadow-emerald-500/5">
+                                                <div 
+                                                    key={`lead-a-${i}`} 
+                                                    onClick={() => onViewPersonDetails && onViewPersonDetails({ ...leader, unitName: label })}
+                                                    className="p-3.5 rounded-xl bg-gradient-to-r from-emerald-500/10 to-church-blue-500/10 border border-emerald-500/30 flex items-center gap-3 hover:bg-emerald-500/20 hover:border-emerald-400 transition-all group shadow-lg shadow-emerald-500/5 cursor-pointer"
+                                                >
                                                     <div
-                                                        onClick={(e) => leader.photo && openImage(e, leader.photo, leader.name)}
-                                                        className="w-10 h-10 rounded-full border-2 border-emerald-500/40 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer group-hover:border-emerald-400 transition-colors shadow-glow-emerald"
+                                                        onClick={(e) => { e.stopPropagation(); leader.photo && openImage(e, leader.photo, leader.name); }}
+                                                        className={`w-10 h-10 rounded-full border-2 border-emerald-500/40 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 group-hover:border-emerald-400 transition-colors shadow-glow-emerald ${leader.photo ? 'cursor-pointer' : ''}`}
                                                     >
                                                         {leader.photo ? (
                                                             <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
@@ -129,9 +172,13 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
                                     </div>
                                     <div className="grid grid-cols-1 gap-2">
                                         {node.data.members.map((member, i) => (
-                                            <div key={`mem-${i}`} className="p-2.5 rounded-xl bg-slate-800/20 border border-slate-700/30 flex items-center gap-3 hover:bg-slate-700/20 hover:border-slate-600/50 transition-all group">
+                                            <div 
+                                                key={`mem-${i}`} 
+                                                onClick={() => onViewPersonDetails && onViewPersonDetails({ ...member, unitName: label })}
+                                                className="p-2.5 rounded-xl bg-slate-800/20 border border-slate-700/30 flex items-center gap-3 hover:bg-slate-700/20 hover:border-slate-600/50 transition-all group cursor-pointer"
+                                            >
                                                 <div
-                                                    onClick={(e) => member.photo && openImage(e, member.photo, member.name)}
+                                                    onClick={(e) => { e.stopPropagation(); member.photo && openImage(e, member.photo, member.name); }}
                                                     className={`w-9 h-9 rounded-full bg-slate-900/50 overflow-hidden border border-slate-700/50 flex items-center justify-center shrink-0 transition-all group-hover:border-slate-500 ${member.photo ? 'cursor-pointer' : ''}`}
                                                 >
                                                     {member.photo ? (
@@ -150,6 +197,7 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
                                 </div>
                             )}
                         </div>
+                        )}
 
                         {/* Actions */}
                         <div className="space-y-3 pt-4 border-t border-slate-800">
@@ -165,13 +213,15 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
                                      unit_type === 'BUSCENTA' ? 'Add Cell' : 'Add Sub-Unit'}
                                 </button>
                             )}
-                            <button 
-                                onClick={() => onViewRegistry(node)}
-                                className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 border border-slate-700"
-                            >
-                                <Users size={18} />
-                                Full Registry
-                            </button>
+                            {unit_type !== 'PERSON' && (
+                                <button 
+                                    onClick={() => onViewRegistry(node)}
+                                    className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 border border-slate-700"
+                                >
+                                    <Users size={18} />
+                                    Full Registry
+                                </button>
+                            )}
                         </div>
                     </div>
                 </motion.div>

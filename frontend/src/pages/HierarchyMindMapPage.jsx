@@ -6,248 +6,56 @@ import ReactFlow, {
     addEdge,
     Controls,
     Background,
-    MiniMap,
-    Position,
-    ConnectionLineType,
-    MarkerType
+    MiniMap
 } from 'reactflow';
-import { stratify, tree, hierarchy } from 'd3-hierarchy';
-import { Search, ChevronRight } from 'lucide-react';
 import 'reactflow/dist/style.css';
-import { useForm } from 'react-hook-form';
+
 import { createUnit, fetchHierarchyData } from '../services/hierarchyService';
+import { cacheService } from '../services/cacheService';
+import { useAuth } from '../contexts/AuthContext';
+
 import CollapsibleNode from '../components/CollapsibleNode';
 import NodeDetailsPanel from '../components/NodeDetailsPanel';
-import Modal from '../components/ui/Modal';
 import ImageModal from '../components/common/ImageModal';
 import FullRegistryModal from '../components/FullRegistryModal';
 import AddUnitModal from '../components/AddUnitModal';
-import { cacheService } from '../services/cacheService';
+import PersonProfileModal from '../components/PersonProfileModal';
+import MindMapSearch from '../components/mindmap/MindMapSearch';
+import { layoutTree, getStyle } from '../utils/mindmapLayoutUtils';
 
 const nodeTypes = {
     mindMapNode: CollapsibleNode
 };
 
-// --- LAYOUT ENGINE (D3) ---
-const layoutTree = (flatData, collapsedIds) => {
-    if (!flatData || flatData.length === 0) return { nodes: [], edges: [] };
-
-    // 1. Convert flat list to Hierarchy
-    // We need to handle potential broken roots. We assume 'active' roots have no parents in the list.
-    // D3 needs a single root. We can create a synthetic root if multiple exist.
-
-    // Create a map for fast lookup
-    const dataMap = new Map(flatData.map(d => [d.id, { ...d }]));
-
-    // Find absolute roots (nodes whose parent doesn't exist in the current dataset)
-    const roots = flatData.filter(d => !d.parent_id || !dataMap.has(d.parent_id));
-
-    // If multiple roots, create a synthetic "Church" root
-    let rootData = roots[0];
-    if (roots.length > 1) {
-        rootData = { id: 'root', name: 'Church Structure', unit_type: 'ROOT', children: [] };
-        // We'll handle connecting these manually or assume the data is good.
-        // For now, let's just pick the first Zonal/Root we find generally.
-    }
-
-    // Stratify turns flat data into a tree structure
-    // We need to filter out collapsed branches BEFORE stratifying to avoid D3 calculating them
-
-    // Recursive visibility check
-    const isVisible = (nodeId) => {
-        // A node is visible if its parent is visible AND parent is not collapsed.
-        // This is hard with flat data. EASIER: Build full tree, prune, then layout.
-        return true;
-    };
-
-    // Build Adjacency List
-    const childrenMap = new Map();
-    flatData.forEach(d => {
-        if (d.parent_id) {
-            if (!childrenMap.has(d.parent_id)) childrenMap.set(d.parent_id, []);
-            childrenMap.get(d.parent_id).push(d);
-        }
-    });
-
-    // Traverse and Prune
-    // We start from the roots.
-    const nodes = [];
-    const edges = [];
-
-    const traverse = (node, x, y, level) => {
-        // This will be replaced by D3 Tree
-    };
-
-    // --- ACTUAL D3 IMPLEMENTATION ---
-    // 1. Build simple hierarchy object for D3
-    const buildHierarchy = (parentId) => {
-        const unit = dataMap.get(parentId);
-        const unitKids = childrenMap.get(parentId) || [];
-        
-        const children = collapsedIds.has(parentId) 
-            ? [] 
-            : unitKids.map(k => buildHierarchy(k.id));
-
-        const result = {
-            id: parentId,
-            ...unit,
-            children
-        };
-        
-        // Remove empty children array for D3 leaf nodes
-        if (result.children.length === 0) delete result.children;
-        return result;
-    }
-
-    // Use the first root found
-    if (roots.length === 0) return { nodes: [], edges: [] };
-    const rootId = roots[0].id;
-    const hierarchyData = buildHierarchy(rootId);
-
-    // 2. Compute Layout
-    const root = hierarchy(hierarchyData);
-
-    // Tree Layout (Horizontal)
-    const treeLayout = tree()
-        .nodeSize([80, 280]) // Revert to standard spacing
-        .separation((a, b) => (a.parent === b.parent ? 1 : 1.2));
-
-    treeLayout(root);
-
-    // 3. Convert back to ReactFlow
-    root.descendants().forEach(d => {
-        nodes.push({
-            id: d.data.id,
-            type: 'mindMapNode',
-            position: { x: d.y, y: d.x }, 
-            data: {
-                label: d.data.name,
-                unit_type: d.data.unit_type,
-                hasChildren: (childrenMap.get(d.data.id)?.length > 0 || (d.data.members?.length > 0 || d.data.leaders?.length > 0)),
-                isCollapsed: collapsedIds.has(d.data.id),
-                leaders: d.data.leaders,
-                members: d.data.members,
-                photo: d.data.photo, 
-                role: d.data.role,   
-                id: d.data.id
-            },
-            sourcePosition: Position.Right,
-            targetPosition: Position.Left,
-            style: getStyle(d.data.unit_type, false, d.data.role)
-        });
-
-        if (d.parent) {
-            edges.push({
-                id: `e${d.parent.data.id}-${d.data.id}`,
-                source: d.parent.data.id,
-                target: d.data.id,
-                type: 'default',
-                style: { stroke: '#475569', strokeWidth: 2 },
-                animated: false
-            });
-        }
-    });
-
-    return { nodes, edges };
-};
-
-const baseStyle = {
-    background: '#1a1a1a',
-    color: '#e2e8f0',
-    borderTopWidth: '2px',
-    borderRightWidth: '2px',
-    borderBottomWidth: '2px',
-    borderLeftWidth: '2px',
-    borderStyle: 'solid',
-    borderTopColor: '#0066FF',
-    borderRightColor: '#0066FF',
-    borderBottomColor: '#0066FF',
-    borderLeftColor: '#0066FF',
-    borderRadius: '16px',
-    padding: '8px 16px',
-    fontSize: '13px',
-    fontWeight: '700',
-    width: 'auto',
-    minWidth: '180px',
-    textAlign: 'center',
-    boxShadow: '0 4px 12px -2px rgba(0, 102, 255, 0.25)',
-    transition: 'all 0.3s ease'
-};
-
-const getStyle = (type, isSelected, role) => {
-    let style = { ...baseStyle };
-    if (isSelected) {
-        style.boxShadow = '0 0 0 3px rgba(0, 102, 255, 0.6), 0 8px 16px -4px rgba(0, 0, 0, 0.5)';
-        style.borderTopColor = '#3385FF';
-        style.borderRightColor = '#3385FF';
-        style.borderBottomColor = '#3385FF';
-        style.borderLeftColor = '#3385FF';
-        style.transform = 'scale(1.03)';
-        style.zIndex = 100;
-    }
-
-    // Unique style for Cell Shepherds
-    const isCellShepherd = role?.toLowerCase() === 'cell shepherd';
-
-    switch (type) {
-        case 'ZONAL': return { 
-            ...style, 
-            borderLeftColor: '#0066FF', 
-            borderLeftWidth: '4px', 
-            background: isSelected ? '#172554' : '#0a0a0a' 
-        };
-        case 'MC': return { 
-            ...style, 
-            borderLeftColor: '#3385FF', 
-            borderLeftWidth: '4px', 
-            background: isSelected ? '#1e3a8a' : '#111111' 
-        };
-        case 'BUSCENTA': return { 
-            ...style, 
-            borderLeftColor: '#66A3FF', 
-            borderLeftWidth: '4px', 
-            background: isSelected ? '#1e40af' : '#1a1a1a' 
-        };
-        case 'CELL': return { 
-            ...style, 
-            borderLeftColor: '#99C2FF', 
-            borderLeftWidth: '4px', 
-            background: isSelected ? '#2563eb' : '#222222' 
-        };
-        case 'PERSON': return {
-            ...style,
-            background: isCellShepherd ? (isSelected ? '#422006' : '#1c1917') : (isSelected ? '#1e293b' : '#0f0f0f'),
-            borderLeftWidth: '4px',
-            borderLeftColor: isCellShepherd ? '#EAB308' : '#444',
-            color: isCellShepherd ? '#FDE047' : '#94a3b8',
-        };
-        default: return style;
-    }
-};
-
-
-export default function HierarchyMindMap() {
+export default function HierarchyMindMapPage() {
     const { width } = useWindowSize();
     const isMobile = width < 768;
+    const { user, userRole, getManagedUnits } = useAuth();
+    
+    // Core Data State
+    const [flatData, setFlatData] = useState([]);
     const [nodes, setNodes, onNodesChange] = useNodesState([]);
     const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-    const [rfInstance, setRfInstance] = useState(null);
-
-    // Data State
-    const [flatData, setFlatData] = useState([]);
     const [collapsedIds, setCollapsedIds] = useState(new Set());
+    const [rfInstance, setRfInstance] = useState(null);
+    
+    // RBAC
+    const [managedUnitIds, setManagedUnitIds] = useState(new Set());
+    const [isAllManaged, setIsAllManaged] = useState(false);
 
     // UI State
     const [selectedNodeId, setSelectedNodeId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
-    const [modalConfig, setModalConfig] = useState({ isOpen: false, src: '', title: '' });
     
-    // Registry State
+    // Modals
+    const [modalConfig, setModalConfig] = useState({ isOpen: false, src: '', title: '' });
     const [isRegistryOpen, setIsRegistryOpen] = useState(false);
     const [registryData, setRegistryData] = useState({ unitName: '', people: [] });
+    const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
+    const [targetParent, setTargetParent] = useState(null);
+    const [personProfileData, setPersonProfileData] = useState(null);
 
-    // Toggle Handler
     const handleToggle = useCallback((nodeId) => {
         setCollapsedIds(prev => {
             const next = new Set(prev);
@@ -257,65 +65,46 @@ export default function HierarchyMindMap() {
         });
     }, []);
 
-    // Selection Handler (Click on Node)
-    const onNodeClick = useCallback((event, node) => {
-        setSelectedNodeId(node.id);
-    }, []);
+    const onNodeClick = useCallback((event, node) => setSelectedNodeId(node.id), []);
+    const onPaneClick = useCallback(() => setSelectedNodeId(null), []);
 
-    const onPaneClick = useCallback(() => {
-        setSelectedNodeId(null);
-    }, []);
-
-    // Search Handler
-    useEffect(() => {
-        if (!searchQuery.trim()) {
-            setSearchResults([]);
-            return;
-        }
-
-        const q = searchQuery.toLowerCase();
-        const results = [];
-        
-        flatData.forEach(d => {
-            // Check unit name/leaders
-            if (d.name.toLowerCase().includes(q) || (d.leaders && d.leaders.some(l => l.name.toLowerCase().includes(q)))) {
-                results.push({ id: d.id, name: d.name, type: d.unit_type });
-            }
-            // Check members
-            if (d.members) {
-                const matchingMembers = d.members.filter(m => m.name.toLowerCase().includes(q));
-                matchingMembers.forEach(m => {
-                    results.push({ id: `person-${m.id}`, name: m.name, type: 'PERSON', unitName: d.name });
-                });
-            }
-        });
-
-        setSearchResults(results.slice(0, 10));
-    }, [searchQuery, flatData]);
-
-    const handleSearchResultClick = (result) => {
-        // If it's a person node, we need to ensure their parent unit is expanded 
-        // before we can focus on them. This is tricky with the current collapsible logic.
-        // For now, let's at least find the node if it exists.
-        
+    const handleSearchResultClick = useCallback((result) => {
         const node = nodes.find(n => n.id === result.id);
         if (node && rfInstance) {
             setSelectedNodeId(result.id);
             rfInstance.setCenter(node.position.x, node.position.y, { zoom: 1.2, duration: 800 });
             setSearchQuery('');
+            setSearchResults([]);
         }
-    };
+    }, [nodes, rfInstance]);
 
+    const refreshData = useCallback(async () => {
+        cacheService.clear(); 
+        
+        let allowed = new Set();
+        let allManaged = false;
+        
+        if (userRole) {
+            try {
+                const result = await getManagedUnits();
+                if (result === 'ALL') allManaged = true;
+                else allowed = result;
+            } catch(e) {
+                console.error("Failed to load managed units:", e);
+            }
+        }
+        
+        setIsAllManaged(allManaged);
+        setManagedUnitIds(allowed);
 
-    // Modal State
-    const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
-    const [targetParent, setTargetParent] = useState(null);
-
-    // Data Fetching
-    const refreshData = useCallback(() => {
-        cacheService.clear(); // Force fresh data
         fetchHierarchyData().then(units => {
-            const hierarchyNodes = units.map(unit => ({
+            let filteredUnits = units;
+            // RBAC: If logged in & not global admin, only show managed units
+            if (user && !allManaged) {
+                filteredUnits = units.filter(u => allowed.has(u.id));
+            }
+
+            const hierarchyNodes = filteredUnits.map(unit => ({
                 id: unit.id,
                 name: unit.name,
                 unit_type: unit.unit_type,
@@ -323,13 +112,31 @@ export default function HierarchyMindMap() {
                 leaders: unit.leaders || [],
                 members: unit.members || []
             }));
+
+            // INJECT PERSON NODES FOR CELL SHEPHERDS
+            const isCellShepherd = userRole && (userRole.unitType === 'CELL' || userRole.title?.toLowerCase().includes('cell shepherd'));
+            if (isCellShepherd) {
+                const myCell = hierarchyNodes.find(u => u.id === userRole.unitId);
+                if (myCell) {
+                    const peopleNodes = [...(myCell.leaders || []), ...(myCell.members || [])].map(p => ({
+                        id: `person-${p.id}`,
+                        name: p.name,
+                        unit_type: 'PERSON',
+                        parent_id: myCell.id,
+                        photo: p.photo,
+                        role: p.role || 'Member',
+                        unitName: myCell.name,
+                        isPlaceholder: p.isPlaceholder
+                    }));
+                    hierarchyNodes.push(...peopleNodes);
+                }
+            }
+
             setFlatData(hierarchyNodes);
         });
-    }, []);
+    }, [user, userRole, getManagedUnits]);
 
-    useEffect(() => {
-        refreshData();
-    }, [refreshData]);
+    useEffect(() => { refreshData(); }, [refreshData]);
 
     const handleAddChild = useCallback((parentNode) => {
         setTargetParent(parentNode);
@@ -351,128 +158,81 @@ export default function HierarchyMindMap() {
         }
     };
 
-    // Layout Effect
+    const handleViewRegistry = useCallback((node) => {
+        const unitId = node.id;
+        const subTreePeople = [];
+
+        const findDescendants = (id) => {
+            const unit = flatData.find(u => u.id === id);
+            if (!unit) return;
+            (unit.leaders || []).forEach(l => subTreePeople.push({ ...l, type: 'LEADER', unitName: unit.name }));
+            (unit.members || []).forEach(m => subTreePeople.push({ ...m, type: 'MEMBER', unitName: unit.name }));
+            
+            flatData.filter(u => u.parent_id === id).forEach(child => findDescendants(child.id));
+        };
+
+        findDescendants(unitId);
+
+        setRegistryData({ unitName: node.data.label, people: subTreePeople });
+        setIsRegistryOpen(true);
+    }, [flatData]);
+
+    // Apply Layout
     useEffect(() => {
         if (flatData.length === 0) return;
 
-        const layout = layoutTree(flatData, collapsedIds);
+        const layout = layoutTree(flatData, collapsedIds, userRole);
+
+        const mapResultIds = searchResults.map(r => r.id);
 
         const activeNodes = layout.nodes.map(n => ({
             ...n,
             data: {
                 ...n.data,
                 onToggle: handleToggle,
-                onImageClick: (src, title) => setModalConfig({ isOpen: true, src, title }),
-                // Pass selection state to node component if needed, 
-                // but style updates are handled here
+                onImageClick: (src, title) => setModalConfig({ isOpen: true, src, title })
             },
             style: {
-                ...getStyle(n.data.unit_type, n.id === selectedNodeId),
-                // Dim non-selected if something IS selected? Maybe too complex for now.
-                opacity: (searchResults.length > 0 && !searchResults.includes(n.id) && !selectedNodeId) ? 0.3 : 1
+                ...getStyle(n.data.unit_type, n.id === selectedNodeId, n.data.role),
+                opacity: (searchResults.length > 0 && !mapResultIds.includes(n.id) && !selectedNodeId) ? 0.3 : 1
             }
         }));
 
-        setNodes(activeNodes);
-
-        // Highlight Connected Edges
         const activeEdges = layout.edges.map(e => ({
             ...e,
             style: {
-                stroke: (selectedNodeId && (e.source === selectedNodeId || e.target === selectedNodeId))
-                    ? '#6366f1' // Highlighted
-                    : '#475569', // Default
+                stroke: (selectedNodeId && (e.source === selectedNodeId || e.target === selectedNodeId)) ? '#6366f1' : '#475569',
                 strokeWidth: (selectedNodeId && (e.source === selectedNodeId || e.target === selectedNodeId)) ? 3 : 1.5,
-                opacity: (searchResults.length > 0 && !searchResults.includes(e.source) && !searchResults.includes(e.target) && !selectedNodeId) ? 0.3 : 1
+                opacity: (searchResults.length > 0 && !mapResultIds.includes(e.source) && !mapResultIds.includes(e.target) && !selectedNodeId) ? 0.3 : 1
             },
             animated: selectedNodeId && (e.source === selectedNodeId || e.target === selectedNodeId)
         }));
 
+        setNodes(activeNodes);
         setEdges(activeEdges);
 
     }, [flatData, collapsedIds, handleToggle, selectedNodeId, searchResults, setNodes, setEdges]);
 
-    const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
-
-    // Derived Selected Node Data
-    const selectedNodeData = useMemo(() => {
-        return nodes.find(n => n.id === selectedNodeId);
-    }, [nodes, selectedNodeId]);
-
-    // Registry Helper
-    const handleViewRegistry = useCallback((node) => {
-        const unitId = node.id;
-        const subTreePeople = [];
-
-        // Recursive traversal of flatData to find all descendants
-        const findDescendants = (id) => {
-            const unit = flatData.find(u => u.id === id);
-            if (!unit) return;
-
-            // Add leaders
-            (unit.leaders || []).forEach(l => subTreePeople.push({ ...l, type: 'LEADER', unitName: unit.name }));
-            // Add members
-            (unit.members || []).forEach(m => subTreePeople.push({ ...m, type: 'MEMBER', unitName: unit.name }));
-
-            // Find children units
-            const children = flatData.filter(u => u.parent_id === id);
-            children.forEach(child => findDescendants(child.id));
-        };
-
-        findDescendants(unitId);
-
-        setRegistryData({
-            unitName: node.data.label,
-            people: subTreePeople
-        });
-        setIsRegistryOpen(true);
-    }, [flatData]);
+    const selectedNodeData = useMemo(() => nodes.find(n => n.id === selectedNodeId), [nodes, selectedNodeId]);
 
     return (
         <div 
             className="w-full bg-slate-900/40 relative overflow-hidden rounded-3xl border border-slate-700/50 shadow-2xl"
             style={{ height: 'calc(100dvh - 220px)', minHeight: '500px' }}
         >
-            {/* Decorative Dot Pattern */}
-            <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none z-0"></div>
+            <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none z-0" />
 
-            {/* Search Overlay */}
-            <div className="absolute top-4 left-4 z-50 w-[calc(100%-2rem)] md:w-80">
-                <div className="relative group">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search map..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-slate-900/90 backdrop-blur border border-slate-700 rounded-xl pl-10 pr-4 py-3 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 shadow-lg text-slate-200 font-medium"
-                    />
+            {/* Extracted Search Component */}
+            <MindMapSearch 
+                flatData={flatData}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                searchResults={searchResults}
+                setSearchResults={setSearchResults}
+                onResultClick={handleSearchResultClick}
+            />
 
-                    {/* Search Results Dropdown */}
-                    {searchQuery && searchResults.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900/95 backdrop-blur border border-slate-700/50 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto">
-                            {searchResults.map(result => (
-                                <div
-                                    key={result.id}
-                                    onClick={() => handleSearchResultClick(result)}
-                                    className="px-4 py-3 hover:bg-slate-800/50 cursor-pointer border-b border-slate-800/50 last:border-0 flex items-center justify-between group"
-                                >
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-200 group-hover:text-white">{result.name}</p>
-                                        <p className="text-xs text-slate-500">
-                                            {result.type}
-                                            {result.unitName && ` • ${result.unitName}`}
-                                        </p>
-                                    </div>
-                                    <ChevronRight size={14} className="text-slate-600 group-hover:text-church-blue-400" />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Details Panel */}
+            {/* Extracted Details Panel */}
             {selectedNodeData && (
                 <div className="absolute right-0 top-0 bottom-0 z-50 pointer-events-none flex flex-col justify-center pr-6">
                     <div className="pointer-events-auto h-auto">
@@ -481,6 +241,7 @@ export default function HierarchyMindMap() {
                             onClose={() => setSelectedNodeId(null)}
                             onAddChild={handleAddChild}
                             onViewRegistry={handleViewRegistry}
+                            onViewPersonDetails={setPersonProfileData}
                         />
                     </div>
                 </div>
@@ -499,7 +260,6 @@ export default function HierarchyMindMap() {
                 edges={edges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
-                onConnect={null}
                 onNodeClick={onNodeClick}
                 onPaneClick={onPaneClick}
                 nodeTypes={nodeTypes}
@@ -511,7 +271,6 @@ export default function HierarchyMindMap() {
                 nodesDraggable={false}
             >
                 <Controls className="!bg-black/80 !text-gray-300 !border !border-gray-700 !rounded-xl !left-4 !bottom-4" />
-                {/* MiniMap: fully removed from DOM on mobile to prevent overlap */}
                 {!isMobile && (
                     <MiniMap
                         nodeColor={(n) => {
@@ -526,6 +285,7 @@ export default function HierarchyMindMap() {
                 <Background color="#1a1a1a" gap={30} size={1} variant="dots" />
             </ReactFlow>
 
+            {/* Utility Modals */}
             <ImageModal
                 isOpen={modalConfig.isOpen}
                 onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
@@ -538,6 +298,12 @@ export default function HierarchyMindMap() {
                 onClose={() => setIsRegistryOpen(false)}
                 unitName={registryData.unitName}
                 people={registryData.people}
+            />
+
+            <PersonProfileModal
+                isOpen={!!personProfileData}
+                onClose={() => setPersonProfileData(null)}
+                person={personProfileData}
             />
         </div>
     );
