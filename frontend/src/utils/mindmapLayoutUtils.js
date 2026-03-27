@@ -127,8 +127,8 @@ export const layoutTree = (flatData, collapsedIds, userRole = null) => {
     const root = hierarchy(hierarchyData);
 
     const treeLayout = tree()
-        .nodeSize([80, 280])
-        .separation((a, b) => (a.parent === b.parent ? 1 : 1.2));
+        .nodeSize([120, 420])
+        .separation((a, b) => (a.parent === b.parent ? 1.2 : 1.5));
 
     treeLayout(root);
 

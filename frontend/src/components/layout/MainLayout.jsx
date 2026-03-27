@@ -47,7 +47,7 @@ export default function MainLayout() {
             <div className="w-px h-6 bg-white/20 mx-2"></div>
             <div className="flex flex-col justify-center">
                 <p className="text-white font-black text-[9px] tracking-widest uppercase leading-tight mb-0">Love Economy</p>
-                <p className="text-church-blue-400 font-black text-[9px] tracking-widest uppercase leading-tight">Church</p>
+                <p className="text-white font-black text-[9px] tracking-widest uppercase leading-tight">Church</p>
             </div>
           </div>
         </header>
