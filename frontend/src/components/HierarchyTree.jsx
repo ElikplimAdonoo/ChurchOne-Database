@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ImageModal from "./common/ImageModal";
 
 import { buildTree, filterNodes } from "../utils/treeUtils";
+import { useAuth } from "../contexts/AuthContext";
 
 // ================================
 // TREE NODE COMPONENT
@@ -249,6 +250,7 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
 // MAIN COMPONENT
 // ================================
 export default function HierarchyTree() {
+    const { getManagedUnits } = useAuth();
     const [originalTree, setOriginalTree] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -256,13 +258,30 @@ export default function HierarchyTree() {
     const [expansionToggle, setExpansionToggle] = useState(null); // { state: boolean, timestamp: number }
     const [imageModalConfig, setImageModalConfig] = useState({ isOpen: false, src: '', title: '' });
 
-    // Initial Fetch
+    // Initial Fetch & Scoping
     useEffect(() => {
-        fetchHierarchyData()
-            .then(data => setOriginalTree(buildTree(data)))
-            .catch(err => setError(err.message))
-            .finally(() => setLoading(false));
-    }, []);
+        async function loadData() {
+            try {
+                const [managedUnits, data] = await Promise.all([
+                    getManagedUnits(),
+                    fetchHierarchyData()
+                ]);
+                
+                let filteredData = data;
+                if (managedUnits !== 'ALL') {
+                    filteredData = data.filter(unit => managedUnits.has(unit.id));
+                }
+                
+                setOriginalTree(buildTree(filteredData));
+            } catch (err) {
+                setError(err.message);
+            } finally {
+                setLoading(false);
+            }
+        }
+        
+        loadData();
+    }, [getManagedUnits]);
 
     // Filter Logic
     const displayedTree = useMemo(() => {
@@ -346,7 +365,7 @@ export default function HierarchyTree() {
                             <TreeNode
                                 key={node.id}
                                 node={node}
-                                defaultOpen={isFiltered}
+                                defaultOpen={isFiltered || displayedTree.length === 1}
                                 expansionToggle={expansionToggle}
                                 onImageClick={(src, title) => setImageModalConfig({ isOpen: true, src, title })}
                             />

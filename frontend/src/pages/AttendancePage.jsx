@@ -66,7 +66,7 @@ export default function AttendancePage() {
                 <div className="text-xs text-church-blue-400 font-bold uppercase tracking-wider">{userRole.unitName}</div>
             </div>
             {userRole.photoUrl && (
-                <div className="w-14 h-14 rounded-xl overflow-hidden border-2 border-church-blue-500/50 shadow-lg">
+                <div className="w-14 h-14 rounded-xl overflow-hidden">
                     <img src={userRole.photoUrl} alt={userRole.fullName} className="w-full h-full object-cover" />
                 </div>
             )}

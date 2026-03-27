@@ -76,7 +76,8 @@ export function AuthProvider({ children }) {
   }, [userRole]);
 
   const getManagedUnits = useCallback(async () => {
-      if (!userRole) return new Set();
+      // Return 'ALL' for guests to allow global read-only viewing of Directory/Structure
+      if (!userRole) return 'ALL';
       return await getManagedUnitIds(userRole);
   }, [userRole]);
 

@@ -134,7 +134,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 mt-2 text-slate-500">
            
             <span className="text-[11px] font-semibold">
-              Here is what is happening in your church
+              Here is what is happening in your Church
             </span>
           </div>
         </div>

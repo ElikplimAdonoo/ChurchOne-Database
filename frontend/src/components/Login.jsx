@@ -43,19 +43,19 @@ export default function Login() {
       
       <div className="bg-black/60 backdrop-blur-xl border-2 border-church-blue-500/30 p-8 rounded-3xl w-full max-w-md shadow-2xl relative z-10">
         <div className="flex flex-col items-center mb-8">
-            <div className="w-24 h-24 rounded-3xl flex items-center justify-center mb-4 shadow-2xl overflow-hidden border-2 border-church-blue-500/30 bg-black/30 backdrop-blur-sm relative">
+            <div className="w-48 h-48 sm:w-56 sm:h-56 flex items-center justify-center mb-4 relative">
                 <img
                     src="/lec-shield-v2.PNG"
                     alt="LEC Logo"
-                    className="w-full h-full object-contain p-1"
+                    className="w-full h-full object-contain drop-shadow-2xl hover:scale-105 transition-transform duration-500 scale-110"
                     onError={(e) => {
                         // Fallback to icon if logo fails to load
                         e.target.style.display = 'none';
                         e.target.nextSibling.style.display = 'flex';
                     }}
                 />
-                <div className="hidden w-full h-full bg-gradient-church items-center justify-center">
-                    <Lock className="text-white" size={32} />
+                <div className="hidden w-full h-full bg-gradient-church items-center justify-center rounded-3xl">
+                    <Lock className="text-white" size={48} />
                 </div>
             </div>
             <h2 className="text-3xl font-black text-white">Welcome Back!</h2>

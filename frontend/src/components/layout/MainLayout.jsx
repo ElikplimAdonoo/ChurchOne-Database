@@ -20,14 +20,14 @@ export default function MainLayout() {
       <div className="relative z-10 flex-1 flex flex-col overflow-hidden h-full">
         {/* Desktop Navigation */}
         <nav className="hidden md:block relative z-50 bg-black/60 backdrop-blur-md border-b border-church-blue-500/30 shadow-2xl shrink-0">
-          <div className="max-w-7xl mx-auto px-8 h-16 flex items-center justify-between">
+          <div className="max-w-[1440px] mx-auto px-0 md:px-2 h-16 flex items-center justify-between">
             {/* Desktop Brand */}
-            <div className="flex items-center gap-3">
-              <img src="/lec-shield-v2.PNG" alt="LEC Shield" className="w-10 h-10 object-contain" />
-              <div className="w-px h-10 bg-[#18488E]/60"></div>
-              <div className="text-left">
-                <p className="text-white font-black text-xs tracking-wider uppercase leading-tight">Love Economy</p>
-                <p className="text-white font-black text-xs tracking-wider uppercase leading-tight">Church</p>
+            <div className="flex items-center -ml-2">
+              <img src="/lec-shield-v2.PNG" alt="LEC Shield" className="w-12 h-12 object-contain scale-[1.35] origin-right -mr-1.5" />
+              <div className="w-[1px] h-10 bg-white/30 mr-2 z-10"></div>
+              <div className="text-left py-1 z-10">
+                <p className="text-white font-black text-[11px] md:text-xs tracking-wider uppercase leading-tight mb-0">Love Economy</p>
+                <p className="text-white font-black text-[11px] md:text-xs tracking-wider uppercase leading-tight">Church</p>
               </div>
             </div>
 
@@ -41,12 +41,14 @@ export default function MainLayout() {
         </nav>
 
         {/* Mobile Header */}
-        <header className="md:hidden relative z-50 bg-black/60 backdrop-blur-md border-b border-church-blue-500/20 px-6 h-16 flex items-center gap-3 shrink-0">
-          <img src="/lec-shield-v2.PNG" alt="LEC Shield" className="w-10 h-10 object-contain" />
-          <div className="w-px h-10 bg-[#18488E]/60"></div>
-          <div className="text-left">
-            <p className="text-white font-black text-xs tracking-wider uppercase leading-tight">Love Economy</p>
-            <p className="text-white font-black text-xs tracking-wider uppercase leading-tight">Church</p>
+        <header className="md:hidden relative z-50 bg-black/60 backdrop-blur-md border-b border-church-blue-500/20 px-0 h-16 flex items-center shrink-0">
+          <div className="flex items-center -ml-2">
+            <img src="/lec-shield-v2.PNG" alt="LEC Shield" className="w-12 h-12 object-contain scale-[1.35] origin-right -mr-1.5" />
+            <div className="w-[1px] h-10 bg-white/30 mr-2 z-10"></div>
+            <div className="text-left py-1 z-10">
+                <p className="text-white font-black text-[10px] tracking-wider uppercase leading-tight mb-0">Love Economy</p>
+                <p className="text-white font-black text-[10px] tracking-wider uppercase leading-tight">Church</p>
+            </div>
           </div>
         </header>
 
