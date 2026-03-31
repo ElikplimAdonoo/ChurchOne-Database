@@ -1,3 +1,4 @@
+import { IonPage, IonContent } from '@ionic/react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, BarChart3, CheckCircle2, AlertCircle, LogOut } from 'lucide-react';
@@ -42,7 +43,9 @@ export default function AttendancePage() {
   }
 
   return (
-    <div className="bg-gradient-dark min-h-[calc(100vh-4rem)] text-gray-100 p-4 md:p-8 space-y-8 relative overflow-hidden">
+    // <IonPage>
+        // <IonContent className="ion-padding-bottom bg-gradient-dark">
+            <div className="bg-gradient-dark min-h-[calc(100vh-4rem)] text-gray-100 p-4 md:p-8 space-y-8 relative overflow-hidden">
       {/* Decorative Dot Pattern */}
       <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none"></div>
 
@@ -133,5 +136,7 @@ export default function AttendancePage() {
       </div>
       </div>
     </div>
+      // </IonContent>
+    // </IonPage>
   );
 }

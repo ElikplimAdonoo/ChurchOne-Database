@@ -1,3 +1,4 @@
+import { IonPage, IonContent } from '@ionic/react';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { fetchPeople, createPerson, updatePerson, deactivatePerson, reactivatePerson } from '../services/peopleService';
@@ -197,7 +198,9 @@ export default function PeopleDirectory() {
     );
 
     return (
-        <div className="min-h-full bg-gradient-dark relative overflow-hidden">
+        // <IonPage>
+            // <IonContent className="ion-padding-bottom bg-[#000000]">
+                <div className="min-h-full bg-gradient-dark relative overflow-hidden">
             {/* Decorative Dot Pattern */}
             <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-5 pointer-events-none"></div>
 
@@ -297,13 +300,25 @@ export default function PeopleDirectory() {
                                             </div>
                                             <div className="space-y-0.5">
                                                 <div className="font-black text-slate-100 text-base">{person.name}</div>
-                                                {person.is_placeholder ? (
-                                                    <div className="text-[10px] text-amber-500 font-bold uppercase tracking-wider flex items-center gap-1.5">
-                                                        <span className="w-1 h-1 bg-amber-500 rounded-full animate-pulse"></span> Virtual Placeholder
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    {/* Membership State Premium Badge */}
+                                                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 border shadow-sm ${
+                                                        person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
+                                                        person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                        person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
+                                                        'bg-slate-800 text-slate-400 border-slate-700'
+                                                    }`}>
+                                                        {person.membership_state}
                                                     </div>
-                                                ) : (
-                                                    <div className="text-xs text-slate-500 font-medium">Verified Account</div>
-                                                )}
+
+                                                    {person.is_placeholder ? (
+                                                        <div className="text-[10px] text-amber-500 font-bold uppercase tracking-wider flex items-center gap-1.5 ml-1">
+                                                            <span className="w-1 h-1 bg-amber-500 rounded-full animate-pulse"></span> Virtual Placeholder
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-[10px] text-slate-500 font-medium ml-1">Verified Account</div>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -360,7 +375,18 @@ export default function PeopleDirectory() {
                                     </div>
                                     <div className="overflow-hidden space-y-0.5">
                                         <div className="font-extrabold text-slate-100 text-base truncate leading-tight" title={person.name}>{person.name}</div>
-                                        <div className="flex flex-col gap-0.5 items-start">
+                                        {/* Mobile Membership State Premium Badge */}
+                                        <div className="my-0.5">
+                                            <div className={`px-2 py-[2px] rounded-md text-[8px] font-black uppercase tracking-wider inline-flex items-center gap-1 border shadow-inner ${
+                                                person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
+                                                person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
+                                                'bg-slate-800 text-slate-400 border-slate-700'
+                                            }`}>
+                                                {person.membership_state}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col gap-0.5 items-start mt-0.5">
                                             <div className="text-[9px] font-black uppercase text-church-blue-400 truncate max-w-full tracking-widest">
                                                 {person.role}
                                             </div>
@@ -439,8 +465,10 @@ export default function PeopleDirectory() {
                 imageSrc={imageModalConfig.src}
                 title={imageModalConfig.title}
             />
+            </div>
         </div>
-    </div>
+            // </IonContent>
+        // </IonPage>
   );
 }
 

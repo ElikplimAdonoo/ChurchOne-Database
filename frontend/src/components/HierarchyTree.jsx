@@ -75,14 +75,14 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
     const style = getStyles(node.unit_type);
 
     return (
-        <div className="relative pl-6">
+        <div className="relative pl-1.5 md:pl-6">
             {/* Connector Lines */}
             {level > 0 && (
                 <>
                     {/* Vertical line from parent */}
                     <div className="absolute left-0 top-0 bottom-0 w-px bg-church-blue-500/50" />
                     {/* Horizontal curve to node */}
-                    <div className="absolute left-0 top-8 w-6 h-px bg-church-blue-500/50" />
+                    <div className="absolute left-0 top-8 w-3 md:w-6 h-px bg-church-blue-500/50" />
                 </>
             )}
 
@@ -101,15 +101,11 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                         className="p-3 flex items-center justify-between cursor-pointer select-none"
                         onClick={() => setIsOpen(!isOpen)}
                     >
-                        <div className="flex items-center gap-3">
-                            {/* Expand Toggle */}
-                            <div className={`p-1 rounded-md transition-colors ${hasChildren ? 'hover:bg-white/10 text-slate-400' : 'opacity-0'}`}>
-                                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                            </div>
+                        <div className="flex items-center justify-between w-full">
 
                             {/* Icon & Name */}
                             <div className="flex items-center gap-2">
-                                {style.icon}
+                                {/* {style.icon} */}
                                 <span className={`font-semibold tracking-wide text-sm md:text-base ${style.text}`}>
                                     {node.name}
                                 </span>
@@ -118,6 +114,10 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                                         Pending
                                     </span>
                                 )}
+                            </div>
+                            {/* Expand Toggle */}
+                            <div className={`p-1 rounded-md transition-colors ${hasChildren ? 'hover:bg-white/10 text-slate-400' : 'opacity-0'}`}>
+                                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                             </div>
                         </div>
 
@@ -133,7 +133,7 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                                 exit={{ height: 0, opacity: 0 }}
                                 className="border-t border-white/10 bg-black/20"
                             >
-                                <div className="p-3 pl-11 space-y-4">
+                                <div className="p-3 pl-4 md:pl-11 space-y-4">
                                     {/* Cell Shepherds Section (Luxurious Yellow) */}
                                     {node.leaders?.filter(l => l.role.toLowerCase() === 'cell shepherd').map((leader, idx) => (
                                         <div key={`lead-${idx}`} className="flex items-center gap-3 group">
@@ -226,7 +226,7 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                             exit={{ height: 0, opacity: 0 }}
                             className="overflow-hidden"
                         >
-                            <div className="ml-2">
+                            <div className="ml-1 md:ml-2">
                                 {node.children.map(child => (
                                     <TreeNode
                                         key={child.id}
@@ -306,21 +306,19 @@ export default function HierarchyTree() {
     );
 
     return (
-        <div className="max-w-6xl mx-auto p-4 md:p-8 space-y-8">
+        <div className="max-w-6xl mx-auto md:p-8 space-y-5 md:space-y-8">
             {/* Header / Controls */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
                 <div>
                     <h2 className="text-3xl font-black bg-gradient-church bg-clip-text text-transparent">
                         Organizational Structure
                     </h2>
-                    <p className="text-slate-400 text-sm mt-1 font-semibold">
-                        {displayedTree.reduce((acc, n) => acc + 1 + (n.children?.length || 0), 0)}+ Active Units
-                    </p>
+                    
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full md:w-auto">
                     {/* Expanding Controls */}
-                    <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700">
+                    {/* <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 shrink-0">
                         <button
                             onClick={() => setExpansionToggle({ state: true, timestamp: Date.now() })}
                             className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-church-blue-400 transition-colors"
@@ -335,17 +333,17 @@ export default function HierarchyTree() {
                         >
                             <MinusSquare size={18} />
                         </button>
-                    </div>
+                    </div> */}
 
                     {/* Search Bar */}
-                    <div className="relative group">
+                    <div className="relative group flex-1">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={18} />
                         <input
                             type="text"
                             placeholder="Find person or unit..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 w-64 text-sm focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 transition-all placeholder:text-slate-500 text-slate-200 font-medium"
+                            className="bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2.5 w-full md:w-64 text-sm focus:outline-none focus:border-church-blue-500 focus:ring-2 focus:ring-church-blue-500/50 transition-all placeholder:text-slate-500 text-slate-200 font-medium"
                         />
                     </div>
                 </div>

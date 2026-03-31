@@ -1,4 +1,4 @@
-import React, { useRef } from 'react'
+import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { NavLink, useLocation, Outlet } from 'react-router-dom'
 import { Home, Users, List, CheckCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -11,6 +11,25 @@ export default function MainLayout() {
   const location = useLocation()
   const { onSwipeLeft, onSwipeRight, currentIndex } = useSwipeNavigation()
   const mainTouchStart = useRef(null)
+  const mainRef = useRef(null)
+  const scrollTimeout = useRef(null)
+  const [isScrolling, setIsScrolling] = useState(false)
+
+  const handleScroll = useCallback(() => {
+    setIsScrolling(true)
+    if (scrollTimeout.current) clearTimeout(scrollTimeout.current)
+    scrollTimeout.current = setTimeout(() => setIsScrolling(false), 600)
+  }, [])
+
+  useEffect(() => {
+    const el = mainRef.current
+    if (!el) return
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', handleScroll)
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current)
+    }
+  }, [handleScroll])
 
   return (
     <div className="h-screen w-screen bg-gradient-dark text-gray-100 font-sans selection:bg-church-blue-400/30 flex flex-col overflow-hidden relative">
@@ -54,6 +73,7 @@ export default function MainLayout() {
 
         {/* Content Area */}
         <main
+          ref={mainRef}
           className="flex-1 overflow-y-auto custom-scrollbar touch-pan-y"
           onTouchStart={(e) => {
             // Disable swipe navigation on mindmap — ReactFlow needs touch for panning
@@ -76,8 +96,10 @@ export default function MainLayout() {
         </main>
 
         {/* Mobile Bottom Tabs */}
-        <nav className="md:hidden fixed bottom-0 left-0 z-50 w-full">
-          <div className="bg-black/95 backdrop-blur-2xl border-t border-white/10 px-4 pt-3 pb-6 flex items-center justify-around shadow-[0_-20px_40px_-20px_rgba(0,0,0,0.5)]">
+        <nav className={`md:hidden fixed bottom-0 left-0 z-50 w-full transition-all duration-500 ease-out ${
+          isScrolling ? 'opacity-20 pointer-events-none translate-y-1' : 'opacity-100 pointer-events-auto translate-y-0'
+        }`}>
+          <div className="bg-black/50 backdrop-blur-xl border-t border-white/10 px-4 pt-2 pb-4 flex items-center justify-around shadow-2xl">
             <TabItem to="/" icon={<Home size={22} />} />
             <TabItem to="/directory" icon={<Users size={22} />} />
             <TabItem to="/mindmap" icon={<List size={22} />} />

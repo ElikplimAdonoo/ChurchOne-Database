@@ -1,3 +1,4 @@
+import { IonPage, IonContent } from '@ionic/react';
 import { useEffect, useCallback, useState, useMemo } from 'react';
 import { useWindowSize } from '../hooks/useWindowSize';
 import ReactFlow, {
@@ -216,8 +217,10 @@ export default function HierarchyMindMapPage() {
     const selectedNodeData = useMemo(() => nodes.find(n => n.id === selectedNodeId), [nodes, selectedNodeId]);
 
     return (
-        <div 
-            className="w-full bg-slate-900/40 relative overflow-hidden rounded-3xl border border-slate-700/50 shadow-2xl"
+        // <IonPage>
+            // <IonContent className="ion-padding-bottom bg-[#000000]">
+                <div 
+                    className="w-full bg-slate-900/40 relative overflow-hidden rounded-3xl border border-slate-700/50 shadow-2xl"
             style={{ height: 'calc(100dvh - 220px)', minHeight: '500px' }}
         >
             <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none z-0" />
@@ -306,5 +309,7 @@ export default function HierarchyMindMapPage() {
                 person={personProfileData}
             />
         </div>
+            // </IonContent>
+        // </IonPage>
     );
 }

@@ -15,6 +15,7 @@ export async function fetchPeople() {
             photo_url,
             is_active,
             is_placeholder,
+            created_at,
             assignments:position_assignments(
                 id,
                 unit_id,
@@ -22,6 +23,9 @@ export async function fetchPeople() {
                 is_active,
                 position:positions(title, unit_type),
                 unit:organizational_units(name, unit_type)
+            ),
+            attendance_records (
+                status
             )
         `)
         .order('full_name');
@@ -54,6 +58,30 @@ export async function fetchPeople() {
                 status = 'Active';
             }
 
+            // Calculate Membership State purely through attendance
+            let presentCount = 0;
+            if (person.attendance_records && person.attendance_records.length > 0) {
+                presentCount = person.attendance_records.filter(r => r.status === 'PRESENT').length;
+            }
+
+            const roleTitle = primaryAssignment?.position?.title || 'Unassigned';
+            let membership_state = roleTitle; // Default to their exact leadership role
+            
+            // Apply pipeline strictly to basic Members to protect Shepherds and Pastors.
+            if (roleTitle === 'Member' || roleTitle === 'Unassigned') {
+                const createdDate = new Date(person.created_at || '2000-01-01');
+                const cutoffDate = new Date('2026-03-31T00:00:00Z');
+                
+                if (createdDate < cutoffDate) {
+                    membership_state = 'Member';
+                } else {
+                    if (presentCount === 1) membership_state = 'First Timer';
+                    else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
+                    else if (presentCount >= 4) membership_state = 'Member';
+                    else membership_state = 'Unattended';
+                }
+            }
+
             return {
                 id: person.id,
                 name: person.full_name,
@@ -65,6 +93,8 @@ export async function fetchPeople() {
                 assignment_id: primaryAssignment?.id,
                 unit_type: primaryAssignment?.unit?.unit_type,
                 status,
+                membership_state,
+                present_count: presentCount,
                 is_placeholder: person.is_placeholder
             };
     });

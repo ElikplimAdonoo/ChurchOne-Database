@@ -10,6 +10,7 @@ export default function PersonActionModal({
     person = null, 
     units = [], 
     positions = [], 
+    lockUnit = false,
     onSubmit 
 }) {
     const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm();
@@ -98,13 +99,19 @@ export default function PersonActionModal({
                                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={16} />
                                 <select
                                     {...register('unitId', { required: 'Unit is required' })}
-                                    className="w-full bg-slate-900 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 transition-all text-slate-200 appearance-none"
+                                    className="w-full bg-slate-900 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 transition-all text-slate-200 appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={lockUnit}
                                 >
                                     <option value="">Select Unit...</option>
                                     {units.map(u => (
                                         <option key={u.id} value={u.id}>{u.name} ({u.unit_type})</option>
                                     ))}
                                 </select>
+                                {lockUnit && (
+                                    <div className="absolute inset-y-0 right-0 right-8 flex items-center pointer-events-none">
+                                        <span className="text-[9px] uppercase tracking-wider font-bold text-slate-500">Locked to Cell</span>
+                                    </div>
+                                )}
                             </div>
                             {errors.unitId && <span className="text-church-coral-400 text-[10px] font-bold mt-1 block ml-1">{errors.unitId.message}</span>}
                         </div>

@@ -1,3 +1,4 @@
+import { IonPage, IonContent } from '@ionic/react';
 import { useEffect, useState, useMemo } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchPeople } from '../services/peopleService'
@@ -116,9 +117,11 @@ export default function DashboardPage() {
   const dashboardTitle = userRole?.unitName || 'ChurchOne'
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500">
+    // <IonPage>
+    //   <IonContent className="ion-padding-bottom">
+        <div className="space-y-10 animate-in fade-in duration-500">
 
-      {/* ── Command Center Header ── */}
+          {/* ── Command Center Header ── */}
       <motion.div 
         initial={{ opacity: 0, y: -10 }} 
         animate={{ opacity: 1, y: 0 }}
@@ -180,7 +183,9 @@ export default function DashboardPage() {
             <HierarchyTree />
         </div>
       </motion.div>
-    </div>
+        </div>
+      // </IonContent>
+    // </IonPage>
   )
 }
 
