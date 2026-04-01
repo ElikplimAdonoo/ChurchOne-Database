@@ -30,6 +30,12 @@ export default defineConfig({
             sizes: '512x512',
             type: 'image/jpeg',
             purpose: 'any maskable'
+          },
+          {
+            src: '/lec-logo.jpeg',
+            sizes: '1024x1024',
+            type: 'image/jpeg',
+            purpose: 'any'
           }
         ],
         categories: ['productivity', 'utilities'],
@@ -44,7 +50,7 @@ export default defineConfig({
             name: 'People Directory',
             url: '/directory',
             description: 'Browse member directory',
-            icons: [{ src: '/lec-icon-512.jpg', sizes: '96x96', type: 'image/jpeg' }]
+            icons: [{ src: '/lec-logo.jpeg', sizes: '96x96', type: 'image/jpeg' }]
           }
         ]
       },
