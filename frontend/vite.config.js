@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['lec-logo.png', 'lec-icon-512.png'],
+      includeAssets: ['lec-icon-512.jpg'],
       manifest: {
         name: 'ChurchOne — LEC',
         short_name: 'ChurchOne',
@@ -20,15 +20,15 @@ export default defineConfig({
         orientation: 'portrait-primary',
         icons: [
           {
-            src: '/lec-logo.png',
+            src: '/lec-icon-512.jpg',
             sizes: '192x192',
-            type: 'image/png',
+            type: 'image/jpeg',
             purpose: 'any'
           },
           {
-            src: '/lec-icon-512.png',
+            src: '/lec-icon-512.jpg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/jpeg',
             purpose: 'any maskable'
           }
         ],
@@ -38,13 +38,13 @@ export default defineConfig({
             name: 'Mark Attendance',
             url: '/attendance',
             description: 'Open attendance marking',
-            icons: [{ src: '/lec-logo.png', sizes: '96x96' }]
+            icons: [{ src: '/lec-icon-512.jpg', sizes: '96x96', type: 'image/jpeg' }]
           },
           {
             name: 'People Directory',
             url: '/directory',
             description: 'Browse member directory',
-            icons: [{ src: '/lec-logo.png', sizes: '96x96' }]
+            icons: [{ src: '/lec-icon-512.jpg', sizes: '96x96', type: 'image/jpeg' }]
           }
         ]
       },
