@@ -213,15 +213,6 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
                                      unit_type === 'BUSCENTA' ? 'Add Cell' : 'Add Sub-Unit'}
                                 </button>
                             )}
-                            {unit_type !== 'PERSON' && (
-                                <button 
-                                    onClick={() => onViewRegistry(node)}
-                                    className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold transition-colors flex items-center justify-center gap-2 border border-slate-700"
-                                >
-                                    <Users size={18} />
-                                    Full Registry
-                                </button>
-                            )}
                         </div>
                     </div>
                 </motion.div>

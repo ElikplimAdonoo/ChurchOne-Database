@@ -18,7 +18,6 @@ import { useAuth } from '../contexts/AuthContext';
 import CollapsibleNode from '../components/CollapsibleNode';
 import NodeDetailsPanel from '../components/NodeDetailsPanel';
 import ImageModal from '../components/common/ImageModal';
-import FullRegistryModal from '../components/FullRegistryModal';
 import AddUnitModal from '../components/AddUnitModal';
 import PersonProfileModal from '../components/PersonProfileModal';
 import MindMapSearch from '../components/mindmap/MindMapSearch';
@@ -51,8 +50,6 @@ export default function HierarchyMindMapPage() {
     
     // Modals
     const [modalConfig, setModalConfig] = useState({ isOpen: false, src: '', title: '' });
-    const [isRegistryOpen, setIsRegistryOpen] = useState(false);
-    const [registryData, setRegistryData] = useState({ unitName: '', people: [] });
     const [isUnitModalOpen, setIsUnitModalOpen] = useState(false);
     const [targetParent, setTargetParent] = useState(null);
     const [personProfileData, setPersonProfileData] = useState(null);
@@ -159,25 +156,6 @@ export default function HierarchyMindMapPage() {
         }
     };
 
-    const handleViewRegistry = useCallback((node) => {
-        const unitId = node.id;
-        const subTreePeople = [];
-
-        const findDescendants = (id) => {
-            const unit = flatData.find(u => u.id === id);
-            if (!unit) return;
-            (unit.leaders || []).forEach(l => subTreePeople.push({ ...l, type: 'LEADER', unitName: unit.name }));
-            (unit.members || []).forEach(m => subTreePeople.push({ ...m, type: 'MEMBER', unitName: unit.name }));
-            
-            flatData.filter(u => u.parent_id === id).forEach(child => findDescendants(child.id));
-        };
-
-        findDescendants(unitId);
-
-        setRegistryData({ unitName: node.data.label, people: subTreePeople });
-        setIsRegistryOpen(true);
-    }, [flatData]);
-
     // Apply Layout
     useEffect(() => {
         if (flatData.length === 0) return;
@@ -243,7 +221,6 @@ export default function HierarchyMindMapPage() {
                             node={selectedNodeData}
                             onClose={() => setSelectedNodeId(null)}
                             onAddChild={handleAddChild}
-                            onViewRegistry={handleViewRegistry}
                             onViewPersonDetails={setPersonProfileData}
                         />
                     </div>
@@ -294,13 +271,6 @@ export default function HierarchyMindMapPage() {
                 onClose={() => setModalConfig(prev => ({ ...prev, isOpen: false }))}
                 imageSrc={modalConfig.src}
                 title={modalConfig.title}
-            />
-
-            <FullRegistryModal
-                isOpen={isRegistryOpen}
-                onClose={() => setIsRegistryOpen(false)}
-                unitName={registryData.unitName}
-                people={registryData.people}
             />
 
             <PersonProfileModal

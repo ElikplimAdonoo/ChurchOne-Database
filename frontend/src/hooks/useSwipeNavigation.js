@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 
-const ROUTES = ['/', '/directory', '/mindmap', '/attendance']
+const ROUTES = ['/', '/directory', '/mindmap', '/attendance', '/profile']
 
 export function useSwipeNavigation() {
   const navigate = useNavigate()

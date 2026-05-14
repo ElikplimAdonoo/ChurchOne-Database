@@ -47,12 +47,11 @@ export async function fetchPeople() {
             const hasPendingName = person.full_name.toLowerCase().includes('pending');
             
             let status;
-            if (hasPendingName || (person.is_placeholder && !isSystemUnitPlaceholder)) {
-                status = 'Pending';
-            } else if (!person.is_active && !isSystemUnitPlaceholder) {
+            if (!person.is_active && !isSystemUnitPlaceholder) {
                 status = 'Inactive';
+            } else if (person.is_placeholder && !isSystemUnitPlaceholder) {
+                status = 'Pending';
             } else if (isSystemUnitPlaceholder) {
-                // System unit placeholders shouldn't really be in the directory, but if they are, keep them out of Pending
                 status = 'System'; 
             } else {
                 status = 'Active';
@@ -105,42 +104,35 @@ export async function fetchPeople() {
 
 // --- MUTATIONS ---
 export const createPerson = async (personData) => {
-    // 1. Create Person
-    const { data: person, error } = await supabase
-        .from('people')
-        .insert([{
-            full_name: personData.fullName,
-            is_placeholder: false
-        }])
-        .select()
-        .single();
+    // Call the edge function to create the auth user, the people record, and the assignment securely.
+    const { data, error } = await supabase.functions.invoke('create-auth-user', {
+        body: {
+            fullName: personData.fullName,
+            personalEmail: personData.personalEmail || null,
+            unitId: personData.unitId,
+            positionId: personData.positionId
+        }
+    });
 
-    if (error) throw error;
+    if (error) {
+        console.error("Error creating person via edge function:", error);
+        throw error;
+    }
+    
+    if (data?.error) {
+        console.error("Edge function returned error:", data.error);
+        throw new Error(data.error);
+    }
 
     // Invalidate People + Hierarchy caches (dashboard counts change)
     cacheService.remove(CACHE_KEYS.PEOPLE);
     cacheService.remove(CACHE_KEYS.HIERARCHY);
 
-    // 2. Create Assignment (if unit/position provided)
-    if (personData.unitId && personData.positionId) {
-        const { error: assignError } = await supabase
-            .from('position_assignments')
-            .insert([{
-                person_id: person.id,
-                unit_id: personData.unitId,
-                position_id: personData.positionId,
-                is_active: true,
-                is_primary: true
-            }]);
-
-        if (assignError) {
-            // OI-3: Log clearly — person exists but has no placement. Surface this.
-            console.error("Person created but assignment failed:", assignError);
-            throw new Error(`Member was added but could not be placed in the selected unit. Please edit the member to assign them manually. (Details: ${assignError.message})`);
-        }
+    if (data?.warning) {
+        console.warn("Creation warning:", data.warning);
     }
 
-    return person;
+    return { person: data.person, login: data.login };
 };
 
 export const updatePerson = async (id, updates) => {
@@ -201,7 +193,19 @@ export const deactivatePerson = async (id) => {
 export const reactivatePerson = async (id) => {
     const { error } = await supabase
         .from('people')
-        .update({ is_active: true })
+        .update({ is_active: true, is_placeholder: false })
+        .eq('id', id);
+
+    if (error) throw error;
+    cacheService.remove(CACHE_KEYS.PEOPLE);
+    cacheService.remove(CACHE_KEYS.HIERARCHY);
+    return true;
+};
+
+export const setPendingPerson = async (id) => {
+    const { error } = await supabase
+        .from('people')
+        .update({ is_active: true, is_placeholder: true })
         .eq('id', id);
 
     if (error) throw error;

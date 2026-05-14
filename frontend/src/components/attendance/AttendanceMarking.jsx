@@ -30,9 +30,9 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   const effectiveUnitId = overrideUnitId || currentRole.unitId;
   const effectiveUnitType = overrideUnitType || currentRole.unitType;
   
-  // Strict Fix: Prevents higher leaders (Zone/MC) from bypassing marking restrictions 
-  // by drilling down to a Cell via the scope selector.
-  const canMark = currentRole.unitType === 'CELL' && effectiveUnitType === 'CELL';
+  const isDirectUnit = effectiveUnitId === currentRole.unitId;
+  const canMark = isDirectUnit || currentRole.unitType === 'MC';
+  const isGeneralMarkingLevel = ['CELL', 'MC'].includes(effectiveUnitType);
 
   const computedFirstTimersCount = useMemo(() => {
     return members
@@ -163,9 +163,9 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   };
 
   const handleSubmit = async () => {
-    // Absolute server-side guard: prevents any non-CELL leader from submitting
+    // Guard: prevents unauthorized leaders from submitting
     if (!canMark) {
-        alert('Only Cell-level leaders can submit attendance.');
+        alert('You do not have permission to mark attendance for this unit.');
         return;
     }
     
@@ -182,7 +182,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
             .upsert({
                 unit_id: effectiveUnitId,
                 session_date: date,
-                created_by: user?.id || null,
+                created_by: currentRole.personId || null,
                 first_timers_count: computedFirstTimersCount,
                 souls_won_count: soulsWon,
             }, { onConflict: 'unit_id,session_date' })
@@ -209,7 +209,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
 
     } catch (error) {
         console.error("Error submitting attendance:", error);
-        alert("Failed to submit attendance. See console.");
+        alert("Failed to submit attendance: " + (error.message || JSON.stringify(error)));
     } finally {
         setSubmitting(false);
     }
@@ -219,22 +219,11 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
 
-      {/* TEMPORARY DEBUG - REMOVE AFTER TESTING */}
-      <div className="bg-slate-800/60 border border-slate-700 rounded-lg px-3 py-2 text-[10px] font-mono text-slate-400 flex gap-4">
-        <span>Role: <b className="text-white">{currentRole.unitType}</b></span>
-        <span>Scope: <b className="text-white">{effectiveUnitType}</b></span>
-        <span>canMark: <b className={canMark ? 'text-emerald-400' : 'text-red-400'}>{String(canMark)}</b></span>
-      </div>
-      
-      {!canMark && (
-          <div className="bg-amber-900/20 border-l-4 border-amber-500 text-amber-300 p-4 rounded-xl flex items-start gap-4 shadow-lg mb-6 backdrop-blur-sm">
-             <div className="p-2 bg-amber-500/10 rounded-lg shrink-0">
-                 <UserX size={20} className="text-amber-400" />
-             </div>
-             <div>
-                 <h4 className="text-sm font-black tracking-widest uppercase mb-1">View-Only Registry Area</h4>
-                 <p className="text-xs text-amber-500/80 leading-relaxed font-semibold">You selected a <b>{effectiveUnitType}</b>. Formal attendance marking acts explicitly at the <b>Cell</b> level. You may explore the registry of this unit but no attendance submissions are allowed from this scope.</p>
-             </div>
+      {!isGeneralMarkingLevel && (
+          <div className="bg-slate-800/50 border border-slate-700 p-3 rounded-xl text-center shadow-inner mb-6 backdrop-blur-sm">
+              <p className="text-xs text-slate-400 font-medium tracking-wide">
+                  General attendance is marked at the Cell and MC levels. At this level, you can only mark attendance for yourself and view analytics.
+              </p>
           </div>
       )}
 
@@ -346,8 +335,8 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                 </div>
 
                 {/* ── Growth & Staging Arena ── */}
-                {canMark && (
-                    <div className="mt-8 pt-8 border-t-4 border-dashed border-slate-700/30 relative">
+                {canMark && isGeneralMarkingLevel && (
+                    <div id="first-timers-section" className="mt-8 pt-8 border-t-4 border-dashed border-slate-700/30 relative">
                         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-[#0a0a0b] px-4 text-[10px] font-black tracking-[0.2em] text-slate-500 uppercase rounded-full">
                             Growth Additions
                         </div>
@@ -433,8 +422,9 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
 
       {/* Bottom Controls */}
       {canMark && (
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 py-6 border-t border-white/5 mt-8">
-            <div className="flex flex-col sm:flex-row gap-6 w-full md:w-auto">
+          <div className={`flex flex-col md:flex-row md:items-center ${isGeneralMarkingLevel ? 'justify-between' : 'justify-end'} gap-6 py-6 border-t border-white/5 mt-8`}>
+            {isGeneralMarkingLevel && (
+                <div className="flex flex-col sm:flex-row gap-6 w-full md:w-auto">
                 {/* Flatter Minimal Mobile-Responsive Growth Counters */}
                 <div className="flex flex-col w-full sm:w-auto min-w-[170px] border-b border-slate-700/50 pb-3">
                     <div className="flex flex-col gap-2">
@@ -486,6 +476,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                     </div>
                 </div>
             </div>
+            )}
 
             <button 
                 onClick={handleSubmit}

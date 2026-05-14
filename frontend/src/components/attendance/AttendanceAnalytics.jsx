@@ -182,21 +182,16 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
           .order('session_date', { ascending: true });
 
         if (sessionData) {
-          const totalScheduled = sessionData.reduce((acc, curr) => acc + (curr.total_marked || 0), 0);
-          const totalPresent = sessionData.reduce((acc, curr) => acc + (curr.total_present || 0), 0);
-          const rate = totalScheduled ? Math.round((totalPresent / totalScheduled) * 100) : 0;
-
-          const totalFirstTimers = sessionData.reduce((acc, curr) => acc + (curr.first_timers_count || 0), 0);
-          const totalSoulsWon = sessionData.reduce((acc, curr) => acc + (curr.souls_won_count || 0), 0);
-
           // Build per-date history
           const historyMap = {};
           sessionData.forEach((s) => {
             const date = s.session_date;
-            if (!historyMap[date]) historyMap[date] = { date, present: 0, absent: 0, total: 0 };
+            if (!historyMap[date]) historyMap[date] = { date, present: 0, absent: 0, total: 0, firstTimers: 0, soulsWon: 0 };
             historyMap[date].present += s.total_present || 0;
             historyMap[date].absent += s.total_absent || 0;
             historyMap[date].total += s.total_marked || 0;
+            historyMap[date].firstTimers += s.first_timers_count || 0;
+            historyMap[date].soulsWon += s.souls_won_count || 0;
           });
 
           const sortedHistory = Object.values(historyMap).sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -204,17 +199,42 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
           // Compute trend (compare last 2 session dates)
           let trend = null;
           let trendValue = null;
-          if (sortedHistory.length >= 2) {
+          
+          let latestRate = 0;
+          let latestTotal = 0;
+          let latestPresent = 0;
+          let latestAbsent = 0;
+          let latestFirstTimers = 0;
+          let latestSoulsWon = 0;
+
+          if (sortedHistory.length > 0) {
             const last = sortedHistory[sortedHistory.length - 1];
-            const prev = sortedHistory[sortedHistory.length - 2];
-            const lastRate = last.total > 0 ? Math.round((last.present / last.total) * 100) : 0;
-            const prevRate = prev.total > 0 ? Math.round((prev.present / prev.total) * 100) : 0;
-            const diff = lastRate - prevRate;
-            trend = diff >= 0 ? 'up' : 'down';
-            trendValue = diff;
+            latestTotal = last.total;
+            latestPresent = last.present;
+            latestAbsent = last.absent;
+            latestFirstTimers = last.firstTimers;
+            latestSoulsWon = last.soulsWon;
+            latestRate = latestTotal > 0 ? Math.round((latestPresent / latestTotal) * 100) : 0;
+            
+            if (sortedHistory.length >= 2) {
+                const prev = sortedHistory[sortedHistory.length - 2];
+                const prevRate = prev.total > 0 ? Math.round((prev.present / prev.total) * 100) : 0;
+                const diff = latestRate - prevRate;
+                trend = diff >= 0 ? 'up' : 'down';
+                trendValue = diff;
+            }
           }
 
-          setStats({ rate, total: totalScheduled, present: totalPresent, absent: totalScheduled - totalPresent, firstTimers: totalFirstTimers, soulsWon: totalSoulsWon, trend, trendValue });
+          setStats({ 
+              rate: latestRate, 
+              total: latestTotal, 
+              present: latestPresent, 
+              absent: latestAbsent, 
+              firstTimers: latestFirstTimers, 
+              soulsWon: latestSoulsWon, 
+              trend, 
+              trendValue 
+          });
           setHistory(sortedHistory);
         }
       } catch (error) {
@@ -318,7 +338,7 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
           icon={UserPlus}
           label="First Timers"
           value={stats.firstTimers ?? 0}
-          sub="Total"
+          sub="Latest"
           iconColor="text-emerald-400"
           bgColor="bg-slate-800/40"
         />
@@ -326,7 +346,7 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
           icon={Flame}
           label="Souls Won"
           value={stats.soulsWon ?? 0}
-          sub="Total"
+          sub="Latest"
           iconColor="text-amber-400"
           bgColor="bg-amber-500/5"
           isSpecial={true}

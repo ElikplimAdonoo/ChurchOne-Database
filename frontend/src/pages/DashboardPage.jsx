@@ -1,5 +1,5 @@
 import { IonPage, IonContent } from '@ionic/react';
-import { useEffect, useState, useMemo } from 'react'
+import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchPeople } from '../services/peopleService'
 import { Users, CalendarCheck, Clock, Zap } from 'lucide-react'
@@ -24,13 +24,33 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const [stats, setStats] = useState({ 
     members: 0, 
+    membersBreakdown: [],
     activeCells: 0,
     assigned: 0,
     totalUnits: 0,
-    unitBreakdown: ''
+    unitBreakdown: [],
+    attendanceRate: 0,
+    attendanceTrend: 0,
+    firstTimers: 0
   })
   const [loading, setLoading] = useState(true)
+  const [focusMembersTrigger, setFocusMembersTrigger] = useState(0)
+  const [highlightTree, setHighlightTree] = useState(false)
+  const treeContainerRef = useRef(null)
   const location = useLocation()
+
+  const handleFocusMembers = () => {
+    setFocusMembersTrigger(Date.now())
+    setHighlightTree(true)
+    setTimeout(() => setHighlightTree(false), 2000)
+    
+    if (treeContainerRef.current) {
+        const yOffset = -80; // Account for any fixed headers
+        const element = treeContainerRef.current;
+        const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+  }
 
   useEffect(() => {
     async function fetchStats() {
@@ -40,10 +60,14 @@ export default function DashboardPage() {
         if (managedUnits !== 'ALL' && managedUnits.size === 0) {
             setStats({ 
               members: 0, 
+              membersBreakdown: [],
               activeCells: 0, 
               assigned: 0, 
               totalUnits: 0, 
-              unitBreakdown: '0 Zones · 0 MCs · 0 Buscentas · 0 Cells' 
+              unitBreakdown: [],
+              attendanceRate: 0,
+              attendanceTrend: 0,
+              firstTimers: 0
             })
             setLoading(false)
             return
@@ -52,14 +76,40 @@ export default function DashboardPage() {
         const unitIdsArray = managedUnits === 'ALL' ? null : Array.from(managedUnits)
 
         const allPeople = await fetchPeople()
-        let memberCount = 0;
+        let activeCount = 0;
+        let inactiveCount = 0;
+        let pendingCount = 0;
+        
+        let memZone = 0;
+        let memMC = 0;
+        let memBusc = 0;
+        let memCell = 0;
+        
+        const processPerson = (p) => {
+            if (p.status === 'Active') activeCount++;
+            else if (p.status === 'Inactive') inactiveCount++;
+            else if (p.status === 'Pending') pendingCount++;
+            
+            if (p.unit_type === 'ZONAL') memZone++;
+            else if (p.unit_type === 'MC') memMC++;
+            else if (p.unit_type === 'BUSCENTA') memBusc++;
+            else if (p.unit_type === 'CELL') memCell++;
+        };
         
         if (unitIdsArray) {
             const unitIdsSet = new Set(unitIdsArray);
-            memberCount = allPeople.filter(p => p.status === 'Active' && unitIdsSet.has(p.unit_id)).length;
+            allPeople.forEach(p => {
+                if(unitIdsSet.has(p.unit_id)) processPerson(p);
+            });
         } else {
-            memberCount = allPeople.filter(p => p.status === 'Active').length;
+            allPeople.forEach(processPerson);
         }
+        const memberCount = activeCount + inactiveCount + pendingCount;
+        const membersBreakdown = [
+            { label: 'Active', value: activeCount, colorClass: 'text-emerald-400' },
+            { label: 'Pending', value: pendingCount, colorClass: 'text-amber-400' },
+            { label: 'Inactive', value: inactiveCount, colorClass: 'text-slate-400' }
+        ];
 
         let unitsQuery = supabase
           .from('organizational_units')
@@ -84,19 +134,61 @@ export default function DashboardPage() {
         const buscentasCount = units?.filter(u => u.unit_type === 'BUSCENTA').length || 0
         const cellsCount = cells.length
         
-        const unitBreakdown = `${zonesCount} Zones · ${mcsCount} MCs · ${buscentasCount} Buscentas · ${cellsCount} Cells`
+        const unitBreakdown = [
+            { label: 'Zones', value: zonesCount, colorClass: 'text-church-purple-400' },
+            { label: 'MCs', value: mcsCount, colorClass: 'text-church-blue-400' },
+            { label: 'Buscentas', value: buscentasCount, colorClass: 'text-church-magenta-400' },
+            { label: 'Cells', value: cellsCount, colorClass: 'text-church-coral-400' }
+        ];
 
         const assignedUnitIds = new Set(assignments?.map(a => a.unit_id) || [])
         const cellsWithLeaders = cells.filter(c => assignedUnitIds.has(c.id)).length
         const uniquePersonIds = new Set(assignments?.map(a => a.person_id) || [])
         const uniqueAssigned = uniquePersonIds.size
 
+        let attendanceQuery = supabase.from('attendance_analytics_view').select('session_date, total_present, total_marked, first_timers_count')
+        if (unitIdsArray) attendanceQuery = attendanceQuery.in('unit_id', unitIdsArray)
+        const { data: attendanceData } = await attendanceQuery
+
+        let attendanceRate = 0;
+        let attendanceTrend = 0;
+        let firstTimers = 0;
+
+        if (attendanceData && attendanceData.length > 0) {
+            const dateMap = {};
+            attendanceData.forEach(row => {
+                if (!dateMap[row.session_date]) {
+                    dateMap[row.session_date] = { date: row.session_date, present: 0, marked: 0, firstTimers: 0 };
+                }
+                dateMap[row.session_date].present += row.total_present || 0;
+                dateMap[row.session_date].marked += row.total_marked || 0;
+                dateMap[row.session_date].firstTimers += row.first_timers_count || 0;
+            });
+            const sortedDates = Object.values(dateMap).sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            if (sortedDates.length > 0) {
+                const latest = sortedDates[0];
+                attendanceRate = latest.marked > 0 ? Math.round((latest.present / latest.marked) * 100) : 0;
+                firstTimers = latest.firstTimers;
+
+                if (sortedDates.length > 1) {
+                    const prev = sortedDates[1];
+                    const prevRate = prev.marked > 0 ? Math.round((prev.present / prev.marked) * 100) : 0;
+                    attendanceTrend = attendanceRate - prevRate;
+                }
+            }
+        }
+
         setStats({ 
           members: memberCount || 0, 
+          membersBreakdown,
           activeCells: cellsWithLeaders,
           assigned: uniqueAssigned,
           totalUnits,
-          unitBreakdown
+          unitBreakdown,
+          attendanceRate,
+          attendanceTrend,
+          firstTimers
         })
       } catch (err) {
         console.error("Failed to fetch dashboard stats:", err)
@@ -150,38 +242,60 @@ export default function DashboardPage() {
         variants={stagger} 
         initial="hidden" 
         animate="show" 
-        className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4"
+        className="grid grid-cols-2 gap-3 md:gap-4"
       >
         <motion.div variants={fadeUp}>
           <StatCard 
-            label="My Members" 
+            label="Total Members" 
             value={stats.members} 
-            icon={<Users size={20} />} 
+            icon={<Users size={18} />} 
             color="blue" 
-            subText="Registered in church"
+            details={stats.membersBreakdown}
+            onClick={handleFocusMembers}
           />
         </motion.div>
         <motion.div variants={fadeUp}>
           <StatCard 
             label="Total Units" 
             value={stats.totalUnits} 
-            icon={<CalendarCheck size={20} />} 
+            icon={<CalendarCheck size={18} />} 
             color="amber" 
-            subText={stats.unitBreakdown || "Across all levels"}
+            details={stats.unitBreakdown}
+            onClick={() => navigate('/mindmap')}
+          />
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <StatCard 
+            label="Attendance Rate" 
+            value={stats.attendanceRate} 
+            icon={<Clock size={18} />} 
+            color="emerald" 
+            subText="Current marked sessions"
+            trend={stats.attendanceTrend}
+            onClick={() => navigate('/attendance?tab=analytics')}
+          />
+        </motion.div>
+        <motion.div variants={fadeUp}>
+          <StatCard 
+            label="First Timers" 
+            value={stats.firstTimers} 
+            icon={<Zap size={18} />} 
+            color="violet" 
+            subText="From most recent session"
+            onClick={() => navigate('/attendance?focus=first_timers')}
           />
         </motion.div>
       </motion.div>
 
       {/* ── Hierarchy Tree Card ── */}
       <motion.div 
+        ref={treeContainerRef}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className="bg-slate-900/50 border border-slate-700/50 rounded-2xl p-1 shadow-xl overflow-hidden"
+        className={`bg-slate-900/50 border rounded-2xl p-4 md:p-6 shadow-xl overflow-hidden transition-colors duration-1000 ${highlightTree ? 'border-church-blue-500/50 bg-church-blue-500/10 ring-2 ring-church-blue-500/50' : 'border-slate-700/50'}`}
       >
-        <div className="bg-slate-950/40 p-1 rounded-xl">
-            <HierarchyTree />
-        </div>
+        <HierarchyTree focusTrigger={focusMembersTrigger} />
       </motion.div>
         </div>
       // </IonContent>
@@ -189,7 +303,7 @@ export default function DashboardPage() {
   )
 }
 
-function StatCard({ label, value, icon, color, subText }) {
+function StatCard({ label, value, icon, color, subText, details, onClick, trend }) {
   const animatedValue = useAnimatedCounter(value)
 
   const iconBg = {
@@ -201,17 +315,43 @@ function StatCard({ label, value, icon, color, subText }) {
   }
 
   return (
-    <div className="p-4 rounded-xl bg-slate-800/50 flex flex-col gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20 cursor-default group">
-      <div className="flex items-center justify-between">
-        <div className={`p-2 rounded-lg ${iconBg[color]} transition-transform duration-300 group-hover:scale-110`}>
+    <div 
+      onClick={onClick}
+      className={`p-3 md:p-4 rounded-xl bg-slate-800/50 flex flex-col gap-2 md:gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20 group h-full ${onClick ? 'cursor-pointer hover:bg-slate-800/70' : 'cursor-default'}`}
+    >
+      <div className="flex items-start justify-between">
+        <div className={`p-1.5 md:p-2 rounded-lg ${iconBg[color]} transition-transform duration-300 group-hover:scale-110 shrink-0`}>
            {icon}
         </div>
-        <span className="text-2xl font-black text-white tabular-nums">{animatedValue}</span>
+        <div className="flex flex-col items-end">
+            <span className="text-xl md:text-2xl font-black text-white tabular-nums leading-none">
+                {animatedValue}{trend !== undefined ? '%' : ''}
+            </span>
+            {trend !== undefined && (
+                <span className={`text-[10px] md:text-xs font-bold mt-1 ${trend > 0 ? 'text-emerald-400' : trend < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+                    {trend > 0 ? '+' : ''}{trend}%
+                </span>
+            )}
+        </div>
       </div>
       
-      <div>
-        <p className="text-xs font-semibold text-slate-300">{label}</p>
-        <p className="text-[10px] text-slate-500 mt-0.5">{subText}</p>
+      <div className="mt-auto pt-2">
+        <p className="text-[11px] md:text-xs font-semibold text-slate-300 truncate">{label}</p>
+        
+        {subText && (
+            <p className="text-[9px] md:text-[10px] text-slate-500 mt-0.5 leading-tight">{subText}</p>
+        )}
+        
+        {details && details.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-1.5 mt-2 text-[11px] md:text-[12px] text-slate-500">
+                {details.map((d, i) => (
+                    <span key={i} className="flex items-center">
+                        <span className="tabular-nums">{d.value}</span>&nbsp;<span>{d.label}</span>
+                        {i < details.length - 1 && <span className="mx-1.5 text-slate-600">·</span>}
+                    </span>
+                ))}
+            </div>
+        )}
       </div>
     </div>
   )

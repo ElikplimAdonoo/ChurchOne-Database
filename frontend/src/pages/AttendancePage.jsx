@@ -1,5 +1,6 @@
 import { IonPage, IonContent } from '@ionic/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Users, BarChart3, CheckCircle2, AlertCircle, LogOut } from 'lucide-react';
 import AttendanceMarking from '../components/attendance/AttendanceMarking';
@@ -7,8 +8,30 @@ import AttendanceAnalytics from '../components/attendance/AttendanceAnalytics';
 import UnitScopeSelector from '../components/attendance/UnitScopeSelector';
 
 export default function AttendancePage() {
+  const location = useLocation();
   const { user, userRole, signOut } = useAuth();
   const [activeTab, setActiveTab] = useState('marking');
+  
+  useEffect(() => {
+      const params = new URLSearchParams(location.search);
+      if (params.get('tab') === 'analytics') {
+          setActiveTab('analytics');
+      } else if (params.get('focus') === 'first_timers') {
+          setActiveTab('marking');
+          // Wait slightly longer to ensure the sub-components are fully rendered and members loaded
+          setTimeout(() => {
+              const el = document.getElementById('first-timers-section');
+              if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  // Add a brief highlight flash
+                  el.classList.add('ring-2', 'ring-church-blue-500', 'bg-church-blue-500/10', 'transition-all', 'duration-500');
+                  setTimeout(() => {
+                      el.classList.remove('ring-2', 'ring-church-blue-500', 'bg-church-blue-500/10');
+                  }, 1500);
+              }
+          }, 800);
+      }
+  }, [location.search]);
   
   // Drill-down scope selected by the user (defaults to their own unit, updated by the selector)
   const [scope, setScope] = useState({ 
@@ -45,11 +68,11 @@ export default function AttendancePage() {
   return (
     // <IonPage>
         // <IonContent className="ion-padding-bottom bg-gradient-dark">
-            <div className="bg-gradient-dark min-h-[calc(100vh-4rem)] text-gray-100 p-4 md:p-8 space-y-8 relative overflow-hidden">
+            <div className="bg-gradient-dark min-h-[calc(100vh-4rem)] text-gray-100 px-4 pt-2 pb-8 md:px-8 md:pt-4 md:pb-8 space-y-4 relative overflow-hidden">
       {/* Decorative Dot Pattern */}
       <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none"></div>
 
-      <div className="relative z-10 space-y-8">
+      <div className="relative z-10 space-y-5">
       
       {/* Header & User Info */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6">
@@ -73,13 +96,6 @@ export default function AttendancePage() {
                     <img src={userRole.photoUrl} alt={userRole.fullName} className="w-full h-full object-cover" />
                 </div>
             )}
-            <button 
-                onClick={signOut}
-                className="px-4 py-2 bg-black/50 hover:bg-red-900/50 hover:text-red-300 text-gray-300 rounded-xl text-sm font-bold transition-all duration-200 active:scale-95 border-2 border-gray-700 hover:border-red-500/50 flex items-center gap-2"
-            >
-                <LogOut size={16} />
-                <span className="hidden md:inline">Log Out</span>
-            </button>
         </div>
       </div>
 

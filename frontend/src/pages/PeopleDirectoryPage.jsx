@@ -1,7 +1,8 @@
-import { IonPage, IonContent } from '@ionic/react';
+import { IonPage, IonContent, useIonToast } from '@ionic/react';
+import { useLocation } from 'react-router-dom';
 import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
-import { fetchPeople, createPerson, updatePerson, deactivatePerson, reactivatePerson } from '../services/peopleService';
+import { fetchPeople, createPerson, updatePerson, deactivatePerson, reactivatePerson, setPendingPerson } from '../services/peopleService';
 import { fetchHierarchyData, fetchPositions } from '../services/hierarchyService';
 import { Search, ArrowUpDown, User, Plus, Edit, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -11,7 +12,9 @@ import StatusDropdown from '../components/ui/StatusDropdown';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function PeopleDirectory() {
+    const location = useLocation();
     const { user, userRole, getManagedUnits } = useAuth();
+    const [presentToast] = useIonToast();
     const [people, setPeople] = useState([]);
     const [managedUnitIds, setManagedUnitIds] = useState(new Set());
     const [isAllManaged, setIsAllManaged] = useState(false);
@@ -75,6 +78,14 @@ export default function PeopleDirectory() {
         }).finally(() => setLoading(false));
     }, [userRole, getManagedUnits]);
 
+    // Handle incoming URL parameters
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('filter') === 'first_timers') {
+            setSearchTerm('First Timer');
+        }
+    }, [location.search]);
+
     // Base filtered people (RBAC applied)
     const basePeople = useMemo(() => {
         return people.filter(p => {
@@ -106,7 +117,8 @@ export default function PeopleDirectory() {
     const filteredPeople = useMemo(() => {
         let filtered = basePeople.filter(p => {
             const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                p.unit.toLowerCase().includes(searchTerm.toLowerCase());
+                p.unit.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (p.membership_state || '').toLowerCase().includes(searchTerm.toLowerCase());
             const matchesRole = filterRole === 'All' || p.role === filterRole;
             const matchesStatus = filterStatus === 'All' || 
                 (p.status || 'Active').toLowerCase() === filterStatus.toLowerCase();
@@ -151,6 +163,8 @@ export default function PeopleDirectory() {
                 await deactivatePerson(person.id);
             } else if (newStatus === 'Active') {
                 await reactivatePerson(person.id);
+            } else if (newStatus === 'Pending') {
+                await setPendingPerson(person.id);
             }
             // Update local state
             setPeople(prev => prev.map(p =>
@@ -167,7 +181,8 @@ export default function PeopleDirectory() {
     const handleActionSubmit = async (data) => {
         try {
             if (modalMode === 'add') {
-                const newPerson = await createPerson(data);
+                const response = await createPerson(data);
+                const newPerson = response.person;
                 setPeople(prev => [...prev, {
                     ...newPerson,
                     name: newPerson.full_name,
@@ -175,6 +190,10 @@ export default function PeopleDirectory() {
                     unit: units.find(u => u.id === data.unitId)?.name || 'Unassigned',
                     status: 'Active'
                 }]);
+                if (response.login) {
+                    // Show credentials so the admin can give them to the user
+                    alert(`Person successfully added!\n\nLogin Email: ${response.login.email}\nPassword: ${response.login.password}\n\nPlease save these credentials!`);
+                }
             } else {
                 const updated = await updatePerson(selectedPerson.id, data);
                 setPeople(prev => prev.map(p => p.id === selectedPerson.id ? { 
@@ -185,6 +204,12 @@ export default function PeopleDirectory() {
                 } : p));
             }
             setIsActionModalOpen(false);
+            presentToast({
+                message: modalMode === 'add' ? 'Person successfully added.' : 'Changes saved.',
+                duration: 2000,
+                position: 'bottom',
+                color: 'dark',
+            });
         } catch (err) {
             console.error("Failed to save:", err);
             alert("Failed to save changes");
@@ -228,12 +253,12 @@ export default function PeopleDirectory() {
             </div>
 
             {/* Status Filter Tabs */}
-            <div className="flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-white/5 w-fit">
+            <div className="flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-white/5 w-full md:w-fit overflow-x-auto hide-scrollbar">
                 {['All', 'Active', 'Inactive', 'Pending'].map(status => (
                     <button
                         key={status}
                         onClick={() => setFilterStatus(status)}
-                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-2 ${
+                        className={`whitespace-nowrap shrink-0 px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-2 ${
                             filterStatus === status
                                 ? 'bg-gradient-church text-white shadow-lg'
                                 : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -252,7 +277,7 @@ export default function PeopleDirectory() {
             </div>
 
             {/* Premium Table / Card List */}
-            <div className="bg-slate-900/40 rounded-3xl border border-white/5 overflow-hidden shadow-2xl backdrop-blur-3xl">
+            <div className="w-full">
                 <div className="hidden md:block overflow-x-auto">
                     <table className="w-full text-left text-sm text-slate-300">
                         <thead className="bg-slate-950/50 text-[10px] text-slate-500 uppercase tracking-[0.2em] font-black border-b border-white/5">
@@ -302,14 +327,16 @@ export default function PeopleDirectory() {
                                                 <div className="font-black text-slate-100 text-base">{person.name}</div>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     {/* Membership State Premium Badge */}
-                                                    <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 border shadow-sm ${
-                                                        person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
-                                                        person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                        person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
-                                                        'bg-slate-800 text-slate-400 border-slate-700'
-                                                    }`}>
-                                                        {person.membership_state}
-                                                    </div>
+                                                    {['First Timer', 'Brethren', 'Member', 'Unattended'].includes(person.membership_state) && (
+                                                        <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 border shadow-sm ${
+                                                            person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
+                                                            person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                            person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
+                                                            'bg-slate-800 text-slate-400 border-slate-700'
+                                                        }`}>
+                                                            {person.membership_state}
+                                                        </div>
+                                                    )}
 
                                                     {person.is_placeholder ? (
                                                         <div className="text-[10px] text-amber-500 font-bold uppercase tracking-wider flex items-center gap-1.5 ml-1">
@@ -377,14 +404,16 @@ export default function PeopleDirectory() {
                                         <div className="font-extrabold text-slate-100 text-base truncate leading-tight" title={person.name}>{person.name}</div>
                                         {/* Mobile Membership State Premium Badge */}
                                         <div className="my-0.5">
-                                            <div className={`px-2 py-[2px] rounded-md text-[8px] font-black uppercase tracking-wider inline-flex items-center gap-1 border shadow-inner ${
-                                                person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
-                                                person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
-                                                'bg-slate-800 text-slate-400 border-slate-700'
-                                            }`}>
-                                                {person.membership_state}
-                                            </div>
+                                            {['First Timer', 'Brethren', 'Member', 'Unattended'].includes(person.membership_state) && (
+                                                <div className={`px-2 py-[2px] rounded-md text-[8px] font-black uppercase tracking-wider inline-flex items-center gap-1 border shadow-inner ${
+                                                    person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
+                                                    person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                    person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
+                                                    'bg-slate-800 text-slate-400 border-slate-700'
+                                                }`}>
+                                                    {person.membership_state}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex flex-col gap-0.5 items-start mt-0.5">
                                             <div className="text-[9px] font-black uppercase text-church-blue-400 truncate max-w-full tracking-widest">

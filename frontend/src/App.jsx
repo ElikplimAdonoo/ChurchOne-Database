@@ -10,6 +10,7 @@ import DashboardPage from './pages/DashboardPage'
 import PeopleDirectoryPage from './pages/PeopleDirectoryPage'
 import HierarchyMindMapPage from './pages/HierarchyMindMapPage'
 import AttendancePage from './pages/AttendancePage'
+import ProfilePage from './pages/ProfilePage'
 
 function App() {
   return (
@@ -30,6 +31,7 @@ function App() {
                 <Route path="directory" element={<PeopleDirectoryPage />} />
                 <Route path="mindmap" element={<HierarchyMindMapPage />} />
                 <Route path="attendance" element={<AttendancePage />} />
+                <Route path="profile" element={<ProfilePage />} />
               </Route>
             </Route>
           </Routes>

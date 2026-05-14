@@ -1,11 +1,11 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react'
 import { NavLink, useLocation, Outlet } from 'react-router-dom'
-import { Home, Users, List, CheckCircle2 } from 'lucide-react'
+import { Home, Users, List, CheckCircle2, User } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useSwipeNavigation } from '../../hooks/useSwipeNavigation'
 import InstallBanner from '../InstallBanner'
 
-const ROUTES = ['/', '/directory', '/mindmap', '/attendance']
+const ROUTES = ['/', '/directory', '/attendance', '/profile']
 
 export default function MainLayout() {
   const location = useLocation()
@@ -53,8 +53,8 @@ export default function MainLayout() {
             <div className="flex items-center gap-1 bg-black/40 p-1.5 rounded-2xl border border-white/5 shadow-inner">
               <NavItem to="/" icon={<Home size={18} />} label="Home" />
               <NavItem to="/directory" icon={<Users size={18} />} label="Directory" />
-              <NavItem to="/mindmap" icon={<List size={18} />} label="Map" />
               <NavItem to="/attendance" icon={<CheckCircle2 size={18} />} label="Attendance" />
+              <NavItem to="/profile" icon={<User size={18} />} label="Profile" />
             </div>
           </div>
         </nav>
@@ -102,8 +102,8 @@ export default function MainLayout() {
           <div className="bg-black/50 backdrop-blur-xl border-t border-white/10 px-4 pt-2 pb-4 flex items-center justify-around shadow-2xl">
             <TabItem to="/" icon={<Home size={22} />} />
             <TabItem to="/directory" icon={<Users size={22} />} />
-            <TabItem to="/mindmap" icon={<List size={22} />} />
             <TabItem to="/attendance" icon={<CheckCircle2 size={22} />} />
+            <TabItem to="/profile" icon={<User size={22} />} />
           </div>
         </nav>
         {/* PWA Install Banner */}

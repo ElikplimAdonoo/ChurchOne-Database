@@ -122,7 +122,6 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
             <div className="flex items-center gap-2 mb-3">
                 <LayoutGrid size={16} className="text-church-blue-400" />
                 <h3 className="text-sm font-bold text-slate-200">Scope Selection</h3>
-                <span className="text-xs text-slate-500 font-medium ml-2">Drill down into your structure to view analytics or mark attendance.</span>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
