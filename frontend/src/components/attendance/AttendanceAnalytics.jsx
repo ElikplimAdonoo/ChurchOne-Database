@@ -2,14 +2,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
 import {
   AreaChart, Area,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer,
 } from 'recharts';
-import { Loader2, TrendingUp, Users, Calendar, UserX, Activity, UserPlus, Flame, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Users, Calendar, UserX, Activity, UserPlus, Flame, ArrowDownRight, ArrowUpRight, ChevronDown } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAnimatedCounter } from '../../hooks/useAnimatedCounter';
 
-// ─── Stagger Animations ─────────────────────────────────────────────────────
+// ─── Animation Variants ─────────────────────────────────────────────────────
 const stagger = {
   hidden: {},
   show: { transition: { staggerChildren: 0.08 } }
@@ -19,7 +19,7 @@ const fadeUp = {
   show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } }
 };
 
-// ─── Enhanced Tooltip ────────────────────────────────────────────────────────
+// ─── Custom Chart Tooltip ────────────────────────────────────────────────────
 function CustomTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   const present = payload.find(p => p.name === 'Present')?.value || 0;
@@ -40,100 +40,104 @@ function CustomTooltip({ active, payload, label }) {
   );
 }
 
-// ─── Hero KPI Card (Attendance Rate) ─────────────────────────────────────────
-function HeroKpiCard({ rate, trend, trendValue }) {
-  const animatedRate = useAnimatedCounter(rate, 1400, true);
-  
-  // Conditional color tinting based on rate
-  const tint = rate >= 80 
-    ? 'bg-emerald-500/5 border-emerald-500/20' 
-    : rate >= 70 
-      ? 'bg-amber-500/5 border-amber-500/20' 
-      : 'bg-red-500/5 border-red-500/20';
-  
-  const rateColor = rate >= 80 
-    ? 'text-emerald-400' 
-    : rate >= 70 
-      ? 'text-amber-400' 
-      : 'text-red-400';
+// ─── Sparkline Mini Chart ────────────────────────────────────────────────────
+function Sparkline({ data, color = '#ef4444' }) {
+  if (!data || data.length < 2) return null;
+  const sparkData = data.slice(-8).map(d => ({
+    v: d.total > 0 ? Math.round((d.present / d.total) * 100) : 0
+  }));
+  return (
+    <div className="w-24 h-12 opacity-70 shrink-0">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={sparkData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+          <defs>
+            <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor={color} stopOpacity={0.4} />
+              <stop offset="95%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Area type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} fill="url(#sparkGrad)" dot={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
+// ─── Hero KPI Card (Attendance Rate) ─────────────────────────────────────────
+function HeroKpiCard({ rate, trend, trendValue, history }) {
+  const animatedRate = useAnimatedCounter(rate, 1400, true);
+  const rateColor = rate >= 80 ? 'text-emerald-400' : rate >= 70 ? 'text-amber-400' : 'text-red-400';
+  const iconBorder = rate >= 80 ? 'border-emerald-500/40' : rate >= 70 ? 'border-amber-500/40' : 'border-red-500/40';
+  const iconText = rate >= 80 ? 'text-emerald-400' : rate >= 70 ? 'text-amber-400' : 'text-red-400';
+  const sparkColor = rate >= 80 ? '#10b981' : rate >= 70 ? '#f59e0b' : '#ef4444';
   const trendColor = trend === 'up' ? 'text-emerald-400' : 'text-red-400';
   const TrendIcon = trend === 'up' ? ArrowUpRight : ArrowDownRight;
 
   return (
-    <motion.div
-      variants={fadeUp}
-      className={`col-span-2 p-6 rounded-2xl shadow-xl backdrop-blur-md border transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20 ${tint}`}
-    >
-      <div className="flex items-center gap-2.5 text-slate-400 mb-3">
-        <TrendingUp size={16} className="shrink-0" />
-        <span className="text-[10px] font-black uppercase tracking-[0.15em]">Attendance Rate</span>
-      </div>
-      <div className="flex items-baseline gap-3">
-        <span className={`text-5xl md:text-6xl font-black tabular-nums tracking-tight ${rateColor}`}>
-          {animatedRate}
-        </span>
-        {trendValue != null && (
-          <div className={`flex items-center gap-0.5 text-xs font-bold ${trendColor}`}>
-            <TrendIcon size={14} />
-            <span>{trend === 'up' ? '+' : ''}{trendValue}%</span>
-            <span className="text-slate-500 ml-1">vs last</span>
+    <motion.div variants={fadeUp} className="p-4 rounded-2xl bg-[#0d1525] border border-slate-700/50">
+      <div className="flex items-center gap-3">
+        {/* Circular icon */}
+        <div className={`w-11 h-11 rounded-full border-2 ${iconBorder} flex items-center justify-center shrink-0`}>
+          <TrendingUp size={20} className={iconText} />
+        </div>
+        {/* Rate info */}
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-400 mb-0.5">Attendance Rate</p>
+          <div className="flex items-baseline gap-3">
+            <span className={`text-5xl font-black tabular-nums tracking-tight ${rateColor}`}>{animatedRate}</span>
+            {trendValue != null && (
+              <div className="flex flex-col">
+                <div className={`flex items-center gap-0.5 text-xs font-bold ${trendColor}`}>
+                  <TrendIcon size={14} />
+                  <span>{trendValue}%</span>
+                </div>
+                <span className="text-[10px] text-slate-500">vs last</span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </motion.div>
   );
 }
 
-// ─── Standard KPI Card ───────────────────────────────────────────────────────
-function KpiCard({ icon: Icon, label, value, sub, iconColor, bgColor, isSpecial }) {
+// ─── Stats Card (Present / Absent) ───────────────────────────────────────────
+function StatsDualCard({ icon: Icon, label, value, sub, iconColor, iconBg, labelColor }) {
   const animatedValue = useAnimatedCounter(typeof value === 'number' ? value : 0);
   const displayValue = typeof value === 'number' ? animatedValue : value;
-
   return (
-    <motion.div
-      variants={fadeUp}
-      className={`p-5 px-6 rounded-2xl shadow-xl backdrop-blur-md flex flex-col gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20 ${bgColor} ${isSpecial ? 'relative overflow-hidden' : ''}`}
-    >
-      {/* Subtle glow for Souls Won */}
-      {isSpecial && value > 0 && (
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 via-transparent to-transparent pointer-events-none" />
-      )}
-      <div className={`flex items-center gap-2.5 ${iconColor} relative z-10`}>
-        <Icon size={18} className={`shrink-0 ${isSpecial && value > 0 ? 'animate-pulse' : ''}`} />
-        <span className="text-[10px] font-black uppercase tracking-[0.15em] opacity-80">{label}</span>
+    <motion.div variants={fadeUp} className="p-3 rounded-2xl bg-[#0d1525] border border-slate-700/50 w-full">
+      <div className="flex items-center gap-2 mb-1">
+        <div className={`w-8 h-8 rounded-full ${iconBg} flex items-center justify-center shrink-0`}>
+          <Icon size={16} className={iconColor} />
+        </div>
+        <span className={`text-[9px] font-black uppercase tracking-[0.15em] ${labelColor}`}>{label}</span>
       </div>
-      <div className="text-3xl font-black text-white tracking-tight flex items-baseline gap-2 relative z-10 tabular-nums">
+      <div className="text-2xl font-black text-white tracking-tight flex items-baseline gap-1.5 tabular-nums pl-0.5">
         {displayValue}
-        {sub && <span className={`text-xs font-bold opacity-60 ${iconColor}`}>{sub}</span>}
+        {sub && <span className={`text-xs font-bold opacity-60 ${labelColor}`}>{sub}</span>}
       </div>
     </motion.div>
   );
 }
 
-// ─── Time Filter Pills ───────────────────────────────────────────────────────
-function TimeFilterPills({ active, onChange }) {
-  const filters = [
-    { key: '7', label: 'Last 7 Days' },
-    { key: '30', label: 'Last 30 Days' },
-    { key: 'all', label: 'All Time' },
-  ];
+// ─── Small Stats Card (Sessions / First Timers / Souls Won) ──────────────────
+function StatsSmallCard({ icon: Icon, label, value, sub, iconColor, iconBg, labelColor }) {
+  const animatedValue = useAnimatedCounter(typeof value === 'number' ? value : 0);
+  const displayValue = typeof value === 'number' ? animatedValue : value;
   return (
-    <div className="flex gap-1.5">
-      {filters.map(f => (
-        <button
-          key={f.key}
-          onClick={() => onChange(f.key)}
-          className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all duration-200 active:scale-95 ${
-            active === f.key
-              ? 'bg-church-blue-500/20 text-church-blue-400 border border-church-blue-500/30'
-              : 'text-slate-500 hover:text-slate-300 border border-transparent hover:border-slate-700'
-          }`}
-        >
-          {f.label}
-        </button>
-      ))}
-    </div>
+    <motion.div variants={fadeUp} className="p-3 rounded-2xl bg-[#0d1525] border border-slate-700/50 w-full">
+      <div className="flex items-center gap-2 mb-1.5">
+        <div className={`w-7 h-7 rounded-full ${iconBg} flex items-center justify-center shrink-0`}>
+          <Icon size={14} className={iconColor} />
+        </div>
+        <span className={`text-[7px] font-black uppercase tracking-[0.12em] ${labelColor}`}>{label}</span>
+      </div>
+      <div className="flex items-baseline gap-1.5 pl-0.5">
+        <span className="text-lg font-black text-white tracking-tight tabular-nums">{displayValue}</span>
+        {sub && <span className={`text-[8px] font-bold opacity-60 ${labelColor}`}>{sub}</span>}
+      </div>
+    </motion.div>
   );
 }
 
@@ -182,7 +186,6 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
           .order('session_date', { ascending: true });
 
         if (sessionData) {
-          // Build per-date history
           const historyMap = {};
           sessionData.forEach((s) => {
             const date = s.session_date;
@@ -196,10 +199,8 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
 
           const sortedHistory = Object.values(historyMap).sort((a, b) => new Date(a.date) - new Date(b.date));
 
-          // Compute trend (compare last 2 session dates)
           let trend = null;
           let trendValue = null;
-          
           let latestRate = 0;
           let latestTotal = 0;
           let latestPresent = 0;
@@ -215,25 +216,20 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
             latestFirstTimers = last.firstTimers;
             latestSoulsWon = last.soulsWon;
             latestRate = latestTotal > 0 ? Math.round((latestPresent / latestTotal) * 100) : 0;
-            
+
             if (sortedHistory.length >= 2) {
-                const prev = sortedHistory[sortedHistory.length - 2];
-                const prevRate = prev.total > 0 ? Math.round((prev.present / prev.total) * 100) : 0;
-                const diff = latestRate - prevRate;
-                trend = diff >= 0 ? 'up' : 'down';
-                trendValue = diff;
+              const prev = sortedHistory[sortedHistory.length - 2];
+              const prevRate = prev.total > 0 ? Math.round((prev.present / prev.total) * 100) : 0;
+              const diff = latestRate - prevRate;
+              trend = diff >= 0 ? 'up' : 'down';
+              trendValue = diff;
             }
           }
 
-          setStats({ 
-              rate: latestRate, 
-              total: latestTotal, 
-              present: latestPresent, 
-              absent: latestAbsent, 
-              firstTimers: latestFirstTimers, 
-              soulsWon: latestSoulsWon, 
-              trend, 
-              trendValue 
+          setStats({
+            rate: latestRate, total: latestTotal, present: latestPresent,
+            absent: latestAbsent, firstTimers: latestFirstTimers,
+            soulsWon: latestSoulsWon, trend, trendValue
           });
           setHistory(sortedHistory);
         }
@@ -261,17 +257,13 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
     if (filteredHistory.length < 2) return null;
     const recentHalf = filteredHistory.slice(Math.floor(filteredHistory.length / 2));
     const olderHalf = filteredHistory.slice(0, Math.floor(filteredHistory.length / 2));
-    
     const recentAvg = recentHalf.reduce((a, h) => a + (h.total > 0 ? (h.present / h.total) * 100 : 0), 0) / recentHalf.length;
     const olderAvg = olderHalf.reduce((a, h) => a + (h.total > 0 ? (h.present / h.total) * 100 : 0), 0) / olderHalf.length;
     const diff = Math.round(recentAvg - olderAvg);
-    
     if (Math.abs(diff) < 2) return { text: 'Attendance has been stable across this period.', type: 'neutral' };
     if (diff > 0) return { text: `Attendance improved by ~${diff}% in recent sessions.`, type: 'up' };
     return { text: `Attendance dropped by ~${Math.abs(diff)}% in recent sessions.`, type: 'down' };
   }, [filteredHistory]);
-
-  const PIE_COLORS = ['#0066FF', '#FF6B5A'];
 
   // ── Loading ──
   if (loading) {
@@ -297,193 +289,165 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
 
   // ── Main View ──
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
 
-      {/* ── KPI Cards Row 1: Hero Attendance Rate + Secondary Stats ── */}
-      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* ── Row 1: Hero Attendance Rate ── */}
+      <motion.div variants={stagger} initial="hidden" animate="show">
         <HeroKpiCard
           rate={stats.rate}
           trend={stats.trend}
           trendValue={stats.trendValue}
+          history={history}
         />
-        <KpiCard
+      </motion.div>
+
+      {/* ── Row 2: Present / Absent ── */}
+      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
+        <StatsDualCard
           icon={Users}
           label="Total Present"
           value={stats.present}
           sub={`/ ${stats.total}`}
-          iconColor="text-emerald-400"
-          bgColor="bg-emerald-500/5"
+          iconColor="text-emerald-300"
+          iconBg="bg-emerald-500/20 border border-emerald-500/30"
+          labelColor="text-emerald-400"
         />
-        <KpiCard
+        <StatsDualCard
           icon={UserX}
           label="Total Absent"
           value={stats.absent}
           sub={`/ ${stats.total}`}
-          iconColor="text-red-400"
-          bgColor="bg-red-500/5"
+          iconColor="text-red-300"
+          iconBg="bg-red-500/20 border border-red-500/30"
+          labelColor="text-red-400"
         />
       </motion.div>
 
-      {/* ── KPI Cards Row 2: Growth metrics (de-emphasized) ── */}
-      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-3 gap-4">
-        <KpiCard
+      {/* ── Row 3: Sessions / First Timers / Souls Won ── */}
+      <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-3 gap-3">
+        <StatsSmallCard
           icon={Calendar}
           label="Sessions"
           value={history.length}
           sub="Recorded"
-          iconColor="text-slate-400"
-          bgColor="bg-slate-800/40"
+          iconColor="text-blue-300"
+          iconBg="bg-blue-500/15 border border-blue-500/25"
+          labelColor="text-blue-400"
         />
-        <KpiCard
+        <StatsSmallCard
           icon={UserPlus}
           label="First Timers"
           value={stats.firstTimers ?? 0}
           sub="Latest"
-          iconColor="text-emerald-400"
-          bgColor="bg-slate-800/40"
+          iconColor="text-purple-300"
+          iconBg="bg-purple-500/15 border border-purple-500/25"
+          labelColor="text-purple-400"
         />
-        <KpiCard
+        <StatsSmallCard
           icon={Flame}
           label="Souls Won"
           value={stats.soulsWon ?? 0}
           sub="Latest"
-          iconColor="text-amber-400"
-          bgColor="bg-amber-500/5"
-          isSpecial={true}
+          iconColor="text-amber-300"
+          iconBg="bg-amber-500/15 border border-amber-500/25"
+          labelColor="text-amber-400"
         />
       </motion.div>
 
-      {/* ── Charts Row ── */}
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }} 
-        animate={{ opacity: 1, y: 0 }} 
+      {/* ── Row 4: Attendance Trend Chart ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="grid grid-cols-1 lg:grid-cols-5 gap-6"
+        className="bg-[#0d1525] p-5 rounded-2xl border border-slate-700/50"
       >
-
-        {/* Trend Area Chart (wider) */}
-        <div className="lg:col-span-3 bg-slate-900/80 p-6 rounded-2xl shadow-lg backdrop-blur-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <h3 className="text-base font-black text-white flex items-center gap-2">
-              <Activity size={20} className="text-church-blue-400" />
-              Attendance Trend
-            </h3>
-            <TimeFilterPills active={timeFilter} onChange={setTimeFilter} />
-          </div>
-
-          {/* Auto Insight */}
-          {insight && (
-            <div className={`text-[11px] font-semibold px-3 py-2 rounded-lg mb-4 ${
-              insight.type === 'up'   ? 'bg-emerald-500/10 text-emerald-400' :
-              insight.type === 'down' ? 'bg-red-500/10 text-red-400' :
-                                        'bg-slate-800 text-slate-400'
-            }`}>
-              {insight.type === 'up' && '📈 '}{insight.type === 'down' && '📉 '}{insight.text}
-            </div>
-          )}
-
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={filteredHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gradPresent" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gradAbsent" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#FF6B5A" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#FF6B5A" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis
-                  dataKey="date"
-                  stroke="#475569"
-                  fontSize={11}
-                  tickFormatter={(val) => val.substring(5)}
-                  tick={{ fill: '#94a3b8' }}
-                />
-                <YAxis stroke="#475569" fontSize={11} tick={{ fill: '#94a3b8' }} />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend
-                  wrapperStyle={{ fontSize: '12px', color: '#94a3b8', paddingTop: '12px' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="present"
-                  name="Present"
-                  stroke="#10b981"
-                  strokeWidth={2.5}
-                  fill="url(#gradPresent)"
-                  dot={{ r: 3, fill: '#10b981', strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: '#10b981' }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="absent"
-                  name="Absent"
-                  stroke="#FF6B5A"
-                  strokeWidth={2.5}
-                  fill="url(#gradAbsent)"
-                  dot={{ r: 3, fill: '#FF6B5A', strokeWidth: 0 }}
-                  activeDot={{ r: 5, fill: '#FF6B5A' }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Distribution Donut Chart (narrower) */}
-        <div className="lg:col-span-2 bg-slate-900/80 p-6 rounded-2xl shadow-lg backdrop-blur-sm">
-          <h3 className="text-base font-black text-white mb-5 flex items-center gap-2">
-            <Users size={20} className="text-church-blue-400" />
-            Distribution
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-base font-black text-white flex items-center gap-2">
+            <Activity size={20} className="text-church-blue-400" />
+            Attendance Trend
           </h3>
-          <div className="h-56">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: 'Present', value: stats.present },
-                    { name: 'Absent', value: stats.absent },
-                  ]}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={62}
-                  outerRadius={86}
-                  paddingAngle={4}
-                  dataKey="value"
-                  strokeWidth={0}
-                >
-                  {PIE_COLORS.map((color, index) => (
-                    <Cell key={`cell-${index}`} fill={color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#0f172a',
-                    borderColor: '#334155',
-                    color: '#f8fafc',
-                    borderRadius: '0.75rem',
-                    fontSize: '13px',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          {/* Legend */}
-          <div className="flex justify-center gap-6 -mt-2">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-xs text-slate-300 font-semibold">Present ({stats.present})</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#FF6B5A' }} />
-              <span className="text-xs text-slate-300 font-semibold">Absent ({stats.absent})</span>
-            </div>
+          <div className="relative">
+            <select
+              value={timeFilter}
+              onChange={(e) => setTimeFilter(e.target.value)}
+              className="appearance-none bg-slate-800/80 border border-slate-600/50 text-slate-300 text-xs font-bold rounded-xl pl-3 pr-8 py-2 cursor-pointer focus:outline-none focus:ring-1 focus:ring-church-blue-500/50 transition-colors"
+            >
+              <option value="7">Last 7 Days</option>
+              <option value="30">Last 30 Days</option>
+              <option value="all">All Time</option>
+            </select>
+            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           </div>
         </div>
 
+        {/* Auto Insight */}
+        {insight && (
+          <div className={`flex items-center gap-2.5 text-[11px] font-semibold px-4 py-2.5 rounded-xl mb-5 ${
+            insight.type === 'up'   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+            insight.type === 'down' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                                      'bg-slate-800 text-slate-400 border border-slate-700/50'
+          }`}>
+            {insight.type === 'up' && <TrendingUp size={16} className="shrink-0" />}
+            {insight.type === 'down' && <TrendingDown size={16} className="shrink-0" />}
+            {insight.text}
+          </div>
+        )}
+
+        {/* Chart */}
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={filteredHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="gradPresent" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="gradAbsent" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="4 4" stroke="#1e293b" vertical={false} />
+              <XAxis
+                dataKey="date"
+                stroke="#334155"
+                fontSize={11}
+                tickFormatter={(val) => val.substring(5)}
+                tick={{ fill: '#64748b' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                stroke="#334155"
+                fontSize={11}
+                tick={{ fill: '#64748b' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Area
+                type="monotone"
+                dataKey="present"
+                name="Present"
+                stroke="#10b981"
+                strokeWidth={2.5}
+                fill="url(#gradPresent)"
+                dot={{ r: 4, fill: '#10b981', strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: '#10b981' }}
+              />
+              <Area
+                type="monotone"
+                dataKey="absent"
+                name="Absent"
+                stroke="#ef4444"
+                strokeWidth={2.5}
+                fill="url(#gradAbsent)"
+                dot={{ r: 4, fill: '#ef4444', strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: '#ef4444' }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </motion.div>
     </div>
   );

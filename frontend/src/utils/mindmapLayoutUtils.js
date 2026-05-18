@@ -2,17 +2,19 @@ import { tree, hierarchy } from 'd3-hierarchy';
 import { Position } from 'reactflow';
 
 export const baseStyle = {
-    background: '#1a1a1a',
-    color: '#e2e8f0',
-    borderTopWidth: '2px',
-    borderRightWidth: '2px',
-    borderBottomWidth: '2px',
-    borderLeftWidth: '2px',
+    background: 'rgba(15, 23, 42, 0.65)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    color: '#f8fafc',
+    borderTopWidth: '1px',
+    borderRightWidth: '1px',
+    borderBottomWidth: '1px',
+    borderLeftWidth: '1px',
     borderStyle: 'solid',
-    borderTopColor: '#0066FF',
-    borderRightColor: '#0066FF',
-    borderBottomColor: '#0066FF',
-    borderLeftColor: '#0066FF',
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    borderRightColor: 'rgba(255, 255, 255, 0.08)',
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: '16px',
     padding: '8px 16px',
     fontSize: '13px',
@@ -20,18 +22,18 @@ export const baseStyle = {
     width: 'auto',
     minWidth: '180px',
     textAlign: 'center',
-    boxShadow: '0 4px 12px -2px rgba(0, 102, 255, 0.25)',
-    transition: 'all 0.3s ease'
+    boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.4)',
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
 };
 
 export const getStyle = (type, isSelected, role) => {
     let style = { ...baseStyle };
     if (isSelected) {
-        style.boxShadow = '0 0 0 3px rgba(0, 102, 255, 0.6), 0 8px 16px -4px rgba(0, 0, 0, 0.5)';
-        style.borderTopColor = '#3385FF';
-        style.borderRightColor = '#3385FF';
-        style.borderBottomColor = '#3385FF';
-        style.borderLeftColor = '#3385FF';
+        style.boxShadow = '0 0 20px rgba(59, 130, 246, 0.35), 0 8px 32px -4px rgba(0, 0, 0, 0.6)';
+        style.borderTopColor = 'rgba(59, 130, 246, 0.4)';
+        style.borderRightColor = 'rgba(59, 130, 246, 0.4)';
+        style.borderBottomColor = 'rgba(59, 130, 246, 0.4)';
+        style.borderLeftColor = 'rgba(59, 130, 246, 0.4)';
         style.transform = 'scale(1.03)';
         style.zIndex = 100;
     }
@@ -41,34 +43,33 @@ export const getStyle = (type, isSelected, role) => {
     switch (type) {
         case 'ZONAL': return { 
             ...style, 
-            borderLeftColor: '#030253ff', 
+            borderLeftColor: '#6366f1', 
             borderLeftWidth: '4px', 
-            background: isSelected ? '#030253ff' : '#0a0a0a' 
+            background: isSelected ? 'rgba(99, 102, 241, 0.15)' : style.background 
         };
         case 'MC': return { 
             ...style, 
-            borderLeftColor: '#060488ff', 
+            borderLeftColor: '#3b82f6', 
             borderLeftWidth: '4px', 
-            background: isSelected ? '#060488ff' : '#111111' 
+            background: isSelected ? 'rgba(59, 130, 246, 0.15)' : style.background 
         };
         case 'BUSCENTA': return { 
             ...style, 
-            borderLeftColor: '#0705b1ff', 
+            borderLeftColor: '#ec4899', 
             borderLeftWidth: '4px', 
-            background: isSelected ? '#0705b1ff' : '#1a1a1a' 
+            background: isSelected ? 'rgba(236, 72, 153, 0.15)' : style.background 
         };
         case 'CELL': return { 
             ...style, 
-            borderLeftColor: '#0804faff', 
+            borderLeftColor: '#f97316', 
             borderLeftWidth: '4px', 
-            background: isSelected ? '#0804faff' : '#222222' 
+            background: isSelected ? 'rgba(249, 115, 22, 0.15)' : style.background 
         };
         case 'PERSON': return {
             ...style,
-            background: isSelected ? '#1e293b' : '#111827',
+            borderLeftColor: '#10b981',
             borderLeftWidth: '4px',
-            borderLeftColor: '#3b82f6',
-            color: '#e2e8f0',
+            background: isSelected ? 'rgba(16, 185, 129, 0.15)' : style.background 
         };
         default: return style;
     }
@@ -126,9 +127,10 @@ export const layoutTree = (flatData, collapsedIds, userRole = null) => {
 
     const root = hierarchy(hierarchyData);
 
+    // Tightened horizontal sibling layout from 120->80 and vertical depth layout from 420->260
     const treeLayout = tree()
-        .nodeSize([120, 420])
-        .separation((a, b) => (a.parent === b.parent ? 1.2 : 1.5));
+        .nodeSize([80, 260])
+        .separation((a, b) => (a.parent === b.parent ? 1.1 : 1.3));
 
     treeLayout(root);
 
@@ -160,7 +162,7 @@ export const layoutTree = (flatData, collapsedIds, userRole = null) => {
                 source: d.parent.data.id,
                 target: d.data.id,
                 type: 'default',
-                style: { stroke: '#475569', strokeWidth: 2 },
+                style: { stroke: '#475569', strokeWidth: 1.5 },
                 animated: false
             });
         }

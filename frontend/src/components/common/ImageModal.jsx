@@ -61,7 +61,7 @@ export default function ImageModal({ isOpen, onClose, imageSrc, title }) {
                         {/* Image Frame */}
                         <div className="w-full h-full rounded-2xl overflow-hidden border-2 border-white/10 shadow-2xl bg-slate-900 flex items-center justify-center relative min-h-[300px]">
                              {/* Rough Background Pattern (Consistent with theme) */}
-                             <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-5 pointer-events-none"></div>
+                             <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-[0.02] pointer-events-none"></div>
                              
                              {/* Loading Spinner */}
                              {isLoading && (

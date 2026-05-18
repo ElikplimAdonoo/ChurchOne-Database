@@ -68,17 +68,15 @@ export default function AttendancePage() {
   return (
     // <IonPage>
         // <IonContent className="ion-padding-bottom bg-gradient-dark">
-            <div className="bg-gradient-dark min-h-[calc(100vh-4rem)] text-gray-100 px-4 pt-2 pb-8 md:px-8 md:pt-4 md:pb-8 space-y-4 relative overflow-hidden">
-      {/* Decorative Dot Pattern */}
-      <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none"></div>
+            <div className="space-y-4">
 
       <div className="relative z-10 space-y-5">
       
       {/* Header & User Info */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6">
         <div>
-          <h1 className="text-4xl font-black bg-gradient-church bg-clip-text text-transparent">
-            Attendance Tracking
+          <h1 className="text-2xl md:text-4xl font-black text-white leading-tight">
+            Attendance <span className="text-church-blue-400">Tracking</span>
           </h1>
           <p className="text-gray-400 mt-1 font-medium">
             Welcome, <span className="text-church-blue-400 font-bold">{userRole.fullName}</span>
@@ -100,56 +98,61 @@ export default function AttendancePage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 p-1.5 rounded-xl w-fit shadow-lg backdrop-blur-sm">
+      <div className="relative flex gap-8">
         <button
           onClick={() => setActiveTab('marking')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-black transition-all duration-200 active:scale-95 ${
+          className={`relative flex items-center gap-2.5 pb-4 text-sm font-black transition-colors duration-200 ${
             activeTab === 'marking' 
-              ? 'bg-gradient-church text-white shadow-lg shadow-church-blue-500/20' 
-              : 'text-slate-400 hover:text-church-blue-400 hover:bg-slate-800/60'
+              ? 'text-church-blue-400' 
+              : 'text-slate-500 hover:text-slate-300'
           }`}
         >
           <CheckCircle2 size={20} />
           Mark Attendance
+          {activeTab === 'marking' && (
+            <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-church-blue-500 rounded-full" />
+          )}
         </button>
         <button
           onClick={() => setActiveTab('analytics')}
-          className={`flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-black transition-all duration-200 active:scale-95 ${
+          className={`relative flex items-center gap-2.5 pb-4 text-sm font-black transition-colors duration-200 ${
             activeTab === 'analytics' 
-              ? 'bg-gradient-church text-white shadow-lg shadow-church-blue-500/20' 
-              : 'text-slate-400 hover:text-church-blue-400 hover:bg-slate-800/60'
+              ? 'text-church-blue-400' 
+              : 'text-slate-500 hover:text-slate-300'
           }`}
         >
           <BarChart3 size={20} />
           Analytics & Reports
+          {activeTab === 'analytics' && (
+            <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-church-blue-500 rounded-full" />
+          )}
         </button>
+        {/* Base line */}
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-slate-700/50" />
       </div>
 
       {/* Content Area */}
-      <div className="bg-slate-900/50 rounded-2xl p-6 min-h-[500px] shadow-xl backdrop-blur-sm">
-        
-        {/* Hierarchical Scope Selector */}
-        <UnitScopeSelector 
-            userRole={userRole} 
-            onScopeChange={(id, type, name) => setScope({ id, type, name })} 
-        />
+      {/* Hierarchical Scope Selector */}
+      <UnitScopeSelector 
+          userRole={userRole} 
+          onScopeChange={(id, type, name) => setScope({ id, type, name })} 
+      />
 
-        {activeTab === 'marking' && (
-          <AttendanceMarking 
-            currentRole={userRole} 
-            overrideUnitId={scope.id} 
-            overrideUnitName={scope.name} 
-            overrideUnitType={scope.type}
-          />
-        )}
-        {activeTab === 'analytics' && (
-          <AttendanceAnalytics 
-            currentRole={userRole} 
-            overrideUnitId={scope.id} 
-            overrideUnitType={scope.type} // pass type so analytics can choose how to aggregate
-          />
-        )}
-      </div>
+      {activeTab === 'marking' && (
+        <AttendanceMarking 
+          currentRole={userRole} 
+          overrideUnitId={scope.id} 
+          overrideUnitName={scope.name} 
+          overrideUnitType={scope.type}
+        />
+      )}
+      {activeTab === 'analytics' && (
+        <AttendanceAnalytics 
+          currentRole={userRole} 
+          overrideUnitId={scope.id} 
+          overrideUnitType={scope.type}
+        />
+      )}
       </div>
     </div>
       // </IonContent>

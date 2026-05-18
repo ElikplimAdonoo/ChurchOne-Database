@@ -225,226 +225,132 @@ export default function PeopleDirectory() {
     return (
         // <IonPage>
             // <IonContent className="ion-padding-bottom bg-[#000000]">
-                <div className="min-h-full bg-gradient-dark relative overflow-hidden">
-            {/* Decorative Dot Pattern */}
-            <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-5 pointer-events-none"></div>
+                <div className="space-y-6">
 
-            <div className="relative z-10 max-w-6xl mx-auto p-4 md:p-8 space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800/50 p-6 rounded-2xl border-2 border-church-blue-500/50 backdrop-blur-xl shadow-lg">
-                <div>
-                    <h2 className="text-3xl font-black bg-gradient-church bg-clip-text text-transparent">People Directory</h2>
-                    <p className="text-slate-400 text-sm mt-1 font-semibold">{filteredPeople.length} Members Found</p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                    {/* Search */}
-                    <div className="relative group flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search names or units..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full bg-slate-900 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 transition-all text-slate-200 font-medium placeholder:text-slate-600 shadow-inner"
-                        />
-                    </div>
-                </div>
-
+            <div className="space-y-5">
+            {/* Header */}
+            <div>
+                <h1 className="text-2xl md:text-4xl font-black text-white leading-tight">
+                    People <span className="text-church-blue-400">Directory</span>
+                </h1>
+                <p className="text-slate-400 text-sm mt-1 font-semibold">{basePeople.length} Members</p>
             </div>
 
-            {/* Status Filter Tabs */}
-            <div className="flex items-center gap-2 bg-slate-900/60 p-1.5 rounded-xl border border-white/5 w-full md:w-fit overflow-x-auto hide-scrollbar">
-                {['All', 'Active', 'Inactive', 'Pending'].map(status => (
-                    <button
-                        key={status}
-                        onClick={() => setFilterStatus(status)}
-                        className={`whitespace-nowrap shrink-0 px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 flex items-center gap-2 ${
-                            filterStatus === status
-                                ? 'bg-gradient-church text-white shadow-lg'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'
-                        }`}
-                    >
-                        {status}
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
-                            filterStatus === status
-                                ? 'bg-white/20 text-white'
-                                : 'bg-slate-800 text-slate-500'
-                        }`}>
-                            {statusCounts[status]}
-                        </span>
-                    </button>
-                ))}
+            {/* Search */}
+            <div className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={18} />
+                <input
+                    type="text"
+                    placeholder="Search people..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-transparent border border-slate-600/60 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-bold text-slate-200 focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500/50 transition-colors placeholder:text-slate-500"
+                />
+            </div>
+
+            {/* Status Filter Tabs - Scrollable with Gradient Fade on Mobile */}
+            <div className="relative w-full overflow-hidden">
+                <div className="flex items-center gap-6 overflow-x-auto no-scrollbar pr-12 pb-px relative z-10">
+                    {['All', 'Active', 'Inactive', 'Pending'].map(status => (
+                        <button
+                            key={status}
+                            onClick={() => setFilterStatus(status)}
+                            className={`relative whitespace-nowrap pb-3 text-sm font-black transition-colors duration-200 flex items-center gap-2 ${
+                                filterStatus === status
+                                    ? 'text-church-blue-400'
+                                    : 'text-slate-500 hover:text-slate-300'
+                            }`}
+                        >
+                            <span>{status}</span>
+                            <span className="text-xs font-bold opacity-60">
+                                {statusCounts[status]}
+                            </span>
+                            {filterStatus === status && (
+                                <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-church-blue-500 rounded-full" />
+                            )}
+                        </button>
+                    ))}
+                </div>
+                {/* Horizontal scroll fade out indicator */}
+                <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-[#020617] to-transparent pointer-events-none z-20 md:hidden" />
+                <div className="absolute bottom-0 left-0 right-0 h-px bg-slate-700/50" />
             </div>
 
             {/* Premium Table / Card List */}
             <div className="w-full">
-                <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full text-left text-sm text-slate-300">
-                        <thead className="bg-slate-950/50 text-[10px] text-slate-500 uppercase tracking-[0.2em] font-black border-b border-white/5">
-                            <tr>
-                                <th onClick={() => handleSort('name')} className="p-6 cursor-pointer hover:text-church-blue-400 transition-colors">
-                                    <div className="flex items-center gap-2">
-                                        Member Identity
-                                        {sortConfig.key === 'name' && (
-                                            <ArrowUpDown size={12} className={sortConfig.direction === 'asc' ? 'text-church-blue-400' : 'text-church-blue-400 rotate-180'} />
-                                        )}
-                                    </div>
-                                </th>
-                                <th onClick={() => handleSort('role')} className="p-6 cursor-pointer hover:text-church-blue-400 transition-colors">
-                                    <div className="flex items-center gap-2">
-                                        Assignments
-                                        {sortConfig.key === 'role' && (
-                                            <ArrowUpDown size={12} className={sortConfig.direction === 'asc' ? 'text-church-blue-400' : 'text-church-blue-400 rotate-180'} />
-                                        )}
-                                    </div>
-                                </th>
-                                <th className="p-6 text-center">Status</th>
-                                <th className="p-6 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-white/[0.02]">
-                            {filteredPeople.map((person) => (
-                                <motion.tr
-                                    key={person.id}
-                                    layout
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="hover:bg-white/[0.02] transition-all group/row"
-                                >
-                                    <td className="p-6">
-                                        <div className="flex items-center gap-4">
-                                            <div 
-                                                onClick={() => person.photo && setImageModalConfig({ isOpen: true, src: person.photo, title: person.name })}
-                                                className={`w-12 h-12 rounded-2xl bg-slate-800 flex items-center justify-center overflow-hidden border border-white/5 transition-all group-hover/row:scale-105 group-hover/row:shadow-lg group-hover/row:border-church-blue-500/30 ${person.photo ? 'cursor-pointer' : ''}`}
-                                            >
-                                                {person.photo ? (
-                                                    <img src={person.photo} alt={person.name} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <User size={24} className="text-slate-600" />
-                                                )}
-                                            </div>
-                                            <div className="space-y-0.5">
-                                                <div className="font-black text-slate-100 text-base">{person.name}</div>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    {/* Membership State Premium Badge */}
-                                                    {['First Timer', 'Brethren', 'Member', 'Unattended'].includes(person.membership_state) && (
-                                                        <div className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1 border shadow-sm ${
-                                                            person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
-                                                            person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                            person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
-                                                            'bg-slate-800 text-slate-400 border-slate-700'
-                                                        }`}>
-                                                            {person.membership_state}
-                                                        </div>
-                                                    )}
-
-                                                    {person.is_placeholder ? (
-                                                        <div className="text-[10px] text-amber-500 font-bold uppercase tracking-wider flex items-center gap-1.5 ml-1">
-                                                            <span className="w-1 h-1 bg-amber-500 rounded-full animate-pulse"></span> Virtual Placeholder
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-[10px] text-slate-500 font-medium ml-1">Verified Account</div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-6">
-                                        <div className="space-y-1">
-                                            <div className="px-2.5 py-1 rounded-lg bg-church-blue-500/10 text-church-blue-400 border border-church-blue-500/20 text-[11px] font-black uppercase inline-block">
-                                                {person.role}
-                                            </div>
-                                            <div className="text-xs text-slate-400 font-bold flex items-center gap-1.5 ml-0.5">
-                                                <MapPin size={12} className="text-slate-600" /> {person.unit}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-6 text-center">
-                                        <StatusDropdown
-                                            status={person.status}
-                                            canManage={user && (isAllManaged || managedUnitIds.has(person.unit_id))}
-                                            onStatusChange={(newStatus) => handleStatusChange(person, newStatus)}
-                                            loading={changingStatusId === person.id}
-                                        />
-                                    </td>
-                                    <td className="p-6 text-right">
-                                        {user && (isAllManaged || managedUnitIds.has(person.unit_id)) && (
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover/row:opacity-100 transition-all transform translate-x-2 group-hover/row:translate-x-0">
-                                                <button
-                                                    onClick={() => openEditModal(person)}
-                                                    className="p-2.5 rounded-xl bg-slate-800 hover:bg-church-blue-500/20 text-slate-400 hover:text-church-blue-400 transition-all border border-white/5 shadow-xl"
-                                                    title="Edit Profile"
-                                                >
-                                                    <Edit size={16} />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </td>
-                                </motion.tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-
-                {/* Mobile View: High-Fidelity Cards (Minimalist) */}
-                <div className="md:hidden grid grid-cols-1 gap-3 p-4">
+                <div className="space-y-2">
                     {filteredPeople.map((person) => (
-                        <div key={person.id} className="p-4 rounded-3xl bg-slate-900 border border-white/5 shadow-xl transition-transform active:scale-[0.98]">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div 
-                                        onClick={() => person.photo && setImageModalConfig({ isOpen: true, src: person.photo, title: person.name })}
-                                        className={`w-12 h-12 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 
-                                            bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 shadow-inner
-                                            ${person.photo ? 'cursor-pointer' : ''}`}
-                                    >
-                                        {person.photo ? <img src={person.photo} className="w-full h-full object-cover" /> : <User size={20} className="text-slate-600" />}
-                                    </div>
-                                    <div className="overflow-hidden space-y-0.5">
-                                        <div className="font-extrabold text-slate-100 text-base truncate leading-tight" title={person.name}>{person.name}</div>
-                                        {/* Mobile Membership State Premium Badge */}
-                                        <div className="my-0.5">
-                                            {['First Timer', 'Brethren', 'Member', 'Unattended'].includes(person.membership_state) && (
-                                                <div className={`px-2 py-[2px] rounded-md text-[8px] font-black uppercase tracking-wider inline-flex items-center gap-1 border shadow-inner ${
-                                                    person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
-                                                    person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                    person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
-                                                    'bg-slate-800 text-slate-400 border-slate-700'
-                                                }`}>
-                                                    {person.membership_state}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div className="flex flex-col gap-0.5 items-start mt-0.5">
-                                            <div className="text-[9px] font-black uppercase text-church-blue-400 truncate max-w-full tracking-widest">
-                                                {person.role}
-                                            </div>
-                                            <div className="text-[9px] text-slate-500 font-bold flex items-center gap-1">
-                                                <MapPin size={8} /> <span className="truncate">{person.unit}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                {/* Right Side Actions: Edit + Status */}
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <StatusDropdown
-                                        status={person.status}
-                                        canManage={user && (isAllManaged || managedUnitIds.has(person.unit_id))}
-                                        onStatusChange={(newStatus) => handleStatusChange(person, newStatus)}
-                                        loading={changingStatusId === person.id}
-                                    />
-                                    {user && (isAllManaged || managedUnitIds.has(person.unit_id)) && (
-                                        <button 
-                                            onClick={() => openEditModal(person)} 
-                                            className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-church-blue-500/20 text-slate-500 hover:text-church-blue-400 transition-colors flex items-center justify-center border border-white/5"
-                                        >
-                                            <Edit size={12} />
-                                        </button>
+                        <motion.div
+                            key={person.id}
+                            layout
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl border border-slate-700/40 hover:border-slate-600/60 hover:bg-white/[0.01] transition-all"
+                        >
+                            <div className="flex items-center gap-3 min-w-0">
+                                {/* Avatar/Photo */}
+                                <div 
+                                    onClick={() => person.photo && setImageModalConfig({ isOpen: true, src: person.photo, title: person.name })}
+                                    className={`w-9 h-9 md:w-10 md:h-10 rounded-xl bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 border border-white/5 shadow-sm transition-transform hover:scale-105 ${person.photo ? 'cursor-pointer' : ''}`}
+                                >
+                                    {person.photo ? (
+                                        <img src={person.photo} alt={person.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <User size={18} className="text-slate-500" />
                                     )}
                                 </div>
+
+                                {/* Info */}
+                                <div className="flex flex-col min-w-0">
+                                    <span className="font-bold text-slate-200 text-sm md:text-base truncate leading-snug">{person.name}</span>
+                                    <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5">
+                                        {/* Membership Badge */}
+                                        {['First Timer', 'Brethren', 'Member', 'Unattended'].includes(person.membership_state) && (
+                                            <div className={`px-1.5 py-[1px] rounded-md text-[7px] font-black uppercase tracking-wider inline-flex items-center gap-0.5 border shadow-sm ${
+                                                person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
+                                                person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                                person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
+                                                'bg-slate-800 text-slate-400 border-slate-700'
+                                            }`}>
+                                                {person.membership_state}
+                                            </div>
+                                        )}
+
+                                        {/* Placeholder badge */}
+                                        {person.is_placeholder && (
+                                            <div className="text-[7px] text-amber-500 font-black uppercase tracking-wider flex items-center gap-0.5">
+                                                <span className="w-1 h-1 bg-amber-500 rounded-full animate-pulse"></span> Virtual Placeholder
+                                            </div>
+                                        )}
+
+                                        {/* Role & Unit info as compact tags */}
+                                        <span className="text-church-blue-400 font-black text-[8px] uppercase tracking-wider">{person.role}</span>
+                                        <span className="text-slate-400 font-bold text-[8px] flex items-center gap-0.5 uppercase tracking-wider">
+                                            <MapPin size={8} className="text-slate-500 shrink-0" /> {person.unit}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
+
+                            {/* Right Side Actions */}
+                            <div className="flex items-center justify-end gap-2 shrink-0">
+                                <StatusDropdown
+                                    status={person.status}
+                                    canManage={user && (isAllManaged || managedUnitIds.has(person.unit_id))}
+                                    onStatusChange={(newStatus) => handleStatusChange(person, newStatus)}
+                                    loading={changingStatusId === person.id}
+                                />
+                                {user && (isAllManaged || managedUnitIds.has(person.unit_id)) && (
+                                    <button
+                                        onClick={() => openEditModal(person)}
+                                        className="w-8 h-8 rounded-full bg-slate-800/50 hover:bg-church-blue-500/20 text-slate-400 hover:text-church-blue-400 transition-all flex items-center justify-center border border-white/5"
+                                        title="Edit Profile"
+                                    >
+                                        <Edit size={12} />
+                                    </button>
+                                )}
+                            </div>
+                        </motion.div>
                     ))}
                 </div>
 

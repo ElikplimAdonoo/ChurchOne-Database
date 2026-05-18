@@ -18,7 +18,7 @@ export default function MainLayout() {
   const handleScroll = useCallback(() => {
     setIsScrolling(true)
     if (scrollTimeout.current) clearTimeout(scrollTimeout.current)
-    scrollTimeout.current = setTimeout(() => setIsScrolling(false), 600)
+    scrollTimeout.current = setTimeout(() => setIsScrolling(false), 30)
   }, [])
 
   useEffect(() => {
@@ -34,7 +34,7 @@ export default function MainLayout() {
   return (
     <div className="h-screen w-screen bg-gradient-dark text-gray-100 font-sans selection:bg-church-blue-400/30 flex flex-col overflow-hidden relative">
       {/* Shared Decorative Dot Pattern */}
-      <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none z-0"></div>
+      <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-[0.03] pointer-events-none z-0"></div>
       
       <div className="relative z-10 flex-1 flex flex-col overflow-hidden h-full">
         {/* Desktop Navigation */}
@@ -75,35 +75,21 @@ export default function MainLayout() {
         <main
           ref={mainRef}
           className="flex-1 overflow-y-auto custom-scrollbar touch-pan-y"
-          onTouchStart={(e) => {
-            // Disable swipe navigation on mindmap — ReactFlow needs touch for panning
-            if (location.pathname === '/mindmap') return;
-            mainTouchStart.current = e.touches[0].clientX
-          }}
-          onTouchEnd={(e) => {
-            if (location.pathname === '/mindmap') return;
-            if (mainTouchStart.current === null) return
-            const diff = e.changedTouches[0].clientX - mainTouchStart.current
-            const swipeThreshold = 80
-            if (diff < -swipeThreshold) onSwipeLeft()
-            else if (diff > swipeThreshold) onSwipeRight()
-            mainTouchStart.current = null
-          }}
         >
-          <div className="max-w-7xl mx-auto px-4 md:px-8 py-6 md:py-8 pb-24 md:pb-8">
+          <div className="px-4 md:px-8 py-6 md:py-8 pb-24 md:pb-8">
             <Outlet />
           </div>
         </main>
 
         {/* Mobile Bottom Tabs */}
-        <nav className={`md:hidden fixed bottom-0 left-0 z-50 w-full transition-all duration-500 ease-out ${
+        <nav className={`md:hidden fixed bottom-0 left-0 z-50 w-full transition-all duration-500 ease-out border-t border-white/5 bg-slate-950/95 backdrop-blur-xl shrink-0 ${
           isScrolling ? 'opacity-20 pointer-events-none translate-y-1' : 'opacity-100 pointer-events-auto translate-y-0'
         }`}>
-          <div className="bg-black/50 backdrop-blur-xl border-t border-white/10 px-4 pt-2 pb-4 flex items-center justify-around shadow-2xl">
-            <TabItem to="/" icon={<Home size={22} />} />
-            <TabItem to="/directory" icon={<Users size={22} />} />
-            <TabItem to="/attendance" icon={<CheckCircle2 size={22} />} />
-            <TabItem to="/profile" icon={<User size={22} />} />
+          <div className="px-4 py-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] flex items-center justify-around shadow-2xl">
+            <TabItem to="/" icon={<Home size={20} />} label="Home" />
+            <TabItem to="/directory" icon={<Users size={20} />} label="Directory" />
+            <TabItem to="/attendance" icon={<CheckCircle2 size={20} />} label="Attendance" />
+            <TabItem to="/profile" icon={<User size={20} />} label="Profile" />
           </div>
         </nav>
         {/* PWA Install Banner */}
@@ -131,27 +117,25 @@ function NavItem({ to, icon, label }) {
   )
 }
 
-function TabItem({ to, icon }) {
+function TabItem({ to, icon, label }) {
   return (
     <NavLink
       to={to}
       className={({ isActive }) => `
-        p-3 rounded-2xl transition-all duration-300 relative
-        ${isActive
-          ? 'bg-gradient-church text-white shadow-lg scale-110 -translate-y-1'
-          : 'text-gray-500 hover:text-church-blue-400'
-        }
+        flex flex-col items-center justify-center gap-0.5 py-1 px-3 rounded-xl transition-all duration-200 shrink-0 select-none
+        ${isActive ? 'text-church-blue-400' : 'text-slate-500 hover:text-slate-400'}
       `}
     >
       {({ isActive }) => (
         <>
-          {icon}
-          {isActive && (
-            <motion.div 
-              layoutId="activeTab"
-              className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full"
-            />
-          )}
+          <div className={`p-1 rounded-lg transition-all duration-200 ${
+            isActive ? 'bg-church-blue-500/10 text-church-blue-400 scale-105' : 'text-slate-500'
+          }`}>
+            {icon}
+          </div>
+          <span className={`text-[8.5px] font-black tracking-wider uppercase transition-colors duration-200 ${
+            isActive ? 'text-church-blue-400' : 'text-slate-500'
+          }`}>{label}</span>
         </>
       )}
     </NavLink>

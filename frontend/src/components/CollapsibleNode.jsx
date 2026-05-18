@@ -71,7 +71,7 @@ const CollapsibleNode = memo(({ data, isConnectable, style }) => {
             {/* Expand/Collapse Button */}
             {data.hasChildren && (
                 <div
-                    className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-slate-700 border border-slate-500 rounded-full flex items-center justify-center cursor-pointer hover:bg-slate-600 hover:border-church-blue-400 transition-all z-50 text-white shadow-md"
+                    className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-slate-800/90 backdrop-blur-md border border-white/10 hover:border-church-blue-400/50 rounded-full flex items-center justify-center cursor-pointer transition-all z-50 text-white shadow-lg"
                     onClick={(e) => {
                         e.stopPropagation();
                         data.onToggle(data.id);

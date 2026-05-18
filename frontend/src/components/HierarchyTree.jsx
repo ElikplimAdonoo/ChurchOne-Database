@@ -249,7 +249,7 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
 // ================================
 // MAIN COMPONENT
 // ================================
-export default function HierarchyTree() {
+export default function HierarchyTree({ focusTrigger }) {
     const { getManagedUnits } = useAuth();
     const [originalTree, setOriginalTree] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -258,7 +258,12 @@ export default function HierarchyTree() {
     const [expansionToggle, setExpansionToggle] = useState(null); // { state: boolean, timestamp: number }
     const [imageModalConfig, setImageModalConfig] = useState({ isOpen: false, src: '', title: '' });
 
-    // Initial Fetch & Scoping
+    useEffect(() => {
+        if (focusTrigger) {
+            // Expand all nodes
+            setExpansionToggle({ state: true, timestamp: Date.now() });
+        }
+    }, [focusTrigger]);
     useEffect(() => {
         async function loadData() {
             try {
@@ -306,7 +311,7 @@ export default function HierarchyTree() {
     );
 
     return (
-        <div className="max-w-6xl mx-auto md:p-8 space-y-5 md:space-y-8">
+        <div className="space-y-5 md:space-y-8">
             {/* Header / Controls */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
                 <div>

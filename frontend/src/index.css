@@ -28,10 +28,28 @@
 }
 
 /* Hide scrollbar for clean UI elements */
-.hide-scrollbar::-webkit-scrollbar {
+.hide-scrollbar::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
   display: none;
 }
-.hide-scrollbar {
+.hide-scrollbar,
+.no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Dark mode select dropdown options */
+select option {
+  background-color: #0f172a;
+  color: #e2e8f0;
+  padding: 8px 12px;
+}
+
+select option:checked {
+  background: linear-gradient(0deg, #1e40af 0%, #1e40af 100%);
+  color: #ffffff;
+}
+
+select option:hover {
+  background-color: #1e293b;
 }

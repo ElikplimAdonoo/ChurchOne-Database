@@ -25,9 +25,16 @@ export default function ProfilePage() {
       // <IonContent className="bg-gradient-dark">
         <div className="bg-gradient-dark min-h-[calc(100vh-4rem)] text-gray-100 px-4 pt-2 pb-8 md:px-8 md:pt-4 md:pb-8 space-y-6 relative overflow-hidden">
           {/* Decorative Dot Pattern */}
-          <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none"></div>
+          <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-[0.03] pointer-events-none"></div>
 
-          <div className="relative z-10 max-w-3xl mx-auto space-y-8">
+          <div className="relative z-10 max-w-3xl mx-auto space-y-6">
+            
+            {/* Header */}
+            <div>
+              <h1 className="text-2xl md:text-4xl font-black text-white leading-tight">
+                My <span className="text-church-blue-400">Profile</span>
+              </h1>
+            </div>
             
             {/* Header / Avatar Section */}
             <motion.div 

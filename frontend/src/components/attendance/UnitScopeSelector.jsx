@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchHierarchyData } from '../../services/hierarchyService';
-import { ChevronRight, LayoutGrid } from 'lucide-react';
+import { ChevronRight, LayoutGrid, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function UnitScopeSelector({ userRole, onScopeChange }) {
@@ -111,23 +111,23 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
     if (userRole?.unitType === 'CELL') return null; // Hide completely for cell leaders
     if (loading) return <div className="h-14 animate-pulse bg-slate-800/50 rounded-xl border border-slate-700"></div>;
 
-    // Derived dropdown options
-    const targetZones = units.filter(u => u.unit_type === 'ZONE');
-    const targetMCs = units.filter(u => u.unit_type === 'MC' && u.parent_id === selectedZone);
-    const targetBuscentas = units.filter(u => u.unit_type === 'BUSCENTA' && u.parent_id === selectedMC);
-    const targetCells = units.filter(u => u.unit_type === 'CELL' && u.parent_id === selectedBuscenta);
+    // Derived dropdown options sorted naturally/chronologically (e.g. Zone 1 -> Zone 2 -> Zone 10)
+    const sortByName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+
+    const targetZones = units.filter(u => u.unit_type === 'ZONE').sort(sortByName);
+    const targetMCs = units.filter(u => u.unit_type === 'MC' && u.parent_id === selectedZone).sort(sortByName);
+    const targetBuscentas = units.filter(u => u.unit_type === 'BUSCENTA' && u.parent_id === selectedMC).sort(sortByName);
+    const targetCells = units.filter(u => u.unit_type === 'CELL' && u.parent_id === selectedBuscenta).sort(sortByName);
 
     return (
-        <div className="bg-slate-900/60 p-4 rounded-2xl shadow-lg backdrop-blur-md mb-6">
-            <div className="flex items-center gap-2 mb-3">
-                <LayoutGrid size={16} className="text-church-blue-400" />
-                <h3 className="text-sm font-bold text-slate-200">Scope Selection</h3>
-            </div>
+        <div className="space-y-3 mb-6">
+            <h3 className="text-lg font-black text-slate-200">Scope</h3>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="space-y-3">
                 {/* ZONE */}
                 {(targetZones.length > 0 || selectedZone) && (
-                    <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                        <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select
                             value={selectedZone}
                             onChange={(e) => {
@@ -136,20 +136,20 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
                                 setSelectedBuscenta('');
                                 setSelectedCell('');
                             }}
-                            disabled={targetZones.length <= 1} // Auto-lock if they only manage 1 zone
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-church-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={targetZones.length <= 1}
+                            className="w-full bg-[#0b1120] border border-slate-600/60 rounded-2xl pl-12 pr-10 py-4 text-sm font-bold text-slate-200 appearance-none focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
                             <option value="">-- All Zones --</option>
                             {targetZones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
                         </select>
+                        <ChevronRight size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
                     </div>
                 )}
 
-                {selectedZone && <ChevronRight size={16} className="text-slate-600 hidden md:block" />}
-
                 {/* MC */}
                 {(targetMCs.length > 0 || selectedMC) && selectedZone && (
-                     <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                        <Users size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select
                             value={selectedMC}
                             onChange={(e) => {
@@ -157,49 +157,49 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
                                 setSelectedBuscenta('');
                                 setSelectedCell('');
                             }}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-church-blue-500/50"
+                            className="w-full bg-[#0b1120] border border-slate-600/60 rounded-2xl pl-12 pr-10 py-4 text-sm font-bold text-slate-200 appearance-none focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500/50 transition-colors"
                         >
                             <option value="">-- All MCs --</option>
                             {targetMCs.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
                         </select>
+                        <ChevronRight size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
                     </div>
                 )}
 
-                {selectedMC && <ChevronRight size={16} className="text-slate-600 hidden md:block" />}
-
                 {/* BUSCENTA */}
-                 {(targetBuscentas.length > 0 || selectedBuscenta) && selectedMC && (
-                     <div className="flex-1 min-w-[200px]">
+                {(targetBuscentas.length > 0 || selectedBuscenta) && selectedMC && (
+                    <div className="relative">
+                        <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select
                             value={selectedBuscenta}
                             onChange={(e) => {
                                 setSelectedBuscenta(e.target.value);
                                 setSelectedCell('');
                             }}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-church-blue-500/50"
+                            className="w-full bg-[#0b1120] border border-slate-600/60 rounded-2xl pl-12 pr-10 py-4 text-sm font-bold text-slate-200 appearance-none focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500/50 transition-colors"
                         >
                             <option value="">-- All Buscentas --</option>
                             {targetBuscentas.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                         </select>
+                        <ChevronRight size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
                     </div>
                 )}
 
-                {selectedBuscenta && <ChevronRight size={16} className="text-slate-600 hidden md:block" />}
-
                 {/* CELL */}
                 {(targetCells.length > 0 || selectedCell) && selectedBuscenta && (
-                     <div className="flex-1 min-w-[200px]">
+                    <div className="relative">
+                        <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select
                             value={selectedCell}
                             onChange={(e) => setSelectedCell(e.target.value)}
-                            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-church-blue-500/50"
+                            className="w-full bg-[#0b1120] border border-slate-600/60 rounded-2xl pl-12 pr-10 py-4 text-sm font-bold text-slate-200 appearance-none focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500/50 transition-colors"
                         >
                             <option value="">-- All Cells --</option>
                             {targetCells.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
+                        <ChevronRight size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
                     </div>
                 )}
-
             </div>
         </div>
     );

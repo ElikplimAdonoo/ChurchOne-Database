@@ -92,7 +92,7 @@ export default {
       backgroundImage: {
         'dot-pattern': 'radial-gradient(circle, currentColor 1px, transparent 1px)',
         'gradient-church': 'linear-gradient(135deg, #3385FF 0%, #0066FF 50%, #0052CC 100%)',
-        'gradient-dark': 'linear-gradient(135deg, #000000 0%, #000a22 50%, #000000 100%)',
+        'gradient-dark': 'radial-gradient(circle at 50% 50%, #000108 0%, #000000 100%)',
       },
       backgroundSize: {
         'dot-sm': '8px 8px',

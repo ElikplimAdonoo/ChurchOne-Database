@@ -130,6 +130,15 @@ export default function HierarchyMindMapPage() {
                 }
             }
 
+            // Collapse MC, BUSCENTA, and CELL levels by default on initial load to avoid bulkiness
+            const initialCollapsed = new Set();
+            hierarchyNodes.forEach(unit => {
+                if (unit.unit_type === 'MC' || unit.unit_type === 'BUSCENTA' || unit.unit_type === 'CELL') {
+                    initialCollapsed.add(unit.id);
+                }
+            });
+            setCollapsedIds(initialCollapsed);
+
             setFlatData(hierarchyNodes);
         });
     }, [user, userRole, getManagedUnits]);
@@ -201,7 +210,7 @@ export default function HierarchyMindMapPage() {
                     className="w-full bg-slate-900/40 relative overflow-hidden rounded-3xl border border-slate-700/50 shadow-2xl"
             style={{ height: 'calc(100dvh - 220px)', minHeight: '500px' }}
         >
-            <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10 pointer-events-none z-0" />
+            <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-[0.03] pointer-events-none z-0" />
 
             {/* Extracted Search Component */}
             <MindMapSearch 

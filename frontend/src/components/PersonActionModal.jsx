@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form';
-import { User, Shield, MapPin, Save, X } from 'lucide-react';
+import { User, Shield, MapPin, Save, X, Mail } from 'lucide-react';
 import Modal from './ui/Modal';
 import { useEffect } from 'react';
 
@@ -26,6 +26,9 @@ export default function PersonActionModal({
     };
 
     const currentPositions = availablePositions(selectedUnitId, units, positions);
+    
+    // Sort units naturally so they appear in correct alphabetical/chronological order (e.g. Cell 1 -> Cell 2 -> Cell 3)
+    const sortedUnits = [...units].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
 
     useEffect(() => {
         if (mode === 'edit' && person) {
@@ -87,6 +90,19 @@ export default function PersonActionModal({
                             </div>
                             {errors.fullName && <span className="text-church-coral-400 text-[10px] font-bold mt-1 block ml-1">{errors.fullName.message}</span>}
                         </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1">Personal Email (Optional)</label>
+                            <div className="relative group">
+                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={16} />
+                                <input
+                                    {...register('personalEmail')}
+                                    type="email"
+                                    className="w-full bg-slate-900 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 transition-all text-slate-200"
+                                    placeholder="john.doe@gmail.com"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     {/* Organizational Placement */}
@@ -103,7 +119,7 @@ export default function PersonActionModal({
                                     disabled={lockUnit}
                                 >
                                     <option value="">Select Unit...</option>
-                                    {units.map(u => (
+                                    {sortedUnits.map(u => (
                                         <option key={u.id} value={u.id}>{u.name} ({u.unit_type})</option>
                                     ))}
                                 </select>

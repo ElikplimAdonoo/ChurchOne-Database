@@ -2,7 +2,7 @@ import { IonPage, IonContent } from '@ionic/react';
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { fetchPeople } from '../services/peopleService'
-import { Users, CalendarCheck, Clock, Zap } from 'lucide-react'
+import { Users, LayoutGrid, CheckCircle2, UserPlus } from 'lucide-react'
 import { motion } from 'framer-motion'
 import HierarchyTree from '../components/HierarchyTree'
 import { useLocation, useNavigate } from 'react-router-dom'
@@ -258,7 +258,7 @@ export default function DashboardPage() {
           <StatCard 
             label="Total Units" 
             value={stats.totalUnits} 
-            icon={<CalendarCheck size={18} />} 
+            icon={<LayoutGrid size={18} />} 
             color="amber" 
             details={stats.unitBreakdown}
             onClick={() => navigate('/mindmap')}
@@ -268,7 +268,7 @@ export default function DashboardPage() {
           <StatCard 
             label="Attendance Rate" 
             value={stats.attendanceRate} 
-            icon={<Clock size={18} />} 
+            icon={<CheckCircle2 size={18} />} 
             color="emerald" 
             subText="Current marked sessions"
             trend={stats.attendanceTrend}
@@ -279,7 +279,7 @@ export default function DashboardPage() {
           <StatCard 
             label="First Timers" 
             value={stats.firstTimers} 
-            icon={<Zap size={18} />} 
+            icon={<UserPlus size={18} />} 
             color="violet" 
             subText="From most recent session"
             onClick={() => navigate('/attendance?focus=first_timers')}
@@ -293,7 +293,7 @@ export default function DashboardPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.3 }}
-        className={`bg-slate-900/50 border rounded-2xl p-4 md:p-6 shadow-xl overflow-hidden transition-colors duration-1000 ${highlightTree ? 'border-church-blue-500/50 bg-church-blue-500/10 ring-2 ring-church-blue-500/50' : 'border-slate-700/50'}`}
+        className={`border rounded-2xl p-4 md:p-6 shadow-xl overflow-hidden transition-colors duration-1000 ${highlightTree ? 'border-church-blue-500/50 bg-church-blue-500/10 ring-2 ring-church-blue-500/50' : 'border-slate-700/50 bg-slate-900/50'}`}
       >
         <HierarchyTree focusTrigger={focusMembersTrigger} />
       </motion.div>
@@ -307,50 +307,58 @@ function StatCard({ label, value, icon, color, subText, details, onClick, trend 
   const animatedValue = useAnimatedCounter(value)
 
   const iconBg = {
-    blue: 'bg-church-blue-500/10 text-church-blue-400',
-    emerald: 'bg-emerald-500/10 text-emerald-400',
-    amber: 'bg-amber-500/10 text-amber-400',
-    red: 'bg-red-500/10 text-red-400',
-    violet: 'bg-church-purple-500/10 text-church-purple-400',
+    blue: 'bg-church-blue-500/10 text-church-blue-400 border-church-blue-500/20',
+    emerald: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+    amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+    red: 'bg-red-500/10 text-red-400 border-red-500/20',
+    violet: 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20',
   }
 
   return (
     <div 
       onClick={onClick}
-      className={`p-3 md:p-4 rounded-xl bg-slate-800/50 flex flex-col gap-2 md:gap-3 transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/20 group h-full ${onClick ? 'cursor-pointer hover:bg-slate-800/70' : 'cursor-default'}`}
+      className={`px-3.5 py-3 md:px-5 md:py-4 rounded-2xl bg-slate-800/50 border border-slate-700/40 flex flex-col justify-between transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 group h-full ${onClick ? 'cursor-pointer hover:bg-slate-800/70' : 'cursor-default'}`}
     >
-      <div className="flex items-start justify-between">
-        <div className={`p-1.5 md:p-2 rounded-lg ${iconBg[color]} transition-transform duration-300 group-hover:scale-110 shrink-0`}>
+      {/* Top Row: Icon and Value + Trend */}
+      <div className="flex items-center justify-between gap-2 mb-2 w-full">
+        <div className={`w-8 h-8 md:w-9 md:h-9 rounded-xl ${iconBg[color]} border flex items-center justify-center shrink-0 transition-transform duration-300 group-hover:scale-110`}>
            {icon}
         </div>
-        <div className="flex flex-col items-end">
-            <span className="text-xl md:text-2xl font-black text-white tabular-nums leading-none">
-                {animatedValue}{trend !== undefined ? '%' : ''}
+        <div className="flex items-center gap-1.5 leading-none shrink-0">
+          <span className="text-lg md:text-2xl font-black text-white tabular-nums">
+            {animatedValue}{trend !== undefined ? '%' : ''}
+          </span>
+          {trend !== undefined && (
+            <span className={`text-[9px] md:text-[10px] font-bold ${trend > 0 ? 'text-emerald-400' : trend < 0 ? 'text-red-400' : 'text-slate-400'}`}>
+              {trend > 0 ? '+' : ''}{trend}%
             </span>
-            {trend !== undefined && (
-                <span className={`text-[10px] md:text-xs font-bold mt-1 ${trend > 0 ? 'text-emerald-400' : trend < 0 ? 'text-red-400' : 'text-slate-400'}`}>
-                    {trend > 0 ? '+' : ''}{trend}%
-                </span>
-            )}
+          )}
         </div>
       </div>
       
-      <div className="mt-auto pt-2">
-        <p className="text-[11px] md:text-xs font-semibold text-slate-300 truncate">{label}</p>
-        
+      {/* Middle Row: Title Label + Optional Arrow */}
+      <div className="flex items-center justify-between gap-1 w-full mt-auto">
+        <span className="text-[10px] md:text-xs font-bold text-slate-300 truncate tracking-wide uppercase opacity-90">{label}</span>
+        {onClick && (
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 shrink-0 group-hover:text-slate-300 transition-colors ml-auto"><path d="m9 18 6-6-6-6"/></svg>
+        )}
+      </div>
+      
+      {/* Bottom Row: Subtext or Horizontal scrolling details */}
+      <div className="mt-1.5 w-full whitespace-nowrap overflow-x-auto no-scrollbar">
         {subText && (
-            <p className="text-[9px] md:text-[10px] text-slate-500 mt-0.5 leading-tight">{subText}</p>
+          <p className="text-[9px] md:text-[10px] text-slate-500 leading-tight font-medium">{subText}</p>
         )}
         
         {details && details.length > 0 && (
-            <div className="flex flex-wrap items-center gap-x-1.5 mt-2 text-[11px] md:text-[12px] text-slate-500">
-                {details.map((d, i) => (
-                    <span key={i} className="flex items-center">
-                        <span className="tabular-nums">{d.value}</span>&nbsp;<span>{d.label}</span>
-                        {i < details.length - 1 && <span className="mx-1.5 text-slate-600">·</span>}
-                    </span>
-                ))}
-            </div>
+          <div className="flex items-center gap-x-1.5 text-[9px] md:text-[10px] text-slate-500">
+            {details.map((d, i) => (
+              <span key={i} className="flex items-center shrink-0">
+                <span className="tabular-nums font-bold text-slate-400">{d.value}</span>&nbsp;<span className="font-semibold text-slate-500">{d.label}</span>
+                {i < details.length - 1 && <span className="ml-1.5 text-slate-700 font-bold">·</span>}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </div>

@@ -23,6 +23,17 @@ export function buildTree(flatUnits) {
         }
     });
 
+    // Naturally sort parent and children lists to maintain numerical/chronological order (e.g. Cell 1 -> Cell 2 -> Cell 3 -> Cell 10)
+    const sortByName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    
+    Object.values(map).forEach(node => {
+        if (node.children && node.children.length > 0) {
+            node.children.sort(sortByName);
+        }
+    });
+    
+    roots.sort(sortByName);
+
     return roots;
 }
 

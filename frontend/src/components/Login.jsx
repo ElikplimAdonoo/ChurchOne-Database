@@ -19,8 +19,14 @@ export default function Login() {
     setError('');
 
     try {
+      // 1. Resolve email (supports dual sign-in with personal email)
+      const { data: resolvedEmail, error: rpcError } = await supabase.rpc('get_login_email', { input_email: email });
+      
+      const emailToUse = (!rpcError && resolvedEmail) ? resolvedEmail : email;
+
+      // 2. Sign in
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: emailToUse,
         password,
       });
 
@@ -39,7 +45,7 @@ export default function Login() {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-dark relative overflow-hidden">
       {/* Decorative Dot Pattern */}
-      <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-10"></div>
+      <div className="absolute inset-0 bg-dot-pattern bg-dot-md text-church-blue-500 opacity-[0.03]"></div>
       
       <div className="bg-black/60 backdrop-blur-xl border-2 border-church-blue-500/30 p-8 rounded-3xl w-full max-w-md shadow-2xl relative z-10">
         <div className="flex flex-col items-center mb-8">
