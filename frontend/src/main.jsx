@@ -22,6 +22,17 @@ import { setupIonicReact } from '@ionic/react';
 
 setupIonicReact();
 
+// Force immediate page reload when a new PWA service worker takes control
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+}
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
