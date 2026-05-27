@@ -20,7 +20,7 @@ serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? ""
     const serviceRoleKey =
-      Deno.env.get("SERVICE_ROLE_KEY") ?? ""
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? Deno.env.get("SERVICE_ROLE_KEY") ?? ""
 
     if (!supabaseUrl || !serviceRoleKey) {
       throw new Error("Missing Supabase environment variables")
@@ -99,6 +99,8 @@ serve(async (req: Request) => {
     // Default password
     const password = "aTTendance.0123"
 
+    let authUserId = null;
+
     // Create auth user
     const {
       data: authData,
@@ -113,16 +115,28 @@ serve(async (req: Request) => {
     })
 
     if (authError) {
-      throw new Error(
-        `Failed to create auth user: ${authError.message}`
-      )
+      // If user already exists, fetch their ID instead of failing
+      if (authError.message.includes("already registered") || authError.status === 422) {
+        const { data: existingUsers, error: listError } = await supabaseClient.auth.admin.listUsers();
+        const existingUser = existingUsers?.users?.find(u => u.email === generatedEmail);
+        
+        if (existingUser) {
+           authUserId = existingUser.id;
+        } else {
+           throw new Error(`Failed to create or find auth user: ${authError.message}`)
+        }
+      } else {
+        throw new Error(
+          `Failed to create auth user: ${authError.message}`
+        )
+      }
+    } else if (authData.user) {
+       authUserId = authData.user.id
     }
 
-    if (!authData.user) {
-      throw new Error("User creation failed")
+    if (!authUserId) {
+      throw new Error("User creation failed or ID not found")
     }
-
-    const authUserId = authData.user.id
 
     // ─── INTELLIGENT PROFILE LINKING ───
     // Search for an existing profile with the same name that has no auth_user_id yet

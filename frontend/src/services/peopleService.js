@@ -103,6 +103,43 @@ export async function fetchPeople() {
 }
 
 // --- MUTATIONS ---
+export const createFirstTimer = async (personData) => {
+    // 1. Create Person directly (No Auth Login needed for guests)
+    const { data: person, error } = await supabase
+        .from('people')
+        .insert([{
+            full_name: personData.fullName,
+            personal_email: personData.personalEmail || null,
+            is_placeholder: false
+        }])
+        .select()
+        .single();
+
+    if (error) throw error;
+
+    // 2. Create Assignment (if unit/position provided)
+    if (personData.unitId && personData.positionId) {
+        const { error: assignError } = await supabase
+            .from('position_assignments')
+            .insert([{
+                person_id: person.id,
+                unit_id: personData.unitId,
+                position_id: personData.positionId,
+                is_active: true,
+                is_primary: true
+            }]);
+
+        if (assignError) {
+            console.error("Failed to assign person:", assignError);
+        }
+    }
+
+    cacheService.remove(CACHE_KEYS.PEOPLE);
+    cacheService.remove(CACHE_KEYS.HIERARCHY);
+
+    return { person };
+};
+
 export const createPerson = async (personData) => {
     // Call the edge function to create the auth user, the people record, and the assignment securely.
     const { data, error } = await supabase.functions.invoke('create-auth-user', {
@@ -134,7 +171,6 @@ export const createPerson = async (personData) => {
 
     return { person: data.person, login: data.login };
 };
-
 export const updatePerson = async (id, updates) => {
     // 1. Update Core Bio
     const { data: person, error: personError } = await supabase

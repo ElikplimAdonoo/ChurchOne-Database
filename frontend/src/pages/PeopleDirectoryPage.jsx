@@ -92,6 +92,10 @@ export default function PeopleDirectory() {
             if (user && !isAllManaged && !managedUnitIds.has(p.unit_id)) {
                 return false;
             }
+            // Hide staging members/first timers who are not yet Brethren or Members
+            if (p.membership_state === 'First Timer' || p.membership_state === 'Unattended') {
+                return false;
+            }
             return true;
         });
     }, [people, user, isAllManaged, managedUnitIds]);
@@ -212,7 +216,7 @@ export default function PeopleDirectory() {
             });
         } catch (err) {
             console.error("Failed to save:", err);
-            alert("Failed to save changes");
+            alert(`Failed to save changes: ${err?.message || err}`);
         }
     };
 

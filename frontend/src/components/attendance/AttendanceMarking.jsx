@@ -1,13 +1,93 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Calendar, Save, UserCheck, UserX, Loader2, CheckCircle, XCircle, Check, X, UserPlus, Flame, ExternalLink, Share2, LayoutGrid } from 'lucide-react';
+import { Save, UserCheck, UserX, Loader2, CheckCircle, XCircle, Check, X, UserPlus, Flame, ExternalLink, Share2, LayoutGrid, ChevronDown, Clock, AlertTriangle, Calendar } from 'lucide-react';
 import ImageModal from '../common/ImageModal';
 import PersonActionModal from '../PersonActionModal';
 import { fetchHierarchyData, fetchPositions } from '../../services/hierarchyService';
-import { createPerson } from '../../services/peopleService';
+import { createFirstTimer } from '../../services/peopleService';
+import { cacheService, CACHE_KEYS } from '../../services/cacheService';
+
+// ─── Service Type Definitions ────────────────────────────────────────────────
+const SERVICE_TYPES = [
+  { value: 'Mega Gathering Service', label: 'Mega Gathering Service', days: [0, 6] }, // Sunday=0, Saturday=6
+  { value: 'LC Live', label: 'LC Live', days: [3] }, // Wednesday=3
+  { value: 'Special Meeting', label: 'Special Meeting', days: null }, // Any day
+];
+
+// ─── Date & Deadline Helpers ─────────────────────────────────────────────────
+function getServiceDate(serviceValue) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const currentDay = today.getDay(); // 0=Sun, 1=Mon, ... 6=Sat
+
+  if (serviceValue === 'Mega Gathering Service') {
+    const result = new Date(today);
+    if (currentDay === 6) { // Saturday
+      result.setDate(result.getDate() + 1); // Tomorrow (Sunday)
+    } else if (currentDay === 0) { // Sunday
+      // Today is Sunday
+    } else {
+      // Monday(1) to Friday(5): Map to the PREVIOUS Sunday
+      result.setDate(result.getDate() - currentDay);
+    }
+    return result;
+  } else if (serviceValue === 'LC Live') {
+    // LC Live is Wednesday.
+    const result = new Date(today);
+    if (currentDay >= 3 && currentDay <= 6) {
+      // Wed to Sat: map to the Wed of this week
+      result.setDate(result.getDate() - (currentDay - 3));
+    } else {
+      // Sun(0) to Tue(2): map to the PREVIOUS Wed
+      // Sun(0): go back 4 days. Mon(1): go back 5 days. Tue(2): go back 6 days.
+      result.setDate(result.getDate() - currentDay - 4);
+    }
+    return result;
+  } else {
+    // Special Meeting: today
+    return today;
+  }
+}
+
+function getDeadline(serviceValue, serviceDate) {
+  const deadline = new Date(serviceDate);
+  if (serviceValue === 'Mega Gathering Service') {
+    // 24 hours after Sunday = end of Monday (11:59:59 PM)
+    deadline.setDate(deadline.getDate() + 1);
+    deadline.setHours(23, 59, 59, 999);
+  } else if (serviceValue === 'LC Live') {
+    // End of Saturday of that week
+    // Wednesday + 3 days = Saturday
+    deadline.setDate(deadline.getDate() + 3);
+    deadline.setHours(23, 59, 59, 999);
+  } else {
+    // Special Meeting: 24 hours from the service date
+    deadline.setDate(deadline.getDate() + 1);
+    deadline.setHours(23, 59, 59, 999);
+  }
+  return deadline;
+}
+
+function isDeadlinePassed(serviceValue, serviceDate) {
+  const deadline = getDeadline(serviceValue, serviceDate);
+  return new Date() > deadline;
+}
+
+function formatDateShort(date) {
+  return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function toISODate(date) {
+  // Returns YYYY-MM-DD in local time
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 export default function AttendanceMarking({ currentRole, overrideUnitId = null, overrideUnitType = null }) {
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [serviceType, setServiceType] = useState('Mega Gathering Service');
+  const [specialMeetingName, setSpecialMeetingName] = useState('');
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -20,6 +100,14 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   const [hierarchyData, setHierarchyData] = useState([]);
   const [positions, setPositions] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Derived: compute the session date and deadline from serviceType
+  const serviceDate = useMemo(() => getServiceDate(serviceType), [serviceType]);
+  const date = useMemo(() => toISODate(serviceDate), [serviceDate]);
+  const deadlinePassed = useMemo(() => isDeadlinePassed(serviceType, serviceDate), [serviceType, serviceDate]);
+  const deadline = useMemo(() => getDeadline(serviceType, serviceDate), [serviceType, serviceDate]);
+  const resolvedServiceName = serviceType === 'Special Meeting' ? specialMeetingName.trim() : serviceType;
+  const isSpecialMeetingInvalid = serviceType === 'Special Meeting' && !specialMeetingName.trim();
 
   const handleFirstTimersChange = (val) => {
     const newVal = Math.max(0, parseInt(val) || 0);
@@ -134,15 +222,16 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
     loadMembers();
   }, [effectiveUnitId]);
 
-  // When date changes, load existing session growth counts (if session exists)
+  // When service type changes, load existing session growth counts (if session exists)
   useEffect(() => {
-    if (!effectiveUnitId || !date) return;
+    if (!effectiveUnitId || !date || !resolvedServiceName) return;
     async function loadSessionCounts() {
       const { data } = await supabase
         .from('attendance_sessions')
         .select('first_timers_count, souls_won_count')
         .eq('unit_id', effectiveUnitId)
         .eq('session_date', date)
+        .eq('service_name', resolvedServiceName)
         .maybeSingle();
       if (data) {
         setFirstTimers(data.first_timers_count ?? 0);
@@ -153,7 +242,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
       }
     }
     loadSessionCounts();
-  }, [effectiveUnitId, date]);
+  }, [effectiveUnitId, date, resolvedServiceName]);
 
   const toggleStatus = (personId) => {
     setAttendance(prev => ({
@@ -166,6 +255,18 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
     // Absolute server-side guard: prevents any non-CELL leader from submitting
     if (!canMark) {
         alert('Only Cell-level leaders can submit attendance.');
+        return;
+    }
+
+    // Deadline guard
+    if (deadlinePassed) {
+        alert('The deadline for this service has passed. Attendance can no longer be submitted.');
+        return;
+    }
+
+    // Special meeting name guard
+    if (isSpecialMeetingInvalid) {
+        alert('Please provide a name for the Special Meeting before submitting.');
         return;
     }
     
@@ -182,10 +283,11 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
             .upsert({
                 unit_id: effectiveUnitId,
                 session_date: date,
+                service_name: resolvedServiceName,
                 created_by: currentRole.personId || null,
                 first_timers_count: computedFirstTimersCount,
                 souls_won_count: soulsWon,
-            }, { onConflict: 'unit_id,session_date' })
+            }, { onConflict: 'unit_id,session_date,service_name' })
             .select()
             .single();
 
@@ -203,6 +305,10 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
             .upsert(records, { onConflict: 'session_id,person_id' });
 
         if (recordsError) throw recordsError;
+
+        // Invalidate people and hierarchy caches so that promotions/state changes are reflected
+        cacheService.remove(CACHE_KEYS.PEOPLE);
+        cacheService.remove(CACHE_KEYS.HIERARCHY);
 
         setSuccessMsg('Attendance marked successfully!');
         setTimeout(() => setSuccessMsg(''), 3000);
@@ -230,20 +336,76 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
           </div>
       )}
 
-      {/* Controls */}
-      <div className="flex flex-col gap-1.5">
-          <label className="text-xs text-slate-400 uppercase font-black tracking-wider">Session Date</label>
-          <div className="relative">
-              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" size={18} />
-              <input 
-                  type="date" 
-                  value={date}
-                  max={new Date().toISOString().split('T')[0]}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="w-full bg-transparent border border-slate-600/60 rounded-2xl pl-12 pr-4 py-3.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500/50 transition-colors [color-scheme:dark]"
-              />
+      {/* Service Selector */}
+      <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-slate-400 uppercase font-black tracking-wider">Service Type</label>
+              <div className="relative">
+                  <LayoutGrid className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" size={18} />
+                  <select
+                      value={serviceType}
+                      onChange={(e) => { setServiceType(e.target.value); setSpecialMeetingName(''); }}
+                      style={{ backgroundColor: '#0f172a' }}
+                      className="w-full border border-slate-600/60 rounded-2xl pl-12 pr-10 py-3.5 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500/50 transition-colors appearance-none [color-scheme:dark]"
+                  >
+                      {SERVICE_TYPES.map(st => (
+                          <option key={st.value} value={st.value} style={{ backgroundColor: '#0f172a', color: '#e2e8f0' }}>{st.label}</option>
+                      ))}
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={16} />
+              </div>
+          </div>
+
+          {/* Special Meeting Name (compulsory) */}
+          {serviceType === 'Special Meeting' && (
+              <div className="flex flex-col gap-1.5">
+                  <label className="text-xs text-slate-400 uppercase font-black tracking-wider">Meeting Name <span className="text-church-coral-400">*</span></label>
+                  <input
+                      type="text"
+                      value={specialMeetingName}
+                      onChange={(e) => setSpecialMeetingName(e.target.value)}
+                      placeholder="e.g. Easter Convention, Youth Rally..."
+                      className={`w-full bg-transparent border rounded-2xl px-4 py-3.5 text-sm font-bold text-white focus:outline-none focus:ring-2 transition-colors placeholder:text-slate-600 ${
+                          isSpecialMeetingInvalid 
+                              ? 'border-church-coral-500/60 focus:ring-church-coral-500/50 focus:border-church-coral-500/50' 
+                              : 'border-slate-600/60 focus:ring-church-blue-500/50 focus:border-church-blue-500/50'
+                      }`}
+                  />
+                  {isSpecialMeetingInvalid && (
+                      <p className="text-[10px] font-bold text-church-coral-400 ml-1 flex items-center gap-1">
+                          <AlertTriangle size={10} /> A name is required before you can submit attendance.
+                      </p>
+                  )}
+              </div>
+          )}
+
+          {/* Auto-computed date & deadline info */}
+          <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2 text-[11px] text-slate-500 font-semibold">
+                  <Calendar size={12} className="text-slate-600" />
+                  <span>{formatDateShort(serviceDate)}</span>
+              </div>
+              {deadlinePassed ? (
+                  <div className="flex items-center gap-1.5 text-[10px] font-black text-church-coral-400 uppercase tracking-wider">
+                      <XCircle size={12} /> Deadline Passed
+                  </div>
+              ) : (
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500">
+                      <Clock size={12} /> Closes {deadline.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </div>
+              )}
           </div>
       </div>
+
+      {/* Deadline Passed Banner */}
+      {deadlinePassed && canMark && (
+          <div className="flex items-start gap-3 border border-church-coral-500/30 bg-church-coral-500/5 rounded-2xl p-4">
+              <AlertTriangle size={20} className="text-church-coral-400 shrink-0 mt-0.5" />
+              <p className="text-sm text-church-coral-300 font-medium leading-relaxed">
+                  The submission window for <span className="font-black">{serviceType}</span> ({formatDateShort(serviceDate)}) has closed. You can no longer mark attendance for this service.
+              </p>
+          </div>
+      )}
 
       {successMsg && (
         <div className="bg-church-blue-900/30 border-2 border-church-blue-500 text-church-blue-300 p-4 rounded-xl flex items-center gap-3 font-bold backdrop-blur-sm">
@@ -513,7 +675,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
 
             <button 
                 onClick={handleSubmit}
-                disabled={!canMark || submitting || loading}
+                disabled={!canMark || submitting || loading || deadlinePassed || isSpecialMeetingInvalid}
                 className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-church hover:opacity-90 text-white px-8 py-3.5 rounded-xl font-black text-lg transition-all shadow-lg shadow-church-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-church-blue-600"
             >
                 {submitting ? <Loader2 className="animate-spin" size={24} /> : <Save size={24} />}
@@ -540,15 +702,15 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
           person={{ unit_id: effectiveUnitId }}
           lockUnit={true}  // Prevent altering the scope when rapid-adding from this screen
           onSubmit={async (data) => {
-              // Create the person directly
-              const newPerson = await createPerson(data);
+              // Create the person directly (No auth login generated)
+              const newPerson = await createFirstTimer(data);
               // Upon success, gracefully close and immediately reload the members into the arena
               setIsAddModalOpen(false);
               setSuccessMsg('Member registered successfully!');
               setTimeout(() => setSuccessMsg(''), 3000);
               await loadMembers();
               // Automatically check them present as a convenience!
-              setAttendance(prev => ({ ...prev, [newPerson.id]: 'PRESENT' }));
+              setAttendance(prev => ({ ...prev, [newPerson.person.id]: 'PRESENT' }));
           }}
       />
     </div>

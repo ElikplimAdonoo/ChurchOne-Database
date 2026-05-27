@@ -8,6 +8,7 @@ import HierarchyTree from '../components/HierarchyTree'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useAnimatedCounter } from '../hooks/useAnimatedCounter'
+import FirstTimersWeeklyModal from '../components/attendance/FirstTimersWeeklyModal'
 
 const stagger = {
   hidden: {},
@@ -36,6 +37,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [focusMembersTrigger, setFocusMembersTrigger] = useState(0)
   const [highlightTree, setHighlightTree] = useState(false)
+  const [isFirstTimersModalOpen, setIsFirstTimersModalOpen] = useState(false)
+  const [weeklyAttendanceData, setWeeklyAttendanceData] = useState([])
   const treeContainerRef = useRef(null)
   const location = useLocation()
 
@@ -146,9 +149,10 @@ export default function DashboardPage() {
         const uniquePersonIds = new Set(assignments?.map(a => a.person_id) || [])
         const uniqueAssigned = uniquePersonIds.size
 
-        let attendanceQuery = supabase.from('attendance_analytics_view').select('session_date, total_present, total_marked, first_timers_count')
+        let attendanceQuery = supabase.from('attendance_analytics_view').select('session_date, service_name, total_present, total_marked, first_timers_count')
         if (unitIdsArray) attendanceQuery = attendanceQuery.in('unit_id', unitIdsArray)
         const { data: attendanceData } = await attendanceQuery
+        setWeeklyAttendanceData(attendanceData || [])
 
         let attendanceRate = 0;
         let attendanceTrend = 0;
@@ -211,6 +215,7 @@ export default function DashboardPage() {
   return (
     // <IonPage>
     //   <IonContent className="ion-padding-bottom">
+    <>
         <div className="space-y-10 animate-in fade-in duration-500">
 
           {/* ── Command Center Header ── */}
@@ -276,18 +281,25 @@ export default function DashboardPage() {
           />
         </motion.div>
         <motion.div variants={fadeUp}>
-          <StatCard 
-            label="First Timers" 
-            value={stats.firstTimers} 
-            icon={<UserPlus size={18} />} 
-            color="violet" 
-            subText="From most recent session"
-            onClick={() => navigate('/attendance?focus=first_timers')}
-          />
+          <div className="relative">
+            <StatCard 
+              label="First Timers" 
+              value={stats.firstTimers} 
+              icon={<UserPlus size={18} />} 
+              color="violet" 
+              subText="From most recent session"
+              onClick={() => setIsFirstTimersModalOpen(!isFirstTimersModalOpen)}
+            />
+            <FirstTimersWeeklyModal 
+                isOpen={isFirstTimersModalOpen} 
+                onClose={() => setIsFirstTimersModalOpen(false)} 
+                attendanceData={weeklyAttendanceData} 
+            />
+          </div>
         </motion.div>
       </motion.div>
 
-      {/* ── Hierarchy Tree Card ── */}
+      {/* Hierarchy Tree Card */}
       <motion.div 
         ref={treeContainerRef}
         initial={{ opacity: 0, y: 20 }}
@@ -298,6 +310,7 @@ export default function DashboardPage() {
         <HierarchyTree focusTrigger={focusMembersTrigger} />
       </motion.div>
         </div>
+    </>
       // </IonContent>
     // </IonPage>
   )

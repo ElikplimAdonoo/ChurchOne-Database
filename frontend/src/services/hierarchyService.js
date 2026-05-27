@@ -22,7 +22,14 @@ export const fetchHierarchyData = async () => {
                 id,
                 unit_id,
                 is_primary,
-                people (id, full_name, photo_url, is_placeholder),
+                people (
+                    id, 
+                    full_name, 
+                    photo_url, 
+                    is_placeholder,
+                    created_at,
+                    attendance_records ( status )
+                ),
                 positions (title, level, unit_type)
             `)
             .eq('is_active', true);
@@ -41,12 +48,42 @@ export const fetchHierarchyData = async () => {
             const members = [];
 
             unitAssignments.forEach(a => {
+                const p = a.people;
+                if (!p) return;
+
+                // Dynamically calculate membership state strictly to apply pipeline to basic members
+                let presentCount = 0;
+                if (p.attendance_records && p.attendance_records.length > 0) {
+                    presentCount = p.attendance_records.filter(r => r.status === 'PRESENT').length;
+                }
+
+                const roleTitle = a.positions?.title || 'Unassigned';
+                let membership_state = roleTitle;
+
+                if (roleTitle === 'Member' || roleTitle === 'Cell Member' || roleTitle === 'Unassigned') {
+                    const createdDate = new Date(p.created_at || '2000-01-01');
+                    const cutoffDate = new Date('2026-03-31T00:00:00Z');
+                    if (createdDate < cutoffDate) {
+                        membership_state = 'Member';
+                    } else {
+                        if (presentCount === 1) membership_state = 'First Timer';
+                        else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
+                        else if (presentCount >= 4) membership_state = 'Member';
+                        else membership_state = 'Unattended';
+                    }
+                }
+
+                // Hide staging members/first timers from the hierarchy tree
+                if (membership_state === 'First Timer' || membership_state === 'Unattended') {
+                    return;
+                }
+
                 const person = {
-                    id: a.people?.id,
-                    name: a.people?.full_name || 'Unknown',
-                    role: a.positions?.title || 'Member',
-                    photo: a.people?.photo_url,
-                    isPlaceholder: a.people?.is_placeholder,
+                    id: p.id,
+                    name: p.full_name || 'Unknown',
+                    role: roleTitle,
+                    photo: p.photo_url,
+                    isPlaceholder: p.is_placeholder,
                     level: a.positions?.level
                 };
 
