@@ -1,4 +1,4 @@
-﻿
+
 -- Clean up existing tables if they exist (for fresh rebuild)
 -- Clean up existing tables if they exist (for fresh rebuild)
 DROP TABLE IF EXISTS promotion_transfer_history CASCADE;
@@ -99,6 +99,7 @@ DECLARE
     cell_shepherd_id UUID := gen_random_uuid();
     shepherd_id UUID := gen_random_uuid();
     cell_member_id UUID := gen_random_uuid();
+    first_timer_id UUID := gen_random_uuid();
 BEGIN
     INSERT INTO positions (id, title, description, unit_type, level) VALUES
     (zonal_head_id, 'Zonal Head', 'Overall zonal leadership', 'ZONE', 1),
@@ -106,7 +107,8 @@ BEGIN
     (buscenta_head_id, 'Buscenta Head', 'Buscenta Leader', 'BUSCENTA', 3),
     (cell_shepherd_id, 'Cell Shepherd', 'Primary Cell Leader', 'CELL', 4),
     (shepherd_id, 'Shepherd', 'Associate/Co-Leader', 'CELL', 4),
-    (cell_member_id, 'Cell Member', 'Regular Cell Member', 'CELL', 5);
+    (cell_member_id, 'Cell Member', 'Regular Cell Member', 'CELL', 5),
+    (first_timer_id, 'First Timer', 'First-time visitor registration role', 'CELL', 6);
 END $$;
 
 -- ============================================

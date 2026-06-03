@@ -434,18 +434,6 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                                     <div className="flex flex-col min-w-0">
                                         <span className="font-bold text-slate-200 text-sm md:text-base truncate leading-snug">{member.full_name}</span>
                                         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5">
-                                            {/* Membership Badge */}
-                                            {['First Timer', 'Brethren', 'Member', 'Unattended'].includes(member.membership_state) && (
-                                                <div className={`px-1.5 py-[1px] rounded-md text-[7px] font-black uppercase tracking-wider inline-flex items-center gap-0.5 border shadow-sm ${
-                                                    member.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
-                                                    member.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                    member.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
-                                                    'bg-slate-800 text-slate-400 border-slate-700'
-                                                }`}>
-                                                    {member.membership_state}
-                                                </div>
-                                            )}
-
                                             {/* Placeholder badge */}
                                             {member.is_placeholder && (
                                                 <div className="text-[7px] text-amber-500 font-black uppercase tracking-wider flex items-center gap-0.5">
@@ -453,8 +441,8 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                                                 </div>
                                             )}
 
-                                            {/* Role title */}
-                                            {member.role && member.role !== 'Member' && member.role !== 'Unassigned' && (
+                                            {/* Role title — single blue badge only */}
+                                            {member.role && member.role !== 'Unassigned' && (
                                                 <span className="text-church-blue-400 font-black text-[8px] uppercase tracking-wider">{member.role}</span>
                                             )}
                                         </div>
@@ -536,18 +524,6 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                                         <div className="flex flex-col min-w-0">
                                             <span className="font-bold text-slate-200 text-sm md:text-base truncate leading-snug">{member.full_name}</span>
                                             <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5">
-                                                {/* Membership Badge */}
-                                                {['First Timer', 'Brethren', 'Member', 'Unattended'].includes(member.membership_state) && (
-                                                    <div className={`px-1.5 py-[1px] rounded-md text-[7px] font-black uppercase tracking-wider inline-flex items-center gap-0.5 border shadow-sm ${
-                                                        member.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
-                                                        member.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                        member.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
-                                                        'bg-slate-800 text-slate-400 border-slate-700'
-                                                    }`}>
-                                                        {member.membership_state}
-                                                    </div>
-                                                )}
-
                                                 {/* Placeholder badge */}
                                                 {member.is_placeholder && (
                                                     <div className="text-[7px] text-amber-500 font-black uppercase tracking-wider flex items-center gap-0.5">
@@ -555,8 +531,8 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                                                     </div>
                                                 )}
 
-                                                {/* Role title */}
-                                                {member.role && member.role !== 'Member' && member.role !== 'Unassigned' && (
+                                                {/* Role title — single blue badge only */}
+                                                {member.role && member.role !== 'Unassigned' && (
                                                     <span className="text-church-blue-400 font-black text-[8px] uppercase tracking-wider">{member.role}</span>
                                                 )}
                                             </div>
