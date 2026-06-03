@@ -489,7 +489,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                         </div>
                         
                         <div className="flex items-center justify-between mb-4 px-2">
-                            <h3 className="text-sm font-black text-church-blue-400/80 uppercase tracking-widest">First Timers & Brethren</h3>
+                            <h3 className="text-sm font-black text-church-blue-400/80 uppercase tracking-widest">First Timers</h3>
                             <button 
                                 disabled={!canMark}
                                 onClick={() => setIsAddModalOpen(true)}
