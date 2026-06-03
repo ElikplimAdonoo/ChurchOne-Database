@@ -118,7 +118,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
 
   const computedFirstTimersCount = useMemo(() => {
     return members
-       .filter(m => ['First Timer', 'Brethren', 'Unattended'].includes(m.membership_state))
+       .filter(m => m.role === 'First Timer' || ['First Timer', 'Brethren', 'Unattended'].includes(m.membership_state))
        .filter(m => attendance[m.id] === 'PRESENT')
        .length;
   }, [members, attendance]);
