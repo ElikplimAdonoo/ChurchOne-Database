@@ -60,7 +60,7 @@ export const fetchHierarchyData = async () => {
                 const roleTitle = a.positions?.title || 'Unassigned';
                 let membership_state = roleTitle;
 
-                if (roleTitle === 'Member' || roleTitle === 'Cell Member' || roleTitle === 'Unassigned') {
+                if (roleTitle === 'Member' || roleTitle === 'Cell Member' || roleTitle === 'First Timer' || roleTitle === 'Unassigned') {
                     const createdDate = new Date(p.created_at || '2000-01-01');
                     const cutoffDate = new Date('2026-03-31T00:00:00Z');
                     if (createdDate < cutoffDate) {
