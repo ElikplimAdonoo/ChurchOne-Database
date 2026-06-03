@@ -22,14 +22,8 @@ function getServiceDate(serviceValue) {
 
   if (serviceValue === 'Mega Gathering Service') {
     const result = new Date(today);
-    if (currentDay === 6) { // Saturday
-      result.setDate(result.getDate() + 1); // Tomorrow (Sunday)
-    } else if (currentDay === 0) { // Sunday
-      // Today is Sunday
-    } else {
-      // Monday(1) to Friday(5): Map to the PREVIOUS Sunday
-      result.setDate(result.getDate() - currentDay);
-    }
+    // Sunday (0) maps to today, Monday (1) maps to yesterday. All other days map to the previous Sunday.
+    result.setDate(result.getDate() - currentDay);
     return result;
   } else if (serviceValue === 'LC Live') {
     // LC Live is Wednesday.
@@ -325,16 +319,6 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   return (
     <div className="space-y-6">
 
-      {!isGeneralMarkingLevel && (
-          <div className="flex items-start gap-4 border border-slate-600/40 rounded-2xl p-4">
-              <div className="w-10 h-10 rounded-full bg-church-blue-500/15 border border-church-blue-500/30 flex items-center justify-center shrink-0 mt-0.5">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-church-blue-400"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
-              </div>
-              <p className="text-sm text-slate-300 font-medium leading-relaxed">
-                  Attendance is marked at the Cell and MC levels. At this level, you can only mark attendance for yourself and view analytics.
-              </p>
-          </div>
-      )}
 
       {/* Service Selector */}
       <div className="flex flex-col gap-3">

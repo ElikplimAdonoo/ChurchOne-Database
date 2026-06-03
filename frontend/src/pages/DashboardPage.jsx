@@ -157,6 +157,7 @@ export default function DashboardPage() {
         let attendanceRate = 0;
         let attendanceTrend = 0;
         let firstTimers = 0;
+        let currentSessionLabel = 'Current marked sessions';
 
         if (attendanceData && attendanceData.length > 0) {
             const dateMap = {};
@@ -174,6 +175,7 @@ export default function DashboardPage() {
                 const latest = sortedDates[0];
                 attendanceRate = latest.marked > 0 ? Math.round((latest.present / latest.marked) * 100) : 0;
                 firstTimers = latest.firstTimers;
+                currentSessionLabel = 'Current marked sessions';
 
                 if (sortedDates.length > 1) {
                     const prev = sortedDates[1];
@@ -182,6 +184,7 @@ export default function DashboardPage() {
                 }
             }
         }
+
 
         setStats({ 
           members: memberCount || 0, 
@@ -192,7 +195,8 @@ export default function DashboardPage() {
           unitBreakdown,
           attendanceRate,
           attendanceTrend,
-          firstTimers
+          firstTimers,
+          currentSessionLabel
         })
       } catch (err) {
         console.error("Failed to fetch dashboard stats:", err)
@@ -275,7 +279,7 @@ export default function DashboardPage() {
             value={stats.attendanceRate} 
             icon={<CheckCircle2 size={18} />} 
             color="emerald" 
-            subText="Current marked sessions"
+            subText={stats.currentSessionLabel || 'Current marked sessions'}
             trend={stats.attendanceTrend}
             onClick={() => navigate('/attendance?tab=analytics')}
           />

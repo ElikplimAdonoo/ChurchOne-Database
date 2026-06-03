@@ -38,9 +38,20 @@ export default function PersonActionModal({
                 positionId: person.position_id || ''
             });
         } else {
-            reset({ fullName: '', unitId: '', positionId: '' });
+            // In add mode, pre-fill unit_id if provided (e.g. when locked to a cell for first-timer registration)
+            reset({ fullName: '', unitId: person?.unit_id || '', positionId: '' });
         }
     }, [mode, person, reset, isOpen]);
+
+    // Auto-select the 'Member' position when unit is locked (first-timer registration flow)
+    useEffect(() => {
+        if (lockUnit && currentPositions.length > 0) {
+            const memberPos = currentPositions.find(p =>
+                p.title === 'Member' || p.title === 'Cell Member'
+            );
+            if (memberPos) setValue('positionId', memberPos.id);
+        }
+    }, [lockUnit, currentPositions, setValue]);
 
     const handleFormSubmit = async (data) => {
         await onSubmit(data);
@@ -109,53 +120,76 @@ export default function PersonActionModal({
                     <div className="space-y-4">
                         <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest border-b border-slate-800 pb-1">Church Placement</div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1">Assigned Unit</label>
-                            <div className="relative group">
-                                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={16} />
-                                <select
-                                    {...register('unitId', { required: 'Unit is required' })}
-                                    className="w-full bg-slate-900 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 transition-all text-slate-200 appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={lockUnit}
-                                >
-                                    <option value="">Select Unit...</option>
-                                    {sortedUnits.map(u => (
-                                        <option key={u.id} value={u.id}>{u.name} ({u.unit_type})</option>
-                                    ))}
-                                </select>
-                                {lockUnit && (
-                                    <div className="absolute inset-y-0 right-0 right-8 flex items-center pointer-events-none">
-                                        <span className="text-[9px] uppercase tracking-wider font-bold text-slate-500">Locked to Cell</span>
+                        {lockUnit ? (
+                            // ── Locked first-timer flow: show clean badges instead of dropdowns ──
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                                    <MapPin size={15} className="text-church-blue-400 shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-0.5">Assigned Cell</p>
+                                        <p className="text-sm font-bold text-slate-200 truncate">
+                                            {sortedUnits.find(u => u.id === person?.unit_id)?.name || 'Current Cell'}
+                                        </p>
                                     </div>
-                                )}
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-church-blue-400 bg-church-blue-500/10 border border-church-blue-500/20 px-2 py-0.5 rounded-full shrink-0">Locked</span>
+                                </div>
+                                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-800/60 border border-slate-700/50">
+                                    <Shield size={15} className="text-emerald-400 shrink-0" />
+                                    <div className="flex-1">
+                                        <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-0.5">Role</p>
+                                        <p className="text-sm font-bold text-slate-200">Member</p>
+                                    </div>
+                                    <span className="text-[8px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">Auto</span>
+                                </div>
+                                {/* Hidden inputs to keep form values registered */}
+                                <input type="hidden" {...register('unitId', { required: true })} />
+                                <input type="hidden" {...register('positionId', { required: true })} />
                             </div>
-                            {errors.unitId && <span className="text-church-coral-400 text-[10px] font-bold mt-1 block ml-1">{errors.unitId.message}</span>}
-                        </div>
+                        ) : (
+                            // ── Full edit/add flow: show dropdowns ──
+                            <>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1">Assigned Unit</label>
+                                    <div className="relative group">
+                                        <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={16} />
+                                        <select
+                                            {...register('unitId', { required: 'Unit is required' })}
+                                            className="w-full bg-slate-900 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 transition-all text-slate-200 appearance-none"
+                                        >
+                                            <option value="">Select Unit...</option>
+                                            {sortedUnits.map(u => (
+                                                <option key={u.id} value={u.id}>{u.name} ({u.unit_type})</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {errors.unitId && <span className="text-church-coral-400 text-[10px] font-bold mt-1 block ml-1">{errors.unitId.message}</span>}
+                                </div>
 
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1">Position / Role</label>
-                            <div className="relative group">
-                                <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={16} />
-                                <select
-                                    {...register('positionId', { required: 'Role is required' })}
-                                    className="w-full bg-slate-900 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 transition-all text-slate-200 appearance-none disabled:opacity-50"
-                                    disabled={!currentPositions.length}
-                                >
-                                    <option value="">Select Role...</option>
-                                    {currentPositions.map(p => (
-                                        <option key={p.id} value={p.id}>{p.title}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            {errors.positionId && <span className="text-church-coral-400 text-[10px] font-bold mt-1 block ml-1">{errors.positionId.message}</span>}
-                        </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-1.5 ml-1">Position / Role</label>
+                                    <div className="relative group">
+                                        <Shield className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-church-blue-400 transition-colors" size={16} />
+                                        <select
+                                            {...register('positionId', { required: 'Role is required' })}
+                                            className="w-full bg-slate-900 border border-slate-700/50 rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-church-blue-500/50 focus:ring-2 focus:ring-church-blue-500/50 transition-all text-slate-200 appearance-none disabled:opacity-50"
+                                            disabled={!currentPositions.length}
+                                        >
+                                            <option value="">Select Role...</option>
+                                            {currentPositions.map(p => (
+                                                <option key={p.id} value={p.id}>{p.title}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    {errors.positionId && <span className="text-church-coral-400 text-[10px] font-bold mt-1 block ml-1">{errors.positionId.message}</span>}
+                                </div>
 
-                        {/* Status Toggle (Optional improvement) */}
-                        <div className="pt-2">
-                             <p className="text-[10px] text-slate-500 italic px-1 leading-relaxed">
-                                Note: Changing the unit or role will automatically transfer the member to the new location in the hierarchy.
-                             </p>
-                        </div>
+                                <div className="pt-2">
+                                    <p className="text-[10px] text-slate-500 italic px-1 leading-relaxed">
+                                        Note: Changing the unit or role will automatically transfer the member to the new location in the hierarchy.
+                                    </p>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
 
