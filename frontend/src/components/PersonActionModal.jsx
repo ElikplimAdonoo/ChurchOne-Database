@@ -16,6 +16,7 @@ export default function PersonActionModal({
     const { register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm();
 
     const selectedUnitId = watch('unitId');
+    const selectedPositionId = watch('positionId');
 
     // Filter available positions based on selected unit's type
     const availablePositions = (selectedUnitId, units, positions) => {
@@ -26,6 +27,7 @@ export default function PersonActionModal({
     };
 
     const currentPositions = availablePositions(selectedUnitId, units, positions);
+    const selectedPosition = currentPositions.find(p => p.id === selectedPositionId);
     
     // Sort units naturally so they appear in correct alphabetical/chronological order (e.g. Cell 1 -> Cell 2 -> Cell 3)
     const sortedUnits = [...units].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
@@ -43,13 +45,19 @@ export default function PersonActionModal({
         }
     }, [mode, person, reset, isOpen]);
 
-    // Auto-select the 'Member' position when unit is locked (first-timer registration flow)
+    // Auto-select the 'First Timer' or 'Member' position when unit is locked (first-timer registration flow)
     useEffect(() => {
         if (lockUnit && currentPositions.length > 0) {
-            const memberPos = currentPositions.find(p =>
-                p.title === 'Member' || p.title === 'Cell Member'
+            const targetPos = currentPositions.find(p =>
+                p.title === 'First Timer' || 
+                p.title === 'First-timer' || 
+                p.title === 'First-Timer' || 
+                p.title === 'First Timers'
+            ) || currentPositions.find(p =>
+                p.title === 'Member' || 
+                p.title === 'Cell Member'
             );
-            if (memberPos) setValue('positionId', memberPos.id);
+            if (targetPos) setValue('positionId', targetPos.id);
         }
     }, [lockUnit, currentPositions, setValue]);
 
@@ -137,7 +145,9 @@ export default function PersonActionModal({
                                     <Shield size={15} className="text-emerald-400 shrink-0" />
                                     <div className="flex-1">
                                         <p className="text-[9px] font-black text-slate-500 uppercase tracking-wider mb-0.5">Role</p>
-                                        <p className="text-sm font-bold text-slate-200">Member</p>
+                                        <p className="text-sm font-bold text-slate-200">
+                                            {selectedPosition?.title || 'First Timer'}
+                                        </p>
                                     </div>
                                     <span className="text-[8px] font-black uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full shrink-0">Auto</span>
                                 </div>
