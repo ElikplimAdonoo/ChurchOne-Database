@@ -118,7 +118,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
 
   const computedFirstTimersCount = useMemo(() => {
     return members
-       .filter(m => m.role === 'First Timer' || ['First Timer', 'Brethren', 'Unattended'].includes(m.membership_state))
+       .filter(m => m.role === 'First Timer' || ['First Timer', 'Brethren'].includes(m.membership_state))
        .filter(m => attendance[m.id] === 'PRESENT')
        .length;
   }, [members, attendance]);
@@ -441,9 +441,9 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                 {/* ── Core Members Arena ── */}
                 <div>
                     <div className="space-y-2">
-                        {members.filter(m => !['First Timer', 'Brethren', 'Unattended'].includes(m.membership_state)).length === 0 ? (
+                        {members.filter(m => !['First Timer', 'Brethren'].includes(m.membership_state)).length === 0 ? (
                             <div className="py-8 text-center text-slate-500 font-semibold italic text-sm border-t border-slate-700/50">No core members to display.</div>
-                        ) : members.filter(m => !['First Timer', 'Brethren', 'Unattended'].includes(m.membership_state)).map(member => (
+                        ) : members.filter(m => !['First Timer', 'Brethren'].includes(m.membership_state)).map(member => (
                             <div key={member.id} className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl border border-slate-700/40 hover:border-slate-600/60 hover:bg-white/[0.01] transition-all">
                                 <div className="flex items-center gap-3 min-w-0">
                                     {/* Avatar/Photo */}
@@ -528,12 +528,12 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                         </div>
 
                         <div className="space-y-2">
-                            {members.filter(m => ['First Timer', 'Brethren', 'Unattended'].includes(m.membership_state)).length === 0 ? (
+                            {members.filter(m => ['First Timer', 'Brethren'].includes(m.membership_state)).length === 0 ? (
                                 <div className="py-12 text-center text-slate-500 flex flex-col items-center justify-center font-semibold italic text-sm">
                                     <UserPlus size={32} className="text-slate-600 mb-3" />
                                     No staging members tracking currently.
                                 </div>
-                            ) : members.filter(m => ['First Timer', 'Brethren', 'Unattended'].includes(m.membership_state)).map(member => (
+                            ) : members.filter(m => ['First Timer', 'Brethren'].includes(m.membership_state)).map(member => (
                                 <div key={member.id} className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-2xl border border-slate-700/40 hover:border-slate-600/60 hover:bg-white/[0.01] transition-all">
                                     <div className="flex items-center gap-3 min-w-0">
                                         {/* Avatar/Photo */}

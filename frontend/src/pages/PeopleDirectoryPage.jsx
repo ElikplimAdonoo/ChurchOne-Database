@@ -93,7 +93,7 @@ export default function PeopleDirectory() {
                 return false;
             }
             // Hide staging members/first timers who are not yet Brethren or Members
-            if (p.membership_state === 'First Timer' || p.membership_state === 'Unattended') {
+            if (p.membership_state === 'First Timer') {
                 return false;
             }
             return true;

@@ -82,7 +82,7 @@ export default function DashboardPage() {
         
         // Hide staging members/first timers who are not yet Brethren or Members to match the directory
         const filteredPeople = allPeople.filter(p => {
-            if (p.membership_state === 'First Timer' || p.membership_state === 'Unattended') {
+            if (p.membership_state === 'First Timer') {
                 return false;
             }
             return true;
