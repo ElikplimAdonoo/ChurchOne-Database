@@ -308,17 +308,6 @@ export default function PeopleDirectory() {
                                 <div className="flex flex-col min-w-0">
                                     <span className="font-bold text-slate-200 text-sm md:text-base truncate leading-snug">{person.name}</span>
                                     <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 mt-0.5">
-                                        {/* Membership Badge */}
-                                        {['First Timer', 'Brethren', 'Member', 'Unattended'].includes(person.membership_state) && (
-                                            <div className={`px-1.5 py-[1px] rounded-md text-[7px] font-black uppercase tracking-wider inline-flex items-center gap-0.5 border shadow-sm ${
-                                                person.membership_state === 'First Timer' ? 'bg-teal-500/10 text-teal-400 border-teal-500/20' :
-                                                person.membership_state === 'Brethren' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                                person.membership_state === 'Member' ? 'bg-church-purple-500/10 text-church-purple-400 border-church-purple-500/20' :
-                                                'bg-slate-800 text-slate-400 border-slate-700'
-                                            }`}>
-                                                {person.membership_state}
-                                            </div>
-                                        )}
 
                                         {/* Placeholder badge */}
                                         {person.is_placeholder && (

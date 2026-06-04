@@ -79,6 +79,15 @@ export default function DashboardPage() {
         const unitIdsArray = managedUnits === 'ALL' ? null : Array.from(managedUnits)
 
         const allPeople = await fetchPeople()
+        
+        // Hide staging members/first timers who are not yet Brethren or Members to match the directory
+        const filteredPeople = allPeople.filter(p => {
+            if (p.membership_state === 'First Timer' || p.membership_state === 'Unattended') {
+                return false;
+            }
+            return true;
+        });
+
         let activeCount = 0;
         let inactiveCount = 0;
         let pendingCount = 0;
@@ -89,7 +98,7 @@ export default function DashboardPage() {
         let memCell = 0;
         
         const processPerson = (p) => {
-            if (p.status === 'Active') activeCount++;
+            if (p.status === 'Active' || p.status === 'System') activeCount++;
             else if (p.status === 'Inactive') inactiveCount++;
             else if (p.status === 'Pending') pendingCount++;
             
@@ -101,11 +110,11 @@ export default function DashboardPage() {
         
         if (unitIdsArray) {
             const unitIdsSet = new Set(unitIdsArray);
-            allPeople.forEach(p => {
+            filteredPeople.forEach(p => {
                 if(unitIdsSet.has(p.unit_id)) processPerson(p);
             });
         } else {
-            allPeople.forEach(processPerson);
+            filteredPeople.forEach(processPerson);
         }
         const memberCount = activeCount + inactiveCount + pendingCount;
         const membersBreakdown = [

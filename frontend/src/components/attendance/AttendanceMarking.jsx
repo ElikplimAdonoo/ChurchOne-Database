@@ -128,7 +128,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
     fetchPositions().then(setPositions);
   }, []);
 
-  const loadMembers = async () => {
+  const loadMembers = async (preserveLocal = false) => {
       if (!effectiveUnitId) return;
       
       setLoading(true);
@@ -143,6 +143,30 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
             if (uData) setActiveUnitName(uData.name);
         } else {
             setActiveUnitName(currentRole.unitName);
+        }
+
+        // Fetch session first (if it exists)
+        let existingRecords = {};
+        if (effectiveUnitId && date && resolvedServiceName) {
+            const { data: sessionData } = await supabase
+                .from('attendance_sessions')
+                .select('id')
+                .eq('unit_id', effectiveUnitId)
+                .eq('session_date', date)
+                .eq('service_name', resolvedServiceName)
+                .maybeSingle();
+
+            if (sessionData) {
+                const { data: recordsData } = await supabase
+                    .from('attendance_records')
+                    .select('person_id, status')
+                    .eq('session_id', sessionData.id);
+                if (recordsData) {
+                    recordsData.forEach(r => {
+                        existingRecords[r.person_id] = r.status;
+                    });
+                }
+            }
         }
 
         // Use unitId directly — no name-based lookup needed (fixes fragile query)
@@ -198,12 +222,16 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
 
         setMembers(formattedMembers);
         
-        // Initialize all as unassigned by default
-        const initialStatus = {};
-        formattedMembers.forEach(m => {
-          initialStatus[m.id] = null;
+        // Initialize status, preserving any unsaved local marks if requested
+        setAttendance(prev => {
+            const nextStatus = preserveLocal ? { ...prev } : {};
+            formattedMembers.forEach(m => {
+                if (!preserveLocal || nextStatus[m.id] === undefined) {
+                    nextStatus[m.id] = existingRecords[m.id] !== undefined ? existingRecords[m.id] : null;
+                }
+            });
+            return nextStatus;
         });
-        setAttendance(initialStatus);
 
       } catch (error) {
         console.error('Error fetching members:', error);
@@ -213,8 +241,8 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   };
 
   useEffect(() => {
-    loadMembers();
-  }, [effectiveUnitId]);
+    loadMembers(false);
+  }, [effectiveUnitId, date, resolvedServiceName]);
 
   // When service type changes, load existing session growth counts (if session exists)
   useEffect(() => {
@@ -591,7 +619,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                             <input
                                 type="number"
                                 readOnly
-                                value={computedFirstTimersCount === 0 ? '' : computedFirstTimersCount}
+                                value={computedFirstTimersCount || firstTimers || ''}
                                 className="w-16 bg-slate-900/80 border border-blue-700/20 rounded-lg px-2 py-1 text-white text-center font-black text-xl placeholder:text-slate-600 transition-all shadow-inner opacity-70 cursor-not-allowed"
                                 placeholder="0"
                                 title="Auto-calculated from staging arena above"

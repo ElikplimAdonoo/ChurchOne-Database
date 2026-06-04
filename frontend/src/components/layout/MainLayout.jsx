@@ -18,7 +18,7 @@ export default function MainLayout() {
   const handleScroll = useCallback(() => {
     setIsScrolling(true)
     if (scrollTimeout.current) clearTimeout(scrollTimeout.current)
-    scrollTimeout.current = setTimeout(() => setIsScrolling(false), 30)
+    scrollTimeout.current = setTimeout(() => setIsScrolling(false), 300)
   }, [])
 
   useEffect(() => {
@@ -83,7 +83,7 @@ export default function MainLayout() {
 
         {/* Mobile Bottom Tabs */}
         <nav className={`md:hidden fixed bottom-0 left-0 z-50 w-full transition-all duration-500 ease-out border-t border-white/5 bg-slate-950/95 backdrop-blur-xl shrink-0 ${
-          isScrolling ? 'opacity-20 pointer-events-none translate-y-1' : 'opacity-100 pointer-events-auto translate-y-0'
+          isScrolling ? 'opacity-20 translate-y-1 pointer-events-auto' : 'opacity-100 pointer-events-auto translate-y-0'
         }`}>
           <div className="px-4 py-1.5 pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))] flex items-center justify-around shadow-2xl">
             <TabItem to="/" icon={<Home size={20} />} label="Home" />
