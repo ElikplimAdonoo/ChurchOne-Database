@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, UserCheck, UserX, Loader2, CheckCircle, XCircle, Check, X, UserPlus, Flame, ExternalLink, Share2, LayoutGrid, ChevronDown, Clock, AlertTriangle, Calendar } from 'lucide-react';
+import { Save, UserCheck, UserX, Loader2, CheckCircle, XCircle, Check, X, UserPlus, Flame, ExternalLink, Share2, LayoutGrid, ChevronDown, Clock, AlertTriangle, Calendar, Globe, FileText } from 'lucide-react';
 import ImageModal from '../common/ImageModal';
 import PersonActionModal from '../PersonActionModal';
 import { fetchHierarchyData, fetchPositions } from '../../services/hierarchyService';
 import { createFirstTimer } from '../../services/peopleService';
 import { cacheService, CACHE_KEYS } from '../../services/cacheService';
+import NetRevelationExportModal from './NetRevelationExportModal';
 
 // ─── Service Type Definitions ────────────────────────────────────────────────
 const SERVICE_TYPES = [
@@ -79,7 +80,7 @@ function toISODate(date) {
   return `${y}-${m}-${d}`;
 }
 
-export default function AttendanceMarking({ currentRole, overrideUnitId = null, overrideUnitType = null }) {
+export default function AttendanceMarking({ currentRole, overrideUnitId = null, overrideUnitType = null, overrideUnitName = null }) {
   const [serviceType, setServiceType] = useState('Mega Gathering Service');
   const [specialMeetingName, setSpecialMeetingName] = useState('');
   const [members, setMembers] = useState([]);
@@ -90,10 +91,13 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   const [soulsWon, setSoulsWon] = useState(0);
   const [activeUnitName, setActiveUnitName] = useState(currentRole.unitName);
   const [successMsg, setSuccessMsg] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successServiceInfo, setSuccessServiceInfo] = useState({ service: '', date: '' });
   const [imageModalConfig, setImageModalConfig] = useState({ isOpen: false, src: '', title: '' });
   const [hierarchyData, setHierarchyData] = useState([]);
   const [positions, setPositions] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // Derived: compute the session date and deadline from serviceType
   const serviceDate = useMemo(() => getServiceDate(serviceType), [serviceType]);
@@ -119,7 +123,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   const computedFirstTimersCount = useMemo(() => {
     return members
        .filter(m => m.role === 'First Timer' || ['First Timer', 'Brethren'].includes(m.membership_state))
-       .filter(m => attendance[m.id] === 'PRESENT')
+       .filter(m => attendance[m.id] === 'PRESENT' || attendance[m.id] === 'ONLINE')
        .length;
   }, [members, attendance]);
 
@@ -201,18 +205,17 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
              
              const roleTitle = m.positions?.title || 'Unassigned';
              let membership_state = roleTitle;
-             
-             if (roleTitle === 'Member' || roleTitle === 'Cell Member' || roleTitle === 'First Timer' || roleTitle === 'Unassigned') {
-                 const createdDate = new Date(p.created_at || '2000-01-01');
-                 const cutoffDate = new Date('2026-03-31T00:00:00Z');
-                 if (createdDate < cutoffDate) {
-                     membership_state = 'Member';
-                 } else {
-                     if (presentCount === 1) membership_state = 'First Timer';
-                     else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
-                     else if (presentCount >= 4) membership_state = 'Member';
-                     else membership_state = 'Unattended';
-                 }
+
+             // Pipeline ONLY applies to people registered as 'First Timer' (added from the attendance screen).
+             // Anyone added via the directory with 'Cell Member', 'Member', or 'Unassigned' is already a
+             // member and must always appear as 'Member', regardless of attendance count.
+             if (roleTitle === 'First Timer') {
+                 if (presentCount === 1) membership_state = 'First Timer';
+                 else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
+                 else if (presentCount >= 4) membership_state = 'Member';
+                 else membership_state = 'Unattended';
+             } else if (roleTitle === 'Cell Member' || roleTitle === 'Member' || roleTitle === 'Unassigned') {
+                 membership_state = 'Member';
              }
              
              return { ...p, role: roleTitle, membership_state, present_count: presentCount };
@@ -332,8 +335,8 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
         cacheService.remove(CACHE_KEYS.PEOPLE);
         cacheService.remove(CACHE_KEYS.HIERARCHY);
 
-        setSuccessMsg('Attendance marked successfully!');
-        setTimeout(() => setSuccessMsg(''), 3000);
+        setSuccessServiceInfo({ service: resolvedServiceName, date: formatDateShort(serviceDate) });
+        setShowSuccessModal(true);
 
     } catch (error) {
         console.error("Error submitting attendance:", error);
@@ -419,12 +422,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
           </div>
       )}
 
-      {successMsg && (
-        <div className="bg-church-blue-900/30 border-2 border-church-blue-500 text-church-blue-300 p-4 rounded-xl flex items-center gap-3 font-bold backdrop-blur-sm">
-            <CheckCircle size={24} />
-            {successMsg}
-        </div>
-      )}
+
 
       {/* Member List */}
       <div className="mb-8">
@@ -477,31 +475,43 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                                     </div>
                                 </div>
 
-                                {/* Present/Absent actions */}
-                                <div className="flex items-center gap-2 shrink-0">
+                                {/* Present/Online/Absent actions */}
+                                <div className="flex items-center gap-1.5 shrink-0">
                                     <button
                                         disabled={!canMark}
                                         onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'PRESENT' ? null : 'PRESENT' }))}
-                                        className={`w-8 h-8 md:w-9 md:h-9 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
                                             attendance[member.id] === 'PRESENT'
-                                                ? 'bg-emerald-700 text-white shadow-lg shadow-emerald-500/30'
+                                                ? 'bg-emerald-700 text-white shadow-md shadow-emerald-500/30'
                                                 : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
                                         }`}
                                         title="Mark Present"
                                     >
-                                        <Check size={18} strokeWidth={attendance[member.id] === 'PRESENT' ? 3 : 2} />
+                                        <Check size={16} strokeWidth={attendance[member.id] === 'PRESENT' ? 3 : 2} />
+                                    </button>
+                                    <button
+                                        disabled={!canMark}
+                                        onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'ONLINE' ? null : 'ONLINE' }))}
+                                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                            attendance[member.id] === 'ONLINE'
+                                                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                                                : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
+                                        }`}
+                                        title="Mark Online"
+                                    >
+                                        <Globe size={15} strokeWidth={attendance[member.id] === 'ONLINE' ? 3 : 2} />
                                     </button>
                                     <button
                                         disabled={!canMark}
                                         onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'ABSENT' ? null : 'ABSENT' }))}
-                                        className={`w-8 h-8 md:w-9 md:h-9 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
                                             attendance[member.id] === 'ABSENT'
-                                                ? 'bg-church-coral-700 text-white shadow-lg shadow-church-coral-500/30'
+                                                ? 'bg-rose-700 text-white shadow-md shadow-rose-500/30'
                                                 : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
                                         }`}
                                         title="Mark Absent"
                                     >
-                                        <X size={18} strokeWidth={attendance[member.id] === 'ABSENT' ? 3 : 2} />
+                                        <X size={16} strokeWidth={attendance[member.id] === 'ABSENT' ? 3 : 2} />
                                     </button>
                                 </div>
                             </div>
@@ -567,31 +577,43 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                                         </div>
                                     </div>
 
-                                    {/* Present/Absent actions */}
-                                    <div className="flex items-center gap-2 shrink-0">
+                                    {/* Present/Online/Absent actions */}
+                                    <div className="flex items-center gap-1.5 shrink-0">
                                         <button
                                             disabled={!canMark}
                                             onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'PRESENT' ? null : 'PRESENT' }))}
-                                            className={`w-8 h-8 md:w-9 md:h-9 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
                                                 attendance[member.id] === 'PRESENT'
-                                                    ? 'bg-emerald-700 text-white shadow-lg shadow-emerald-500/30'
+                                                    ? 'bg-emerald-700 text-white shadow-md shadow-emerald-500/30'
                                                     : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
                                             }`}
                                             title="Mark Present"
                                         >
-                                            <Check size={18} strokeWidth={attendance[member.id] === 'PRESENT' ? 3 : 2} />
+                                            <Check size={16} strokeWidth={attendance[member.id] === 'PRESENT' ? 3 : 2} />
+                                        </button>
+                                        <button
+                                            disabled={!canMark}
+                                            onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'ONLINE' ? null : 'ONLINE' }))}
+                                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                                attendance[member.id] === 'ONLINE'
+                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                                                    : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
+                                            }`}
+                                            title="Mark Online"
+                                        >
+                                            <Globe size={15} strokeWidth={attendance[member.id] === 'ONLINE' ? 3 : 2} />
                                         </button>
                                         <button
                                             disabled={!canMark}
                                             onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'ABSENT' ? null : 'ABSENT' }))}
-                                            className={`w-8 h-8 md:w-9 md:h-9 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
                                                 attendance[member.id] === 'ABSENT'
-                                                    ? 'bg-church-coral-700 text-white shadow-lg shadow-church-coral-500/30'
+                                                    ? 'bg-rose-700 text-white shadow-md shadow-rose-500/30'
                                                     : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
                                             }`}
                                             title="Mark Absent"
                                         >
-                                            <X size={18} strokeWidth={attendance[member.id] === 'ABSENT' ? 3 : 2} />
+                                            <X size={16} strokeWidth={attendance[member.id] === 'ABSENT' ? 3 : 2} />
                                         </button>
                                     </div>
                                 </div>
@@ -661,14 +683,28 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
             </div>
             )}
 
-            <button 
-                onClick={handleSubmit}
-                disabled={!canMark || submitting || loading || deadlinePassed || isSpecialMeetingInvalid}
-                className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-church hover:opacity-90 text-white px-8 py-3.5 rounded-xl font-black text-lg transition-all shadow-lg shadow-church-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed border-2 border-church-blue-600"
-            >
-                {submitting ? <Loader2 className="animate-spin" size={24} /> : <Save size={24} />}
-                <span>{submitting ? 'Saving...' : 'Submit Attendance'}</span>
-            </button>
+            <div className="flex gap-2 w-full md:w-auto">
+              {['Zonal Head', 'MC Head', 'Buscenta Head'].includes(currentRole?.title) && (
+                  <button 
+                      type="button"
+                      onClick={() => setIsExportModalOpen(true)}
+                      disabled={loading || submitting}
+                      className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-transparent border border-slate-600/60 hover:border-indigo-500/60 hover:bg-indigo-500/5 text-slate-400 hover:text-indigo-300 px-4 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                      <FileText size={14} />
+                      <span>Net Revelation</span>
+                  </button>
+              )}
+
+              <button 
+                  onClick={handleSubmit}
+                  disabled={!canMark || submitting || loading || deadlinePassed || isSpecialMeetingInvalid}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-gradient-church hover:opacity-90 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md shadow-church-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              >
+                  {submitting ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+                  <span>{submitting ? 'Saving...' : 'Submit Attendance'}</span>
+              </button>
+            </div>
           </div>
       )}
 
@@ -701,6 +737,53 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
               setAttendance(prev => ({ ...prev, [newPerson.person.id]: 'PRESENT' }));
           }}
       />
+      {/* Net Revelation Export Modal */}
+      <NetRevelationExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        selectedSessionKey={`${date}_${resolvedServiceName}`}
+        currentRole={currentRole}
+        overrideUnitId={overrideUnitId}
+        overrideUnitType={overrideUnitType}
+        overrideUnitName={overrideUnitName}
+      />
+
+      {/* Attendance Submitted Success Modal */}
+      {showSuccessModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4"
+          onClick={() => setShowSuccessModal(false)}
+        >
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+
+          {/* Card */}
+          <div
+            className="relative w-full max-w-xs sm:max-w-sm bg-[#0d1117] border border-white/8 rounded-2xl p-5 shadow-2xl flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+              <CheckCircle size={22} className="text-emerald-400" />
+            </div>
+
+            {/* Text */}
+            <div className="text-center">
+              <p className="text-sm font-black text-slate-100 leading-snug">Attendance Submitted</p>
+              <p className="text-[11px] text-slate-400 font-semibold mt-1">{successServiceInfo.service}</p>
+              <p className="text-[10px] text-slate-500 font-bold mt-0.5">{successServiceInfo.date}</p>
+            </div>
+
+            {/* Dismiss */}
+            <button
+              onClick={() => setShowSuccessModal(false)}
+              className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

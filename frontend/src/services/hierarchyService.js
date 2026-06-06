@@ -60,17 +60,16 @@ export const fetchHierarchyData = async () => {
                 const roleTitle = a.positions?.title || 'Unassigned';
                 let membership_state = roleTitle;
 
-                if (roleTitle === 'Member' || roleTitle === 'Cell Member' || roleTitle === 'First Timer' || roleTitle === 'Unassigned') {
-                    const createdDate = new Date(p.created_at || '2000-01-01');
-                    const cutoffDate = new Date('2026-03-31T00:00:00Z');
-                    if (createdDate < cutoffDate) {
-                        membership_state = 'Member';
-                    } else {
-                        if (presentCount === 1) membership_state = 'First Timer';
-                        else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
-                        else if (presentCount >= 4) membership_state = 'Member';
-                        else membership_state = 'Unattended';
-                    }
+                // Pipeline ONLY applies to people registered as 'First Timer' (added from attendance screen).
+                // Anyone added via the directory with 'Cell Member', 'Member', or 'Unassigned' is already a
+                // member and must always appear as 'Member', regardless of how many times they've attended.
+                if (roleTitle === 'First Timer') {
+                    if (presentCount === 1) membership_state = 'First Timer';
+                    else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
+                    else if (presentCount >= 4) membership_state = 'Member';
+                    else membership_state = 'Unattended';
+                } else if (roleTitle === 'Cell Member' || roleTitle === 'Member' || roleTitle === 'Unassigned') {
+                    membership_state = 'Member';
                 }
 
                 // Hide staging members/first timers from the hierarchy tree

@@ -5,9 +5,10 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Loader2, TrendingUp, TrendingDown, Users, Calendar, UserX, Activity, UserPlus, Flame, ArrowDownRight, ArrowUpRight, ChevronDown } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Users, Calendar, UserX, Activity, UserPlus, Flame, ArrowDownRight, ArrowUpRight, ChevronDown, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAnimatedCounter } from '../../hooks/useAnimatedCounter';
+import Modal from '../ui/Modal';
 
 // ─── Animation Variants ─────────────────────────────────────────────────────
 const stagger = {
@@ -102,11 +103,22 @@ function HeroKpiCard({ rate, trend, trendValue, history }) {
 }
 
 // ─── Stats Card (Present / Absent) ───────────────────────────────────────────
-function StatsDualCard({ icon: Icon, label, value, sub, iconColor, iconBg, labelColor }) {
+function StatsDualCard({ icon: Icon, label, value, sub, iconColor, iconBg, labelColor, onClick }) {
   const animatedValue = useAnimatedCounter(typeof value === 'number' ? value : 0);
   const displayValue = typeof value === 'number' ? animatedValue : value;
+  const isClickable = !!onClick;
+
   return (
-    <motion.div variants={fadeUp} className="p-3 rounded-2xl bg-[#0d1525] border border-slate-700/50 w-full">
+    <motion.div
+      variants={fadeUp}
+      whileHover={isClickable ? { y: -2, scale: 1.01 } : {}}
+      onClick={onClick}
+      className={`p-3 rounded-2xl bg-[#0d1525] border ${
+        isClickable
+          ? 'border-slate-700/50 hover:border-slate-500/60 cursor-pointer shadow-lg hover:shadow-slate-950/55 hover:bg-slate-800/20'
+          : 'border-slate-700/50'
+      } w-full transition-all duration-200`}
+    >
       <div className="flex items-center gap-2 mb-1">
         <div className={`w-8 h-8 rounded-full ${iconBg} flex items-center justify-center shrink-0`}>
           <Icon size={16} className={iconColor} />
@@ -122,11 +134,22 @@ function StatsDualCard({ icon: Icon, label, value, sub, iconColor, iconBg, label
 }
 
 // ─── Small Stats Card (Sessions / First Timers / Souls Won) ──────────────────
-function StatsSmallCard({ icon: Icon, label, value, sub, iconColor, iconBg, labelColor }) {
+function StatsSmallCard({ icon: Icon, label, value, sub, iconColor, iconBg, labelColor, onClick }) {
   const animatedValue = useAnimatedCounter(typeof value === 'number' ? value : 0);
   const displayValue = typeof value === 'number' ? animatedValue : value;
+  const isClickable = !!onClick;
+
   return (
-    <motion.div variants={fadeUp} className="p-3 rounded-2xl bg-[#0d1525] border border-slate-700/50 w-full">
+    <motion.div
+      variants={fadeUp}
+      whileHover={isClickable ? { y: -2, scale: 1.01 } : {}}
+      onClick={onClick}
+      className={`p-3 rounded-2xl bg-[#0d1525] border ${
+        isClickable
+          ? 'border-slate-700/50 hover:border-slate-500/60 cursor-pointer shadow-lg hover:shadow-slate-950/55 hover:bg-slate-800/20'
+          : 'border-slate-700/50'
+      } w-full transition-all duration-200`}
+    >
       <div className="flex items-center gap-2 mb-1.5">
         <div className={`w-7 h-7 rounded-full ${iconBg} flex items-center justify-center shrink-0`}>
           <Icon size={14} className={iconColor} />
@@ -142,11 +165,21 @@ function StatsSmallCard({ icon: Icon, label, value, sub, iconColor, iconBg, labe
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
-export default function AttendanceAnalytics({ currentRole, overrideUnitId = null, overrideUnitType = null }) {
+export default function AttendanceAnalytics({ currentRole, overrideUnitId = null, overrideUnitType = null, overrideUnitName = null }) {
   const [loading, setLoading] = useState(false);
   const [stats, setStats] = useState(null);
+  const [rawSessionData, setRawSessionData] = useState([]);
   const [history, setHistory] = useState([]);
   const [timeFilter, setTimeFilter] = useState('all');
+
+  // Selected session for detail cards inspection
+  const [selectedSessionKey, setSelectedSessionKey] = useState('');
+
+  // Modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalType, setModalType] = useState('PRESENT'); // PRESENT, ABSENT, FIRST_TIMER
+  const [modalData, setModalData] = useState([]);
+  const [modalLoading, setModalLoading] = useState(false);
 
   useEffect(() => {
     async function fetchAnalytics() {
@@ -186,6 +219,7 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
           .order('session_date', { ascending: true });
 
         if (sessionData) {
+          setRawSessionData(sessionData);
           const historyMap = {};
           sessionData.forEach((s) => {
             const date = s.session_date;
@@ -243,6 +277,217 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
     fetchAnalytics();
   }, [currentRole.unitId, currentRole.unitType, overrideUnitId, overrideUnitType]);
 
+  // ── Derive historical sessions dropdown list ──
+  const sessionsList = useMemo(() => {
+    if (!rawSessionData || rawSessionData.length === 0) return [];
+    const list = [];
+    const seen = new Set();
+    rawSessionData.forEach((s) => {
+      const key = `${s.session_date}_${s.service_name || 'Mega Gathering Service'}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        list.push({
+          date: s.session_date,
+          serviceName: s.service_name || 'Mega Gathering Service',
+          key: key
+        });
+      }
+    });
+    // Sort reverse chronological (newest sessions first)
+    return list.sort((a, b) => new Date(b.date) - new Date(a.date));
+  }, [rawSessionData]);
+
+  // ── Sync default selected session to newest when list loads ──
+  useEffect(() => {
+    if (sessionsList.length > 0) {
+      if (!selectedSessionKey || !sessionsList.some(s => s.key === selectedSessionKey)) {
+        setSelectedSessionKey(sessionsList[0].key);
+      }
+    } else {
+      setSelectedSessionKey('');
+    }
+  }, [sessionsList, selectedSessionKey]);
+
+  // ── Compute stats for the selected session ──
+  const cardStats = useMemo(() => {
+    if (!selectedSessionKey || !rawSessionData || rawSessionData.length === 0) return null;
+
+    let present = 0;
+    let absent = 0;
+    let total = 0;
+    let firstTimers = 0;
+    let soulsWon = 0;
+
+    rawSessionData.forEach(s => {
+      const key = `${s.session_date}_${s.service_name || 'Mega Gathering Service'}`;
+      if (key === selectedSessionKey) {
+        present += s.total_present || 0;
+        absent += s.total_absent || 0;
+        total += s.total_marked || 0;
+        firstTimers += s.first_timers_count || 0;
+        soulsWon += s.souls_won_count || 0;
+      }
+    });
+
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+
+    return {
+      rate,
+      total,
+      present,
+      absent,
+      firstTimers,
+      soulsWon
+    };
+  }, [selectedSessionKey, rawSessionData]);
+
+  const selectedSessionInfo = useMemo(() => {
+    return sessionsList.find(s => s.key === selectedSessionKey);
+  }, [sessionsList, selectedSessionKey]);
+
+  // ── Fetch detailed present/absent list ──
+  const fetchDetailList = async (type, sessionKey) => {
+    if (!sessionKey) return;
+    setModalType(type);
+    setModalOpen(true);
+    setModalLoading(true);
+
+    try {
+      const [datePart, ...serviceParts] = sessionKey.split('_');
+      const serviceNamePart = serviceParts.join('_');
+
+      const effectiveUnitId = overrideUnitId || currentRole.unitId;
+      const effectiveUnitType = overrideUnitType || currentRole.unitType;
+
+      let unitIds = [effectiveUnitId];
+      if (effectiveUnitType !== 'CELL') {
+        const { data: managedData, error: managedError } = await supabase
+          .rpc('get_managed_units', { root_parent_id: effectiveUnitId });
+        if (!managedError && managedData) {
+          unitIds = managedData.map((row) =>
+            typeof row === 'object' ? (row.id || row.get_managed_units || Object.values(row)[0]) : row
+          );
+        }
+      }
+
+      if (unitIds.length === 0) {
+        setModalData([]);
+        setModalLoading(false);
+        return;
+      }
+
+      // 1. Get session IDs matching this date and service name
+      const { data: sessions, error: sessionsError } = await supabase
+        .from('attendance_sessions')
+        .select('id, service_name, unit_id')
+        .in('unit_id', unitIds)
+        .eq('session_date', datePart)
+        .eq('service_name', serviceNamePart);
+
+      if (sessionsError) throw sessionsError;
+
+      if (!sessions || sessions.length === 0) {
+        setModalData([]);
+        setModalLoading(false);
+        return;
+      }
+
+      const sessionIds = sessions.map(s => s.id);
+
+      // 2. Fetch all individual attendance records under these sessions
+      const { data: records, error: recordsError } = await supabase
+        .from('attendance_records')
+        .select(`
+          id,
+          status,
+          notes,
+          person:people(
+            id,
+            full_name,
+            photo_url,
+            is_placeholder,
+            created_at,
+            assignments:position_assignments(
+              is_active,
+              position:positions(title),
+              unit:organizational_units(name, unit_type)
+            ),
+            attendance_records(status)
+          ),
+          session:attendance_sessions(
+            id,
+            service_name,
+            unit:organizational_units(id, name, unit_type)
+          )
+        `)
+        .in('session_id', sessionIds);
+
+      if (recordsError) throw recordsError;
+
+      // 3. Format and enrich records with role and membership state
+      const formatted = records.map(r => {
+        const p = r.person;
+        if (!p) return null;
+
+        const activeAssignment = p.assignments?.find(a => a.is_active);
+        const role = activeAssignment?.position?.title || 'Member';
+        const unitName = r.session?.unit?.name || activeAssignment?.unit?.name || 'Unassigned';
+
+        // Calculate membership state based on cumulative present sessions
+        let presentCount = 0;
+        if (p.attendance_records && p.attendance_records.length > 0) {
+          presentCount = p.attendance_records.filter(rec => rec.status === 'PRESENT').length;
+        }
+
+        let membership_state = role;
+        // Pipeline ONLY applies to people registered as 'First Timer' (added from the attendance screen).
+        // Anyone added via the directory with 'Cell Member', 'Member', or 'Unassigned' is already a
+        // member and must always appear as 'Member', regardless of attendance count.
+        if (role === 'First Timer') {
+          if (presentCount === 1) membership_state = 'First Timer';
+          else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
+          else if (presentCount >= 4) membership_state = 'Member';
+          else membership_state = 'Unattended';
+        } else if (role === 'Cell Member' || role === 'Member' || role === 'Unassigned') {
+          membership_state = 'Member';
+        }
+
+        return {
+          id: p.id,
+          name: p.full_name,
+          photo: p.photo_url,
+          role,
+          unitName,
+          status: r.status,
+          membership_state,
+          is_placeholder: p.is_placeholder
+        };
+      }).filter(Boolean);
+
+      // Filter based on the clicked card type
+      let filtered = [];
+      if (type === 'PRESENT') {
+        filtered = formatted.filter(r => r.status === 'PRESENT');
+      } else if (type === 'ABSENT') {
+        filtered = formatted.filter(r => r.status === 'ABSENT');
+      } else if (type === 'FIRST_TIMER') {
+        filtered = formatted.filter(r =>
+          r.status === 'PRESENT' &&
+          (r.role === 'First Timer' || ['First Timer', 'Brethren'].includes(r.membership_state))
+        );
+      }
+
+      // Sort alphabetically by full name
+      filtered.sort((a, b) => a.name.localeCompare(b.name));
+
+      setModalData(filtered);
+    } catch (e) {
+      console.error("Error fetching roster details:", e);
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
   // ── Filtered History ──
   const filteredHistory = useMemo(() => {
     if (timeFilter === 'all') return history;
@@ -264,6 +509,59 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
     if (diff > 0) return { text: `Attendance improved by ~${diff}% in recent sessions.`, type: 'up' };
     return { text: `Attendance dropped by ~${Math.abs(diff)}% in recent sessions.`, type: 'down' };
   }, [filteredHistory]);
+
+  // ── Search & Filter states inside Modal ──
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUnitFilter, setSelectedUnitFilter] = useState('');
+
+  // Reset modal filters on open
+  useEffect(() => {
+    if (modalOpen) {
+      setSearchTerm('');
+      setSelectedUnitFilter('');
+    }
+  }, [modalOpen]);
+
+  const uniqueUnits = useMemo(() => {
+    const units = new Set();
+    modalData.forEach(m => {
+      if (m.unitName) units.add(m.unitName);
+    });
+    return Array.from(units).sort();
+  }, [modalData]);
+
+  const filteredModalList = useMemo(() => {
+    return modalData.filter(m => {
+      const matchesSearch = m.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesUnit = !selectedUnitFilter || m.unitName === selectedUnitFilter;
+      return matchesSearch && matchesUnit;
+    });
+  }, [modalData, searchTerm, selectedUnitFilter]);
+
+  const getInitialsColor = (name) => {
+    const colors = [
+      'from-blue-500/20 to-indigo-500/20 text-blue-300 border-blue-500/30',
+      'from-emerald-500/20 to-teal-500/20 text-emerald-300 border-emerald-500/30',
+      'from-purple-500/20 to-pink-500/20 text-purple-300 border-purple-500/30',
+      'from-amber-500/20 to-orange-500/20 text-amber-300 border-amber-500/30',
+      'from-cyan-500/20 to-blue-500/20 text-cyan-300 border-cyan-500/30'
+    ];
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash) % colors.length;
+    return colors[index];
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  };
 
   // ── Loading ──
   if (loading) {
@@ -287,43 +585,72 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
     );
   }
 
+  const activeStats = cardStats || stats;
+
   // ── Main View ──
   return (
     <div className="space-y-4">
 
+      {/* ── Row 0: Redesigned Session Selector ── */}
+      {sessionsList.length > 0 && (
+        <div className="flex items-center gap-3 w-full mb-2">
+          {/* Custom Styled Select Dropdown (matches image exactly) */}
+          <div className="relative w-full">
+            <select
+              value={selectedSessionKey}
+              onChange={(e) => setSelectedSessionKey(e.target.value)}
+              className="w-full appearance-none bg-[#090e1a] hover:bg-[#0c1425] border border-slate-800/80 text-sm text-slate-200 rounded-2xl pl-12 pr-10 py-3.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-purple-500/30 transition-all font-semibold"
+            >
+              {sessionsList.map(s => {
+                const formattedDate = new Date(s.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                return (
+                  <option key={s.key} value={s.key} className="bg-slate-900 text-slate-300">
+                    {formattedDate} • {s.serviceName}
+                  </option>
+                );
+              })}
+            </select>
+            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" size={18} />
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={18} />
+          </div>
+        </div>
+      )}
+
       {/* ── Row 1: Hero Attendance Rate ── */}
       <motion.div variants={stagger} initial="hidden" animate="show">
         <HeroKpiCard
-          rate={stats.rate}
+          rate={activeStats.rate}
           trend={stats.trend}
           trendValue={stats.trendValue}
           history={history}
         />
       </motion.div>
 
-      {/* ── Row 2: Present / Absent ── */}
+      {/* ── Row 3: Present / Absent ── */}
       <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-2 gap-3">
         <StatsDualCard
           icon={Users}
           label="Total Present"
-          value={stats.present}
-          sub={`/ ${stats.total}`}
+          value={activeStats.present}
+          sub={`/ ${activeStats.total}`}
           iconColor="text-emerald-300"
           iconBg="bg-emerald-500/20 border border-emerald-500/30"
           labelColor="text-emerald-400"
+          onClick={selectedSessionKey ? () => fetchDetailList('PRESENT', selectedSessionKey) : null}
         />
         <StatsDualCard
           icon={UserX}
           label="Total Absent"
-          value={stats.absent}
-          sub={`/ ${stats.total}`}
+          value={activeStats.absent}
+          sub={`/ ${activeStats.total}`}
           iconColor="text-red-300"
           iconBg="bg-red-500/20 border border-red-500/30"
           labelColor="text-red-400"
+          onClick={selectedSessionKey ? () => fetchDetailList('ABSENT', selectedSessionKey) : null}
         />
       </motion.div>
 
-      {/* ── Row 3: Sessions / First Timers / Souls Won ── */}
+      {/* ── Row 4: Sessions / First Timers / Souls Won ── */}
       <motion.div variants={stagger} initial="hidden" animate="show" className="grid grid-cols-3 gap-3">
         <StatsSmallCard
           icon={Calendar}
@@ -337,16 +664,17 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
         <StatsSmallCard
           icon={UserPlus}
           label="First Timers"
-          value={stats.firstTimers ?? 0}
+          value={activeStats.firstTimers ?? 0}
           sub="Latest"
           iconColor="text-purple-300"
           iconBg="bg-purple-500/15 border border-purple-500/25"
           labelColor="text-purple-400"
+          onClick={selectedSessionKey ? () => fetchDetailList('FIRST_TIMER', selectedSessionKey) : null}
         />
         <StatsSmallCard
           icon={Flame}
           label="Souls Won"
-          value={stats.soulsWon ?? 0}
+          value={activeStats.soulsWon ?? 0}
           sub="Latest"
           iconColor="text-amber-300"
           iconBg="bg-amber-500/15 border border-amber-500/25"
@@ -354,7 +682,7 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
         />
       </motion.div>
 
-      {/* ── Row 4: Attendance Trend Chart ── */}
+      {/* ── Row 5: Attendance Trend Chart ── */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -449,6 +777,136 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
           </ResponsiveContainer>
         </div>
       </motion.div>
+
+      {/* ── Attendance Roster Modal ── */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title={
+          modalType === 'PRESENT' ? 'People Present' :
+          modalType === 'ABSENT' ? 'People Absent' :
+          'First Timers / Brethren'
+        }
+        maxWidth="max-w-xl"
+      >
+        <div className="space-y-4">
+          {/* Subtitle / Session Date Info */}
+          {selectedSessionInfo && (
+            <div className="bg-[#0b101b] border border-slate-800/80 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 flex items-center justify-between">
+              <span>Date: {new Date(selectedSessionInfo.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+              <span className="text-church-blue-400">{selectedSessionInfo.serviceName}</span>
+            </div>
+          )}
+
+          {/* First Timers explanation banner */}
+          {modalType === 'FIRST_TIMER' && !modalLoading && (() => {
+            const storedCount = cardStats?.firstTimers ?? 0;
+            const liveCount = modalData.length;
+            const hasMismatch = storedCount !== liveCount;
+            return hasMismatch ? (
+              <div className="bg-amber-500/10 border border-amber-500/25 px-4 py-3 rounded-xl text-xs text-slate-300 leading-relaxed">
+                <span className="font-black text-amber-300 uppercase tracking-wider">Why does the count differ? — </span>
+                The card shows <span className="font-bold text-white">{storedCount}</span> because older sessions were recorded under a previous version that incorrectly counted regular members as first timers.
+                This list now shows the correct <span className="font-bold text-white">{liveCount} genuine first-timer{liveCount !== 1 ? 's' : ''}</span> for this session.
+                New sessions going forward will show the correct number.
+              </div>
+            ) : null;
+          })()}
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Search Input */}
+            <div className="relative w-full">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+              <input
+                type="text"
+                placeholder="Search by name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-[#070b13] border border-slate-700/50 hover:border-slate-600/80 focus:border-church-blue-500/50 rounded-xl pl-10 pr-4 py-2.5 text-sm font-bold text-white placeholder-slate-500 focus:outline-none transition-colors"
+              />
+            </div>
+
+            {/* Cell Unit Filter */}
+            {uniqueUnits.length > 1 && (
+              <div className="relative shrink-0 sm:w-48">
+                <select
+                  value={selectedUnitFilter}
+                  onChange={(e) => setSelectedUnitFilter(e.target.value)}
+                  className="w-full appearance-none bg-[#070b13] border border-slate-700/50 hover:border-slate-600/80 focus:border-church-blue-500/50 text-slate-300 text-xs font-black rounded-xl pl-3.5 pr-9 py-3 cursor-pointer focus:outline-none transition-colors"
+                >
+                  <option value="">All Cells</option>
+                  {uniqueUnits.map(unit => (
+                    <option key={unit} value={unit}>{unit}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
+            )}
+          </div>
+
+          {/* Modal List Content */}
+          <div className="min-h-[250px] max-h-[50vh] overflow-y-auto custom-scrollbar pr-1">
+            {modalLoading ? (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-500">
+                <Loader2 className="animate-spin text-church-blue-500 mb-3" size={32} />
+                <span className="text-xs font-bold uppercase tracking-wider">Loading Roster...</span>
+              </div>
+            ) : filteredModalList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-slate-500 italic text-sm text-center">
+                No people match the selected criteria.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredModalList.map((person) => {
+                  const initialsColor = getInitialsColor(person.name);
+                  const isFirstTimer = person.role === 'First Timer' || ['First Timer', 'Brethren'].includes(person.membership_state);
+
+                  return (
+                    <div
+                      key={person.id}
+                      className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl border border-slate-800 bg-[#070b13]/40 hover:bg-[#070b13]/80 hover:border-slate-700/40 transition-all duration-150"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        {/* Avatar */}
+                        <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center overflow-hidden shrink-0">
+                          {person.photo ? (
+                            <img src={person.photo} alt={person.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className={`w-full h-full bg-gradient-to-br ${initialsColor} flex items-center justify-center font-black text-xs border`}>
+                              {getInitials(person.name)}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Name and unit */}
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-bold text-slate-200 text-sm truncate leading-snug">{person.name}</span>
+                          <span className="text-[10px] text-slate-500 font-medium truncate mt-0.5">{person.unitName}</span>
+                        </div>
+                      </div>
+
+                      {/* Role & Status Badges */}
+                      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
+                        {person.is_placeholder && (
+                          <span className="text-[8px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-2 py-0.5 rounded-md font-black uppercase tracking-wider">
+                            Virtual
+                          </span>
+                        )}
+
+                        {person.role && person.role !== 'Unassigned' && (
+                          <span className="text-[8px] bg-church-blue-500/15 text-church-blue-400 border border-church-blue-500/35 px-2 py-0.5 rounded-md font-black uppercase tracking-wider">
+                            {person.role}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

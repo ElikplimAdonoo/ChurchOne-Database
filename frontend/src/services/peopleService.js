@@ -66,19 +66,16 @@ export async function fetchPeople() {
             const roleTitle = primaryAssignment?.position?.title || 'Unassigned';
             let membership_state = roleTitle; // Default to their exact leadership role
             
-            // Apply pipeline strictly to basic Members and First Timers to protect Shepherds and Pastors.
-            if (roleTitle === 'Member' || roleTitle === 'Cell Member' || roleTitle === 'First Timer' || roleTitle === 'Unassigned') {
-                const createdDate = new Date(person.created_at || '2000-01-01');
-                const cutoffDate = new Date('2026-03-31T00:00:00Z');
-                
-                if (createdDate < cutoffDate) {
-                    membership_state = 'Member';
-                } else {
-                    if (presentCount === 1) membership_state = 'First Timer';
-                    else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
-                    else if (presentCount >= 4) membership_state = 'Member';
-                    else membership_state = 'Unattended';
-                }
+            // Pipeline ONLY applies to people registered as 'First Timer' (added from the attendance screen).
+            // Anyone added via the directory with role 'Cell Member', 'Member', or 'Unassigned'
+            // is already a member and should always appear as 'Member'.
+            if (roleTitle === 'First Timer') {
+                if (presentCount === 1) membership_state = 'First Timer';
+                else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
+                else if (presentCount >= 4) membership_state = 'Member';
+                else membership_state = 'Unattended';
+            } else if (roleTitle === 'Cell Member' || roleTitle === 'Member' || roleTitle === 'Unassigned') {
+                membership_state = 'Member';
             }
 
             return {

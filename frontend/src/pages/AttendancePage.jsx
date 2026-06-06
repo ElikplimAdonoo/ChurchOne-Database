@@ -151,6 +151,7 @@ export default function AttendancePage() {
           currentRole={userRole} 
           overrideUnitId={scope.id} 
           overrideUnitType={scope.type}
+          overrideUnitName={scope.name}
         />
       )}
       </div>

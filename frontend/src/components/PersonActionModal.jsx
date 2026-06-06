@@ -185,9 +185,11 @@ export default function PersonActionModal({
                                             disabled={!currentPositions.length}
                                         >
                                             <option value="">Select Role...</option>
-                                            {currentPositions.map(p => (
-                                                <option key={p.id} value={p.id}>{p.title}</option>
-                                            ))}
+                                            {currentPositions
+                                                .filter(p => p.title !== 'First Timer' && p.title !== 'First-timer' && p.title !== 'First-Timer' && p.title !== 'First Timers')
+                                                .map(p => (
+                                                    <option key={p.id} value={p.id}>{p.title}</option>
+                                                ))}
                                         </select>
                                     </div>
                                     {errors.positionId && <span className="text-church-coral-400 text-[10px] font-bold mt-1 block ml-1">{errors.positionId.message}</span>}
