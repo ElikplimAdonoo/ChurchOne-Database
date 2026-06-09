@@ -798,20 +798,7 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
             </div>
           )}
 
-          {/* First Timers explanation banner */}
-          {modalType === 'FIRST_TIMER' && !modalLoading && (() => {
-            const storedCount = cardStats?.firstTimers ?? 0;
-            const liveCount = modalData.length;
-            const hasMismatch = storedCount !== liveCount;
-            return hasMismatch ? (
-              <div className="bg-amber-500/10 border border-amber-500/25 px-4 py-3 rounded-xl text-xs text-slate-300 leading-relaxed">
-                <span className="font-black text-amber-300 uppercase tracking-wider">Why does the count differ? — </span>
-                The card shows <span className="font-bold text-white">{storedCount}</span> because older sessions were recorded under a previous version that incorrectly counted regular members as first timers.
-                This list now shows the correct <span className="font-bold text-white">{liveCount} genuine first-timer{liveCount !== 1 ? 's' : ''}</span> for this session.
-                New sessions going forward will show the correct number.
-              </div>
-            ) : null;
-          })()}
+
 
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Search Input */}
