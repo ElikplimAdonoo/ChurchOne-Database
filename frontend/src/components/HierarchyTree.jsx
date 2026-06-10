@@ -9,10 +9,13 @@ import {
     Search,
     PlusSquare,
     MinusSquare,
-    Activity
+    Activity,
+    List,
+    Network
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ImageModal from "./common/ImageModal";
+import MindMapDrillDown from "./MindMapDrillDown";
 
 import { buildTree, filterNodes } from "../utils/treeUtils";
 import { useAuth } from "../contexts/AuthContext";
@@ -39,7 +42,7 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
     // Visual cues for different unit types
     const getStyles = (type) => {
         switch (type) {
-            case 'ZONAL': return {
+            case 'ZONE': return {
                 bg: 'bg-slate-800',
                 border: 'border-l-4 border-l-church-purple-500 border-t border-r border-b border-slate-700',
                 text: 'text-church-purple-300',
@@ -135,46 +138,66 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                             >
                                 <div className="p-3 pl-4 md:pl-11 space-y-4">
                                     {/* Cell Shepherds Section (Luxurious Yellow) */}
-                                    {node.leaders?.filter(l => l.role.toLowerCase() === 'cell shepherd').map((leader, idx) => (
-                                        <div key={`lead-${idx}`} className="flex items-center gap-3 group">
-                                            <div 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    leader.photo && onImageClick && onImageClick(leader.photo, leader.name);
-                                                }}
-                                                className={`relative w-8 h-8 rounded-full border-2 border-yellow-500/50 shadow-glow-yellow overflow-hidden bg-slate-800 shrink-0 transition-transform group-hover:scale-110 ${leader.photo ? 'cursor-pointer' : ''}`}
-                                            >
-                                                {leader.photo ? (
-                                                    <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
-                                                ) : <div className="w-full h-full flex items-center justify-center text-xs font-bold text-yellow-500">{leader.name.charAt(0)}</div>}
+                                    {(() => {
+                                        const leaders = node.leaders || [];
+                                        // For CELL units: ONLY exact 'cell shepherd' role — no fallback
+                                        let cellShepherds;
+                                        if (node.unit_type === 'CELL') {
+                                            cellShepherds = leaders.filter(l => l.role?.toLowerCase() === 'cell shepherd');
+                                        } else {
+                                            cellShepherds = leaders.filter(l => l.role?.toLowerCase() === 'cell shepherd');
+                                        }
+                                        return cellShepherds.map((leader, idx) => (
+                                            <div key={`lead-${idx}`} className="flex items-center gap-3 group">
+                                                <div 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        leader.photo && onImageClick && onImageClick(leader.photo, leader.name);
+                                                    }}
+                                                    className={`relative w-8 h-8 rounded-full border-2 border-yellow-500/50 shadow-glow-yellow overflow-hidden bg-slate-800 shrink-0 transition-transform group-hover:scale-110 ${leader.photo ? 'cursor-pointer' : ''}`}
+                                                >
+                                                    {leader.photo ? (
+                                                        <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
+                                                    ) : <div className="w-full h-full flex items-center justify-center text-xs font-bold text-yellow-500">{leader.name.charAt(0)}</div>}
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs md:text-sm font-bold text-white leading-tight group-hover:text-yellow-400 transition-colors uppercase tracking-tight">{leader.name}</p>
+                                                    <p className="text-[9px] md:text-[10px] text-yellow-500/70 font-black uppercase tracking-[0.2em] decoration-yellow-500/30 underline underline-offset-2">Cell Shepherd</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-xs md:text-sm font-bold text-white leading-tight group-hover:text-yellow-400 transition-colors uppercase tracking-tight">{leader.name}</p>
-                                                <p className="text-[9px] md:text-[10px] text-yellow-500/70 font-black uppercase tracking-[0.2em] decoration-yellow-500/30 underline underline-offset-2">Cell Shepherd</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ));
+                                    })()}
 
-                                    {/* Shepherds Section (Professional Blue/Emerald) */}
-                                    {node.leaders?.filter(l => l.role.toLowerCase() !== 'cell shepherd').map((leader, idx) => (
-                                        <div key={`asst-${idx}`} className="flex items-center gap-3 opacity-90 group">
-                                            <div 
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    leader.photo && onImageClick && onImageClick(leader.photo, leader.name);
-                                                }}
-                                                className={`relative w-7 h-7 rounded-full border border-emerald-500/50 shadow-glow-emerald overflow-hidden bg-slate-800 shrink-0 transition-transform group-hover:scale-105 ${leader.photo ? 'cursor-pointer' : ''}`}
-                                            >
-                                                {leader.photo ? (
-                                                    <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
-                                                ) : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-emerald-500">{leader.name.charAt(0)}</div>}
+                                    {/* Shepherds Section (Professional Violet) */}
+                                    {(() => {
+                                        const leaders = node.leaders || [];
+                                        let assistants;
+                                        if (node.unit_type === 'CELL') {
+                                            // All non-cell-shepherd leaders are assistants (violet)
+                                            assistants = leaders.filter(l => l.role?.toLowerCase() !== 'cell shepherd');
+                                        } else {
+                                            assistants = leaders.filter(l => l.role?.toLowerCase() !== 'cell shepherd');
+                                        }
+                                        return assistants.map((leader, idx) => (
+                                            <div key={`asst-${idx}`} className="flex items-center gap-3 opacity-90 group">
+                                                <div 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        leader.photo && onImageClick && onImageClick(leader.photo, leader.name);
+                                                    }}
+                                                    className={`relative w-7 h-7 rounded-full border border-violet-500/50 shadow-glow-violet overflow-hidden bg-slate-800 shrink-0 transition-transform group-hover:scale-105 ${leader.photo ? 'cursor-pointer' : ''}`}
+                                                >
+                                                    {leader.photo ? (
+                                                        <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
+                                                    ) : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-violet-400">{leader.name.charAt(0)}</div>}
+                                                </div>
+                                                <div>
+                                                    <p className="text-[11px] md:text-xs font-bold text-slate-100 leading-tight group-hover:text-violet-400 transition-colors uppercase tracking-tighter">{leader.name}</p>
+                                                    <p className="text-[8px] md:text-[9px] text-violet-400/70 font-black uppercase tracking-widest mt-1">{leader.role}</p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="text-[11px] md:text-xs font-bold text-slate-100 leading-tight group-hover:text-emerald-400 transition-colors uppercase tracking-tighter">{leader.name}</p>
-                                                <p className="text-[8px] md:text-[9px] text-emerald-500/70 font-black uppercase tracking-widest mt-1">{leader.role}</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ));
+                                    })()}
 
                                     {/* Hierarchy Separation / Operational Break */}
                                     {node.members?.length > 0 && (
@@ -255,15 +278,25 @@ export default function HierarchyTree({ focusTrigger }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [expansionToggle, setExpansionToggle] = useState(null); // { state: boolean, timestamp: number }
+    const [expansionToggle, setExpansionToggle] = useState(null);
     const [imageModalConfig, setImageModalConfig] = useState({ isOpen: false, src: '', title: '' });
+
+    // View mode: 'map' (new drill-down) or 'tree' (existing list)
+    const [viewMode, setViewMode] = useState(
+        () => localStorage.getItem('hierarchy_view_preference') || 'map'
+    );
+
+    const switchView = (mode) => {
+        setViewMode(mode);
+        localStorage.setItem('hierarchy_view_preference', mode);
+    };
 
     useEffect(() => {
         if (focusTrigger) {
-            // Expand all nodes
             setExpansionToggle({ state: true, timestamp: Date.now() });
         }
     }, [focusTrigger]);
+
     useEffect(() => {
         async function loadData() {
             try {
@@ -271,12 +304,10 @@ export default function HierarchyTree({ focusTrigger }) {
                     getManagedUnits(),
                     fetchHierarchyData()
                 ]);
-                
                 let filteredData = data;
                 if (managedUnits !== 'ALL') {
                     filteredData = data.filter(unit => managedUnits.has(unit.id));
                 }
-                
                 setOriginalTree(buildTree(filteredData));
             } catch (err) {
                 setError(err.message);
@@ -284,11 +315,9 @@ export default function HierarchyTree({ focusTrigger }) {
                 setLoading(false);
             }
         }
-        
         loadData();
     }, [getManagedUnits]);
 
-    // Filter Logic
     const displayedTree = useMemo(() => {
         if (!searchTerm) return originalTree;
         return filterNodes(originalTree, searchTerm);
@@ -311,34 +340,43 @@ export default function HierarchyTree({ focusTrigger }) {
     );
 
     return (
-        <div className="space-y-5 md:space-y-8">
+        <div className="space-y-5 md:space-y-6">
             {/* Header / Controls */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-2">
                 <div>
                     <h2 className="text-3xl font-black bg-gradient-church bg-clip-text text-transparent">
                         Organizational Structure
                     </h2>
-                    
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
-                    {/* Expanding Controls */}
-                    {/* <div className="flex bg-slate-900 rounded-lg p-1 border border-slate-700 shrink-0">
+                    {/* View Toggle */}
+                    <div className="flex bg-slate-900 rounded-xl p-1 border border-slate-700 shrink-0">
                         <button
-                            onClick={() => setExpansionToggle({ state: true, timestamp: Date.now() })}
-                            className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-church-blue-400 transition-colors"
-                            title="Expand All"
+                            onClick={() => switchView('map')}
+                            title="Mind Map View"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+                                viewMode === 'map'
+                                    ? 'bg-church-blue-600 text-white shadow'
+                                    : 'text-slate-400 hover:text-slate-200'
+                            }`}
                         >
-                            <PlusSquare size={18} />
+                            <Network size={13} />
+                            Map
                         </button>
                         <button
-                            onClick={() => setExpansionToggle({ state: false, timestamp: Date.now() })}
-                            className="p-2 hover:bg-slate-800 rounded text-slate-400 hover:text-church-blue-400 transition-colors"
-                            title="Collapse All"
+                            onClick={() => switchView('tree')}
+                            title="Tree List View"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 ${
+                                viewMode === 'tree'
+                                    ? 'bg-church-blue-600 text-white shadow'
+                                    : 'text-slate-400 hover:text-slate-200'
+                            }`}
                         >
-                            <MinusSquare size={18} />
+                            <List size={13} />
+                            List
                         </button>
-                    </div> */}
+                    </div>
 
                     {/* Search Bar */}
                     <div className="relative group flex-1">
@@ -354,30 +392,51 @@ export default function HierarchyTree({ focusTrigger }) {
                 </div>
             </div>
 
-            {/* Tree Rendering */}
-            <div className="min-h-[500px] relative">
-                {displayedTree.length === 0 ? (
-                    <div className="text-center py-20 opacity-50">
-                        <FolderTree size={48} className="mx-auto mb-4 text-slate-600" />
-                        <p className="text-lg font-medium text-slate-400">No matching units found</p>
-                        <p className="text-sm text-slate-600">Try adjusting your search filters</p>
-                    </div>
+            {/* Render selected view */}
+            <AnimatePresence mode="wait">
+                {viewMode === 'map' ? (
+                    <motion.div
+                        key="map-view"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                    >
+                        <MindMapDrillDown searchTerm={searchTerm} />
+                    </motion.div>
                 ) : (
-                    <div className="space-y-4">
-                        {displayedTree.map((node) => (
-                            <TreeNode
-                                key={node.id}
-                                node={node}
-                                defaultOpen={isFiltered || displayedTree.length === 1}
-                                expansionToggle={expansionToggle}
-                                onImageClick={(src, title) => setImageModalConfig({ isOpen: true, src, title })}
-                            />
-                        ))}
-                    </div>
+                    <motion.div
+                        key="tree-view"
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2 }}
+                        className="min-h-[400px]"
+                    >
+                        {displayedTree.length === 0 ? (
+                            <div className="text-center py-20 opacity-50">
+                                <FolderTree size={48} className="mx-auto mb-4 text-slate-600" />
+                                <p className="text-lg font-medium text-slate-400">No matching units found</p>
+                                <p className="text-sm text-slate-600">Try adjusting your search filters</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {displayedTree.map((node) => (
+                                    <TreeNode
+                                        key={node.id}
+                                        node={node}
+                                        defaultOpen={isFiltered || displayedTree.length === 1}
+                                        expansionToggle={expansionToggle}
+                                        onImageClick={(src, title) => setImageModalConfig({ isOpen: true, src, title })}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                    </motion.div>
                 )}
-            </div>
+            </AnimatePresence>
 
-            <ImageModal 
+            <ImageModal
                 isOpen={imageModalConfig.isOpen}
                 onClose={() => setImageModalConfig(prev => ({ ...prev, isOpen: false }))}
                 imageSrc={imageModalConfig.src}

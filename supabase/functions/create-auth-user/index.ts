@@ -100,13 +100,14 @@ serve(async (req: Request) => {
     const password = "aTTendance.0123"
 
     let authUserId = null;
+    const loginEmail = personalEmail ? personalEmail.trim() : generatedEmail;
 
     // Create auth user
     const {
       data: authData,
       error: authError,
     } = await supabaseClient.auth.admin.createUser({
-      email: generatedEmail,
+      email: loginEmail,
       password,
       email_confirm: true,
       user_metadata: {
@@ -115,13 +116,37 @@ serve(async (req: Request) => {
     })
 
     if (authError) {
-      // If user already exists, fetch their ID instead of failing
       if (authError.message.includes("already registered") || authError.status === 422) {
-        const { data: existingUsers, error: listError } = await supabaseClient.auth.admin.listUsers();
-        const existingUser = existingUsers?.users?.find(u => u.email === generatedEmail);
+        // Fix: listUsers() only returns top 50 users and misses older accounts.
+        // Instead, securely query the people table to find the existing auth_user_id.
+        let existingPerson = null;
         
-        if (existingUser) {
-           authUserId = existingUser.id;
+        // 1. Try matching the primary church email
+        const { data: match1 } = await supabaseClient
+          .from("people")
+          .select("auth_user_id")
+          .eq("email", loginEmail)
+          .not("auth_user_id", "is", null)
+          .limit(1)
+          .maybeSingle();
+          
+        if (match1) {
+            existingPerson = match1;
+        } else {
+            // 2. Try matching the personal email
+            const { data: match2 } = await supabaseClient
+              .from("people")
+              .select("auth_user_id")
+              .eq("personal_email", loginEmail)
+              .not("auth_user_id", "is", null)
+              .limit(1)
+              .maybeSingle();
+              
+            if (match2) existingPerson = match2;
+        }
+        
+        if (existingPerson && existingPerson.auth_user_id) {
+           authUserId = existingPerson.auth_user_id;
         } else {
            throw new Error(`Failed to create or find auth user: ${authError.message}`)
         }
@@ -158,6 +183,7 @@ serve(async (req: Request) => {
           email: generatedEmail,
           personal_email: personalEmail || null,
           is_placeholder: false,
+          email_verified: personalEmail ? true : false,
         })
         .eq("id", existingProfiles[0].id)
         .select()
@@ -202,6 +228,7 @@ serve(async (req: Request) => {
             email: generatedEmail,
             personal_email: personalEmail || null,
             is_placeholder: false,
+            email_verified: personalEmail ? true : false,
           })
           .eq("id", matchedProfile.id)
           .select()
@@ -233,6 +260,7 @@ serve(async (req: Request) => {
             personal_email: personalEmail || null,
             auth_user_id: authUserId,
             is_placeholder: false,
+            email_verified: personalEmail ? true : false,
           },
         ])
         .select()

@@ -122,7 +122,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
 
   const computedFirstTimersCount = useMemo(() => {
     return members
-       .filter(m => m.role === 'First Timer' || ['First Timer', 'Brethren'].includes(m.membership_state))
+       .filter(m => m.membership_state === 'First Timer')
        .filter(m => attendance[m.id] === 'PRESENT' || attendance[m.id] === 'ONLINE')
        .length;
   }, [members, attendance]);
@@ -198,9 +198,13 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
              const p = m.people;
              if (!p) return null;
              
-             let presentCount = 0;
+             let historicalPresentCount = 0;
              if (p.attendance_records && p.attendance_records.length > 0) {
-                 presentCount = p.attendance_records.filter(r => r.status === 'PRESENT').length;
+                 historicalPresentCount = p.attendance_records.filter(r => r.status === 'PRESENT').length;
+                 // Subtract the current session's attendance if it's already saved, so we get strictly PAST attendance
+                 if (existingRecords[p.id] === 'PRESENT') {
+                     historicalPresentCount -= 1;
+                 }
              }
              
              const roleTitle = m.positions?.title || 'Unassigned';
@@ -210,15 +214,14 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
              // Anyone added via the directory with 'Cell Member', 'Member', or 'Unassigned' is already a
              // member and must always appear as 'Member', regardless of attendance count.
              if (roleTitle === 'First Timer') {
-                 if (presentCount === 1) membership_state = 'First Timer';
-                 else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
-                 else if (presentCount >= 4) membership_state = 'Member';
-                 else membership_state = 'Unattended';
+                 if (historicalPresentCount === 0) membership_state = 'First Timer';
+                 else if (historicalPresentCount === 1 || historicalPresentCount === 2) membership_state = 'Brethren';
+                 else if (historicalPresentCount >= 3) membership_state = 'Member';
              } else if (roleTitle === 'Cell Member' || roleTitle === 'Member' || roleTitle === 'Unassigned') {
                  membership_state = 'Member';
              }
              
-             return { ...p, role: roleTitle, membership_state, present_count: presentCount };
+             return { ...p, role: roleTitle, membership_state, present_count: historicalPresentCount };
           })
           .filter(p => p && p.is_active)
           .sort((a, b) => a.full_name.localeCompare(b.full_name));
@@ -751,7 +754,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
       {/* Attendance Submitted Success Modal */}
       {showSuccessModal && (
         <div
-          className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-4"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
           onClick={() => setShowSuccessModal(false)}
         >
           {/* Backdrop */}

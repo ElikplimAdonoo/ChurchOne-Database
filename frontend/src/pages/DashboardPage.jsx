@@ -102,7 +102,7 @@ export default function DashboardPage() {
             else if (p.status === 'Inactive') inactiveCount++;
             else if (p.status === 'Pending') pendingCount++;
             
-            if (p.unit_type === 'ZONAL') memZone++;
+            if (p.unit_type === 'ZONE') memZone++;
             else if (p.unit_type === 'MC') memMC++;
             else if (p.unit_type === 'BUSCENTA') memBusc++;
             else if (p.unit_type === 'CELL') memCell++;

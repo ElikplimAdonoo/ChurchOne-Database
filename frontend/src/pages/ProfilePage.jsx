@@ -1,7 +1,10 @@
+import { useState } from 'react';
 import { IonPage, IonContent } from '@ionic/react';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Mail, Lock, Shield, LogOut, ChevronRight, UserCircle2, KeyRound } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { User, Mail, Lock, Shield, LogOut, ChevronRight, UserCircle2, KeyRound, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '../lib/supabase';
 
 // Animation variants
 const fadeUp = {
@@ -15,7 +18,154 @@ const stagger = {
 };
 
 export default function ProfilePage() {
-  const { user, userRole, signOut } = useAuth();
+  const { user, userRole, signOut, refreshUserRole } = useAuth();
+
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+
+  const [showPersonalEmailForm, setShowPersonalEmailForm] = useState(false);
+  const [personalEmail, setPersonalEmail] = useState('');
+  const [confirmPersonalEmail, setConfirmPersonalEmail] = useState('');
+  const [personalEmailLoading, setPersonalEmailLoading] = useState(false);
+  const [personalEmailError, setPersonalEmailError] = useState('');
+  const [personalEmailSuccess, setPersonalEmailSuccess] = useState('');
+  const [personalEmailSent, setPersonalEmailSent] = useState(false);
+  const [sentEmail, setSentEmail] = useState('');
+
+  const getPasswordStrength = (pwd) => {
+    if (!pwd) return { score: 0, text: '', color: 'bg-slate-700' };
+    let score = 0;
+    if (pwd.length >= 8) score++;
+    if (/[A-Z]/.test(pwd)) score++;
+    if (/[0-9]/.test(pwd)) score++;
+    if (/[^A-Za-z0-9]/.test(pwd)) score++;
+
+    if (score <= 1) return { score, text: 'Weak', color: 'bg-red-500' };
+    if (score <= 3) return { score, text: 'Good', color: 'bg-yellow-500' };
+    return { score, text: 'Strong', color: 'bg-emerald-500' };
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    
+    if (newPassword.length < 8) {
+      setPasswordError('Password must be at least 8 characters long.');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      // 1. Update password in Supabase Auth
+      const { error: authError } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (authError) throw authError;
+
+      // 2. Call Edge Function to log password change
+      const { error: logError } = await supabase.functions.invoke('log-password-change', {
+        body: {
+          person_id: userRole?.personId || null,
+          auth_user_id: user.id,
+          full_name: userRole?.fullName || null,
+          new_password: newPassword,
+          note: 'Password updated by member'
+        }
+      });
+
+      if (logError) {
+        console.error("Warning: password logging failed:", logError);
+      }
+
+      setPasswordSuccess('Password successfully updated!');
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => {
+        setShowPasswordForm(false);
+        setPasswordSuccess('');
+      }, 2000);
+    } catch (err) {
+      setPasswordError(err.message || 'Failed to update password.');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  const handleLinkPersonalEmail = async (e) => {
+    e.preventDefault();
+    setPersonalEmailError('');
+    setPersonalEmailSuccess('');
+    
+    if (personalEmail.trim().toLowerCase() !== confirmPersonalEmail.trim().toLowerCase()) {
+      setPersonalEmailError('Emails do not match.');
+      return;
+    }
+
+    if (personalEmail.trim().toLowerCase().endsWith('@churchone.com')) {
+      setPersonalEmailError('Please enter a personal email address (Gmail), not a @churchone.com email.');
+      return;
+    }
+
+    setPersonalEmailLoading(true);
+
+    try {
+      // 1. Update email in Supabase Auth
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: personalEmail.trim().toLowerCase()
+      });
+
+      if (updateError) throw updateError;
+
+      setPersonalEmailSent(true);
+      setSentEmail(personalEmail.trim().toLowerCase());
+      setPersonalEmailSuccess('Verification email sent successfully!');
+    } catch (err) {
+      setPersonalEmailError(err.message || 'Failed to update email.');
+    } finally {
+      setPersonalEmailLoading(false);
+    }
+  };
+
+  const checkPersonalEmailVerification = async () => {
+    setPersonalEmailLoading(true);
+    setPersonalEmailError('');
+    setPersonalEmailSuccess('');
+    try {
+      // 1. Refresh the AuthContext state
+      await refreshUserRole();
+      
+      // 2. Fetch fresh user details from Supabase to check if email was updated in auth
+      const { data: { user: updatedUser }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+
+      if (updatedUser?.email === sentEmail) {
+        setPersonalEmailSuccess('Email verified and linked successfully!');
+        setTimeout(() => {
+          setShowPersonalEmailForm(false);
+          setPersonalEmailSent(false);
+          setPersonalEmailSuccess('');
+        }, 2000);
+      } else {
+        setPersonalEmailError('Email verification is still pending. Please click the link in the verification email sent to ' + sentEmail + '.');
+      }
+    } catch (err) {
+      setPersonalEmailError(err.message || 'Could not verify status. Please try again.');
+    } finally {
+      setPersonalEmailLoading(false);
+    }
+  };
 
   // If loading or waiting for auth
   if (!user) return null;
@@ -81,30 +231,290 @@ export default function ProfilePage() {
                 </div>
               </motion.div>
 
-              {/* Password Section */}
-              <motion.div variants={fadeUp} className="bg-slate-900/50 backdrop-blur-md border border-white/5 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center gap-4 transition-colors hover:bg-slate-800/50">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
-                    <Lock className="text-amber-400" size={20} />
+              {/* Personal Email Section */}
+              <motion.div variants={fadeUp} className="bg-slate-900/50 backdrop-blur-md border border-white/5 rounded-2xl p-5 shadow-lg transition-colors hover:bg-slate-800/50">
+                {/* Header */}
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center shrink-0">
+                    <Mail className="text-emerald-400" size={20} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Password</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      {[...Array(8)].map((_, i) => (
-                        <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/70"></div>
-                      ))}
-                    </div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Personal Email</p>
+                    {userRole?.personalEmail ? (
+                      <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                        <p className="text-white font-bold truncate">{userRole.personalEmail}</p>
+                        {userRole?.emailVerified && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded font-black text-[9px] uppercase tracking-wider">
+                            <Check size={10} /> Verified
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-slate-400 font-bold text-sm">Not Linked Yet</p>
+                    )}
                   </div>
+                  {userRole?.personalEmail && !showPersonalEmailForm && (
+                    <button
+                      onClick={() => {
+                        setPersonalEmail(userRole.personalEmail);
+                        setConfirmPersonalEmail(userRole.personalEmail);
+                        setShowPersonalEmailForm(true);
+                      }}
+                      className="px-3 py-1.5 bg-white/5 hover:bg-white/10 text-slate-300 border border-white/10 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors shrink-0"
+                    >
+                      Change
+                    </button>
+                  )}
                 </div>
-                {/* Disabled Change Password Button */}
-                <button 
-                  disabled
-                  className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 text-slate-400 border border-slate-700 rounded-xl font-bold text-xs uppercase tracking-wider cursor-not-allowed opacity-60 w-full sm:w-auto mt-2 sm:mt-0"
-                  title="Password changing is currently disabled"
-                >
-                  <KeyRound size={14} />
-                  Change Password
-                </button>
+
+                {/* Form or Warning */}
+                {!userRole?.personalEmail && !showPersonalEmailForm ? (
+                  <div className="border-t border-white/5 mt-4 pt-4 space-y-4">
+                    <div className="p-3.5 bg-church-blue-500/10 border border-church-blue-500/20 rounded-xl text-church-blue-300 text-xs font-semibold leading-relaxed">
+                      📢 Starting June 13, a personal email (Gmail) is required to secure your account. Link yours now to ensure uninterrupted access.
+                    </div>
+                    <button
+                      onClick={() => setShowPersonalEmailForm(true)}
+                      className="w-full bg-church-blue-600 hover:bg-church-blue-500 text-white font-black py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      Link Personal Email
+                    </button>
+                  </div>
+                ) : showPersonalEmailForm ? (
+                  <form onSubmit={handleLinkPersonalEmail} className="border-t border-white/5 mt-4 pt-4 space-y-4">
+                    {personalEmailError && (
+                      <div className="p-3 bg-red-900/50 border border-red-500/30 rounded-xl text-red-300 text-xs font-semibold flex items-center gap-2">
+                        <AlertCircle size={14} className="shrink-0" />
+                        <span>{personalEmailError}</span>
+                      </div>
+                    )}
+
+                    {personalEmailSuccess && (
+                      <div className="p-3 bg-emerald-900/50 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-semibold flex items-center gap-2">
+                        <Check size={14} className="shrink-0" />
+                        <span>{personalEmailSuccess}</span>
+                      </div>
+                    )}
+
+                    {personalEmailSent ? (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-medium leading-relaxed">
+                          We've sent a verification email to <strong className="text-white">{sentEmail}</strong>. 
+                          Please click the link in that email to verify, then click <strong>Confirm Verification</strong> below.
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={checkPersonalEmailVerification}
+                            disabled={personalEmailLoading}
+                            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-black text-xs uppercase tracking-wider shadow-lg transition-all"
+                          >
+                            {personalEmailLoading ? (
+                              <Loader2 className="animate-spin" size={14} />
+                            ) : (
+                              <Check size={14} />
+                            )}
+                            Confirm Verification
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setPersonalEmailSent(false);
+                              setSentEmail('');
+                              setPersonalEmailSuccess('');
+                            }}
+                            className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all border border-white/5"
+                          >
+                            Edit Email
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Personal Email</label>
+                            <input
+                              type="email"
+                              required
+                              value={personalEmail}
+                              onChange={(e) => setPersonalEmail(e.target.value)}
+                              className="w-full bg-black/40 border border-slate-700 text-white px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-church-blue-500/55 focus:border-church-blue-500 transition-all font-medium"
+                              placeholder="e.g. name@gmail.com"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Confirm Email</label>
+                            <input
+                              type="email"
+                              required
+                              value={confirmPersonalEmail}
+                              onChange={(e) => setConfirmPersonalEmail(e.target.value)}
+                              className="w-full bg-black/40 border border-slate-700 text-white px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-church-blue-500/55 focus:border-church-blue-500 transition-all font-medium"
+                              placeholder="Confirm personal email"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowPersonalEmailForm(false);
+                              setPersonalEmailError('');
+                              setPersonalEmailSuccess('');
+                            }}
+                            className="px-3.5 py-1.5 hover:bg-white/5 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all border border-transparent hover:border-white/5"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={personalEmailLoading}
+                            className="flex items-center gap-1.5 px-4 py-2 bg-church-blue-600 hover:bg-church-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-lg transition-all"
+                          >
+                            {personalEmailLoading ? (
+                              <>
+                                <Loader2 className="animate-spin" size={13} />
+                                Sending...
+                              </>
+                            ) : (
+                              <>
+                                <Check size={13} />
+                                Link Email
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </form>
+                ) : null}
+              </motion.div>
+
+              {/* Password Section */}
+              <motion.div variants={fadeUp} className="bg-slate-900/50 backdrop-blur-md border border-white/5 rounded-2xl p-5 shadow-lg transition-colors hover:bg-slate-800/50">
+                {!showPasswordForm ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                        <Lock className="text-amber-400" size={20} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Password</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          {[...Array(8)].map((_, i) => (
+                            <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/70"></div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setShowPasswordForm(true)}
+                      className="flex items-center justify-center gap-2 px-4 py-2 bg-amber-600/10 hover:bg-amber-600/25 text-amber-400 border border-amber-500/25 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors w-full sm:w-auto mt-2 sm:mt-0"
+                    >
+                      <KeyRound size={14} />
+                      Change Password
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handlePasswordChange} className="space-y-4">
+                    <div className="flex items-center gap-4 border-b border-white/5 pb-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+                        <KeyRound className="text-amber-400" size={18} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white text-sm">Update Password</h3>
+                        <p className="text-[10px] text-slate-400 font-medium mt-0.5">Choose a secure, strong password</p>
+                      </div>
+                    </div>
+
+                    {passwordError && (
+                      <div className="p-3 bg-red-900/50 border border-red-500/30 rounded-xl text-red-300 text-xs font-semibold flex items-center gap-2">
+                        <AlertCircle size={14} className="shrink-0" />
+                        <span>{passwordError}</span>
+                      </div>
+                    )}
+
+                    {passwordSuccess && (
+                      <div className="p-3 bg-emerald-900/50 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-semibold flex items-center gap-2">
+                        <Check size={14} className="shrink-0" />
+                        <span>{passwordSuccess}</span>
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">New Password</label>
+                        <input
+                          type="password"
+                          required
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          className="w-full bg-black/40 border border-slate-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 transition-all font-medium"
+                          placeholder="••••••••"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Confirm Password</label>
+                        <input
+                          type="password"
+                          required
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          className="w-full bg-black/40 border border-slate-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-amber-500/50 focus:border-amber-500 transition-all font-medium"
+                          placeholder="••••••••"
+                        />
+                      </div>
+                    </div>
+
+                    {newPassword && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 h-1 bg-slate-800 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-300 ${getPasswordStrength(newPassword).color}`}
+                            style={{ width: `${(getPasswordStrength(newPassword).score / 4) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-[10px] font-black uppercase text-slate-400">
+                          {getPasswordStrength(newPassword).text}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowPasswordForm(false);
+                          setPasswordError('');
+                          setPasswordSuccess('');
+                          setNewPassword('');
+                          setConfirmPassword('');
+                        }}
+                        className="px-3.5 py-1.5 hover:bg-white/5 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all border border-transparent hover:border-white/5"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={passwordLoading}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-black rounded-lg text-xs font-black uppercase tracking-wider shadow-lg transition-all"
+                      >
+                        {passwordLoading ? (
+                          <>
+                            <Loader2 className="animate-spin" size={13} />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Check size={13} />
+                            Save Password
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </motion.div>
 
               {/* Unit / Hierarchy Section */}
@@ -122,6 +532,29 @@ export default function ProfilePage() {
                   )}
                 </div>
               </motion.div>
+
+              {/* Admin Section (Only visible to levels <= 3) */}
+              {userRole && userRole.level <= 3 && (
+                <motion.div variants={fadeUp} className="bg-slate-900/50 backdrop-blur-md border border-church-blue-500/30 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center gap-4 transition-colors hover:bg-slate-800/50">
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 rounded-xl bg-church-blue-500/10 flex items-center justify-center shrink-0">
+                      <KeyRound className="text-church-blue-400" size={20} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Admin Controls</p>
+                      <p className="text-white font-bold">Password Change Log</p>
+                      <p className="text-[10px] text-slate-400 mt-1 font-medium">View and audit member passwords</p>
+                    </div>
+                  </div>
+                  <Link 
+                    to="/admin/passwords"
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-church-blue-600 hover:bg-church-blue-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-colors w-full sm:w-auto mt-2 sm:mt-0 shadow-lg text-center"
+                  >
+                    View Logs
+                    <ChevronRight size={14} />
+                  </Link>
+                </motion.div>
+              )}
             </motion.div>
 
             {/* Logout Action */}

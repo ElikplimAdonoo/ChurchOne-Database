@@ -444,10 +444,9 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
         // Anyone added via the directory with 'Cell Member', 'Member', or 'Unassigned' is already a
         // member and must always appear as 'Member', regardless of attendance count.
         if (role === 'First Timer') {
-          if (presentCount === 1) membership_state = 'First Timer';
+          if (presentCount <= 1) membership_state = 'First Timer';
           else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
           else if (presentCount >= 4) membership_state = 'Member';
-          else membership_state = 'Unattended';
         } else if (role === 'Cell Member' || role === 'Member' || role === 'Unassigned') {
           membership_state = 'Member';
         }

@@ -111,24 +111,26 @@ export default function HierarchyMindMapPage() {
                 members: unit.members || []
             }));
 
-            // INJECT PERSON NODES FOR CELL SHEPHERDS
-            const isCellShepherd = userRole && (userRole.unitType === 'CELL' || userRole.title?.toLowerCase().includes('cell shepherd'));
-            if (isCellShepherd) {
-                const myCell = hierarchyNodes.find(u => u.id === userRole.unitId);
-                if (myCell) {
-                    const peopleNodes = [...(myCell.leaders || []), ...(myCell.members || [])].map(p => ({
-                        id: `person-${p.id}`,
-                        name: p.name,
-                        unit_type: 'PERSON',
-                        parent_id: myCell.id,
-                        photo: p.photo,
-                        role: p.role || 'Member',
-                        unitName: myCell.name,
-                        isPlaceholder: p.isPlaceholder
-                    }));
-                    hierarchyNodes.push(...peopleNodes);
+            // INJECT PERSON NODES FOR EVERY CELL (so members and shepherds are displayed as leaves of the cells in the mindmap)
+            const peopleNodes = [];
+            hierarchyNodes.forEach(unit => {
+                if (unit.unit_type === 'CELL') {
+                    const cellPeople = [...(unit.leaders || []), ...(unit.members || [])];
+                    cellPeople.forEach(p => {
+                        peopleNodes.push({
+                            id: `person-${p.id}`,
+                            name: p.name,
+                            unit_type: 'PERSON',
+                            parent_id: unit.id,
+                            photo: p.photo,
+                            role: p.role || 'Member',
+                            unitName: unit.name,
+                            isPlaceholder: p.isPlaceholder
+                        });
+                    });
                 }
-            }
+            });
+            hierarchyNodes.push(...peopleNodes);
 
             // Collapse MC, BUSCENTA, and CELL levels by default on initial load to avoid bulkiness
             const initialCollapsed = new Set();

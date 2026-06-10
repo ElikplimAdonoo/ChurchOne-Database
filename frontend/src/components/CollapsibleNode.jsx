@@ -38,30 +38,39 @@ const CollapsibleNode = memo(({ data, isConnectable, style }) => {
                 </div>
             ) : (
                 <div className="flex flex-col items-center justify-center min-h-[40px]">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-500 mb-0.5">
+                        {data.unit_type}
+                    </span>
                     <span className="font-semibold text-sm">{data.label}</span>
-                    {data.leaders && data.leaders.length > 0 && (
-                        <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10 w-full justify-center">
-                            {data.leaders[0].photo && (
-                                <div 
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        data.onImageClick && data.onImageClick(data.leaders[0].photo, data.leaders[0].name);
-                                    }}
-                                    className="w-5 h-5 rounded-full overflow-hidden border border-church-blue-500/30 cursor-pointer"
-                                >
-                                    <img src={data.leaders[0].photo} alt="" className="w-full h-full object-cover" />
-                                </div>
-                            )}
-                            <span className="text-xs text-church-blue-300 font-medium truncate max-w-[150px]">
-                                {data.leaders[0].name}
-                            </span>
-                            {activeLeaderCount > 1 && (
-                                <span className="text-[10px] bg-slate-700 px-1.5 rounded-full text-slate-300">
-                                    +{activeLeaderCount - 1}
+                    {(() => {
+                        // For CELL: ONLY show as leader if they have the exact 'cell shepherd' role in DB
+                        const primaryLeader = data.unit_type === 'CELL'
+                            ? (data.leaders?.find(l => l.role?.toLowerCase() === 'cell shepherd') || null)
+                            : data.leaders?.[0];
+                        return primaryLeader && (
+                            <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-white/10 w-full justify-center">
+                                {primaryLeader.photo && (
+                                    <div 
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            data.onImageClick && data.onImageClick(primaryLeader.photo, primaryLeader.name);
+                                        }}
+                                        className="w-5 h-5 rounded-full overflow-hidden border border-church-blue-500/30 cursor-pointer"
+                                    >
+                                        <img src={primaryLeader.photo} alt="" className="w-full h-full object-cover" />
+                                    </div>
+                                )}
+                                <span className="text-xs text-church-blue-300 font-medium truncate max-w-[150px]">
+                                    {primaryLeader.name}
                                 </span>
-                            )}
-                        </div>
-                    )}
+                                {activeLeaderCount > 1 && (
+                                    <span className="text-[10px] bg-slate-700 px-1.5 rounded-full text-slate-300">
+                                        +{activeLeaderCount - 1}
+                                    </span>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
 

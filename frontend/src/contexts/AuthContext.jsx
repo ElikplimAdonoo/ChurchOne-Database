@@ -39,6 +39,8 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const EMAIL_GATE_ACTIVATION_DATE = "2026-06-13";
+
   async function fetchUserRole(userId) {
     try {
       // Call the Postgres function we created
@@ -56,12 +58,16 @@ export function AuthProvider({ children }) {
           unitId: data[0].unit_id,
           personId: data[0].person_id,
           fullName: data[0].full_name,
-          photoUrl: data[0].photo_url
+          photoUrl: data[0].photo_url,
+          emailVerified: data[0].email_verified,
+          personalEmail: data[0].personal_email
         });
       } else {
-         // User loggeg in but no profile found in 'people' table logic
-         console.warn("User logged in but no linked 'people' record found.");
+         // User logged in but no profile found in 'people' table logic
+         console.warn("User logged in but no linked 'people' record found. Signing out.");
          setUserRole(null);
+         sessionStorage.setItem('auth_error', "This account isn't linked to a ChurchOne profile. Contact your admin.");
+         await supabase.auth.signOut();
       }
     } catch (err) {
       console.error("Unexpected error fetching role:", err);
@@ -81,6 +87,18 @@ export function AuthProvider({ children }) {
       return await getManagedUnitIds(userRole);
   }, [userRole]);
 
+  const refreshUserRole = useCallback(async () => {
+    if (user) {
+      setLoading(true);
+      await fetchUserRole(user.id);
+    }
+  }, [user]);
+
+  // Compute email gate states
+  const isGateActive = new Date() >= new Date(EMAIL_GATE_ACTIVATION_DATE);
+  const needsEmailGate = !!(user && userRole && isGateActive && !userRole.emailVerified);
+  const isPreGatePeriod = !!(user && userRole && !isGateActive && !userRole.emailVerified);
+
   const value = {
     session,
     user,
@@ -89,6 +107,10 @@ export function AuthProvider({ children }) {
     signOut: () => supabase.auth.signOut(),
     canManage,
     getManagedUnits,
+    refreshUserRole,
+    needsEmailGate,
+    isPreGatePeriod,
+    EMAIL_GATE_ACTIVATION_DATE
   };
 
   return (

@@ -1,5 +1,4 @@
-import { IonApp } from '@ionic/react'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './components/Login'
@@ -11,34 +10,50 @@ import PeopleDirectoryPage from './pages/PeopleDirectoryPage'
 import HierarchyMindMapPage from './pages/HierarchyMindMapPage'
 import AttendancePage from './pages/AttendancePage'
 import ProfilePage from './pages/ProfilePage'
+import EmailGatePage from './pages/EmailGatePage'
+import AdminPasswordLogPage from './pages/AdminPasswordLogPage'
+
+function AppContent() {
+  const { needsEmailGate } = useAuth();
+
+  if (needsEmailGate) {
+    return <EmailGatePage />;
+  }
+
+  return (
+    <Router>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<Login />} />
+
+        {/* Public Main Layout Routes */}
+        <Route element={<MainLayout />}>
+          {/* Public but inside MainLayout */}
+          <Route index element={<DashboardPage />} />
+          
+          {/* Protected Routes */}
+          <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+            <Route path="directory" element={<PeopleDirectoryPage />} />
+            <Route path="mindmap" element={<HierarchyMindMapPage />} />
+            <Route path="attendance" element={<AttendancePage />} />
+            <Route path="profile" element={<ProfilePage />} />
+            <Route path="admin/passwords" element={<AdminPasswordLogPage />} />
+          </Route>
+        </Route>
+      </Routes>
+    </Router>
+  );
+}
 
 function App() {
   return (
     // <IonApp>
       <AuthProvider>
-        <Router>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/login" element={<Login />} />
-
-            {/* Public Main Layout Routes */}
-            <Route element={<MainLayout />}>
-              {/* Public but inside MainLayout */}
-              <Route index element={<DashboardPage />} />
-              
-              {/* Protected Routes */}
-              <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
-                <Route path="directory" element={<PeopleDirectoryPage />} />
-                <Route path="mindmap" element={<HierarchyMindMapPage />} />
-                <Route path="attendance" element={<AttendancePage />} />
-                <Route path="profile" element={<ProfilePage />} />
-              </Route>
-            </Route>
-          </Routes>
-        </Router>
+        <AppContent />
       </AuthProvider>
     // </IonApp>
   )
 }
 
 export default App
+

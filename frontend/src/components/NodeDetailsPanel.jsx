@@ -91,15 +91,23 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
                             </div>
                         ) : (
                         <div className="space-y-4">
-                            {/* Leads (Luxurious Yellow) - Anyone who is a leader but NOT a Shepherd */}
-                            {node.data.leaders && node.data.leaders.some(l => l.role.toLowerCase() !== 'shepherd') && (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between px-1">
-                                        <div className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.2em] opacity-80 decoration-yellow-500/30 underline underline-offset-4">Lead</div>
-                                    </div>
-                                    {node.data.leaders
-                                        .filter(l => l.role.toLowerCase() !== 'shepherd')
-                                        .map((leader, i) => (
+                            {/* Leads (Luxurious Yellow) - Cell Shepherd or primary leader */}
+                            {(() => {
+                                const leaders = node.data.leaders || [];
+                                let leads;
+                                if (unit_type === 'CELL') {
+                                    // ONLY exact 'cell shepherd' role — no fallback to leaders[0]
+                                    leads = leaders.filter(l => l.role?.toLowerCase() === 'cell shepherd');
+                                } else {
+                                    leads = leaders.filter(l => l.role?.toLowerCase() !== 'shepherd');
+                                }
+                                if (leads.length === 0) return null;
+                                return (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between px-1">
+                                            <div className="text-[10px] font-black text-yellow-500 uppercase tracking-[0.2em] opacity-80 decoration-yellow-500/30 underline underline-offset-4">Lead</div>
+                                        </div>
+                                        {leads.map((leader, i) => (
                                             <div 
                                                 key={`cell-p-${i}`} 
                                                 onClick={() => onViewPersonDetails && onViewPersonDetails({ ...leader, unitName: label })}
@@ -117,47 +125,57 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="font-black text-base text-white leading-tight truncate">{leader.name}</p>
-                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-400 drop-shadow-sm">{leader.role}</p>
+                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-yellow-400 drop-shadow-sm">
+                                                        {unit_type === 'CELL' ? 'Cell Shepherd' : leader.role}
+                                                    </p>
                                                 </div>
                                             </div>
-                                        ))
-                                    }
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                );
+                            })()}
 
-                            {/* Assistants (Professional Blue/Emerald) - Only Shepherds */}
-                            {node.data.leaders && node.data.leaders.some(l => l.role.toLowerCase() === 'shepherd') && (
-                                <div className="space-y-2">
-                                    <div className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] px-1 opacity-80 decoration-emerald-400/30 underline underline-offset-4">Assistants</div>
-                                    <div className="grid grid-cols-1 gap-2">
-                                        {node.data.leaders
-                                            .filter(l => l.role.toLowerCase() === 'shepherd')
-                                            .map((leader, i) => (
+                            {/* Assistants (Professional Violet) - All non-primary leaders */}
+                            {(() => {
+                                const leaders = node.data.leaders || [];
+                                let assistants;
+                                if (unit_type === 'CELL') {
+                                    // All non-cell-shepherd leaders are assistants
+                                    assistants = leaders.filter(l => l.role?.toLowerCase() !== 'cell shepherd');
+                                } else {
+                                    assistants = leaders.filter(l => l.role?.toLowerCase() === 'shepherd');
+                                }
+                                if (assistants.length === 0) return null;
+                                return (
+                                    <div className="space-y-2">
+                                        <div className="text-[10px] font-black text-violet-400 uppercase tracking-[0.2em] px-1 opacity-80 decoration-violet-400/30 underline underline-offset-4">Assistants</div>
+                                        <div className="grid grid-cols-1 gap-2">
+                                            {assistants.map((leader, i) => (
                                                 <div 
                                                     key={`lead-a-${i}`} 
                                                     onClick={() => onViewPersonDetails && onViewPersonDetails({ ...leader, unitName: label })}
-                                                    className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-500/10 to-church-blue-500/10 border border-emerald-500/20 flex items-center gap-2.5 hover:bg-emerald-500/20 hover:border-emerald-400 transition-all group shadow-md cursor-pointer"
+                                                    className="p-2.5 rounded-xl bg-gradient-to-r from-violet-500/10 to-church-purple-500/10 border border-violet-500/20 flex items-center gap-2.5 hover:bg-violet-500/20 hover:border-violet-400 transition-all group shadow-md cursor-pointer"
                                                 >
                                                     <div
                                                         onClick={(e) => { e.stopPropagation(); leader.photo && openImage(e, leader.photo, leader.name); }}
-                                                        className={`w-8.5 h-8.5 rounded-xl border border-emerald-500/40 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 group-hover:border-emerald-400 transition-colors ${leader.photo ? 'cursor-pointer' : ''}`}
+                                                        className={`w-8.5 h-8.5 rounded-xl border border-violet-500/40 overflow-hidden bg-slate-800 flex items-center justify-center shrink-0 group-hover:border-violet-400 transition-colors ${leader.photo ? 'cursor-pointer' : ''}`}
                                                     >
                                                         {leader.photo ? (
                                                             <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
                                                         ) : (
-                                                            <User size={14} className="text-emerald-400" />
+                                                            <User size={14} className="text-violet-400" />
                                                         )}
                                                     </div>
                                                     <div>
                                                         <p className="font-bold text-slate-100 text-xs leading-tight group-hover:text-white transition-colors uppercase tracking-tighter">{leader.name}</p>
-                                                        <p className="text-[8px] font-black uppercase text-emerald-500/80 tracking-widest mt-0.5">{leader.role}</p>
+                                                        <p className="text-[8px] font-black uppercase text-violet-500/80 tracking-widest mt-0.5">{leader.role}</p>
                                                     </div>
                                                 </div>
-                                            ))
-                                        }
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
                     
                             {/* Members (Subtle Clean Slate) */}
                             {node.data.members && node.data.members.length > 0 && (
@@ -226,7 +244,7 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
 
 function Badge({ type }) {
     const colors = {
-        ZONAL: 'bg-church-blue-500/20 text-church-blue-300 border-church-blue-500/30',
+        ZONE: 'bg-church-blue-500/20 text-church-blue-300 border-church-blue-500/30',
         MC: 'bg-church-blue-500/20 text-church-blue-300 border-church-blue-500/30',
         BUSCENTA: 'bg-church-magenta-500/20 text-church-magenta-300 border-church-magenta-500/30',
         CELL: 'bg-church-coral-500/20 text-church-coral-300 border-church-coral-500/30',

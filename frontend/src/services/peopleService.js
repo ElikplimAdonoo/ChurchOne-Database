@@ -70,10 +70,9 @@ export async function fetchPeople() {
             // Anyone added via the directory with role 'Cell Member', 'Member', or 'Unassigned'
             // is already a member and should always appear as 'Member'.
             if (roleTitle === 'First Timer') {
-                if (presentCount === 1) membership_state = 'First Timer';
+                if (presentCount <= 1) membership_state = 'First Timer';
                 else if (presentCount === 2 || presentCount === 3) membership_state = 'Brethren';
                 else if (presentCount >= 4) membership_state = 'Member';
-                else membership_state = 'Unattended';
             } else if (roleTitle === 'Cell Member' || roleTitle === 'Member' || roleTitle === 'Unassigned') {
                 membership_state = 'Member';
             }
@@ -138,7 +137,80 @@ export const createFirstTimer = async (personData) => {
 };
 
 export const createPerson = async (personData) => {
-    // Call the edge function to create the auth user, the people record, and the assignment securely.
+    // --- FIX: Always check if a person with this name already exists (active OR inactive) ---
+    // Search all records by name. Exclude system placeholder slots (name ends in ' - Leader').
+    const { data: existingMatches } = await supabase
+        .from('people')
+        .select('*')
+        .ilike('full_name', personData.fullName)
+        .limit(10);
+
+    // Filter out system-generated leader placeholder slots in JS (name like "KB2 Zone - Leader")
+    const realMatches = (existingMatches || []).filter(p => !p.full_name?.endsWith(' - Leader'));
+
+    // Try to find the best match: prefer one assigned to the same unit, or else the first one
+    let existingPerson = null;
+    if (realMatches.length > 0) {
+        if (personData.unitId && realMatches.length > 1) {
+            // Check which one has an assignment in the target unit
+            for (const p of realMatches) {
+                const { data: assignment } = await supabase
+                    .from('position_assignments')
+                    .select('id')
+                    .eq('person_id', p.id)
+                    .eq('unit_id', personData.unitId)
+                    .limit(1)
+                    .maybeSingle();
+                if (assignment) { existingPerson = p; break; }
+            }
+        }
+        // Fall back to the first match if no unit-specific match
+        if (!existingPerson) existingPerson = realMatches[0];
+    }
+
+    if (existingPerson) {
+        console.log("Reusing existing person record:", existingPerson.id, "| was active:", existingPerson.is_active);
+
+        // 1. Ensure person is active
+        const { data: reactivatedPerson, error: reactivateError } = await supabase
+            .from('people')
+            .update({
+                is_active: true,
+                is_placeholder: false,
+                full_name: personData.fullName,
+                personal_email: personData.personalEmail || existingPerson.personal_email
+            })
+            .eq('id', existingPerson.id)
+            .select()
+            .single();
+
+        if (reactivateError) throw reactivateError;
+
+        // 2. Update placement: deactivate all old assignments, insert new one
+        if (personData.unitId && personData.positionId) {
+            await supabase
+                .from('position_assignments')
+                .update({ is_active: false })
+                .eq('person_id', existingPerson.id);
+
+            await supabase
+                .from('position_assignments')
+                .insert([{
+                    person_id: existingPerson.id,
+                    unit_id: personData.unitId,
+                    position_id: personData.positionId,
+                    is_active: true,
+                    is_primary: true
+                }]);
+        }
+
+        cacheService.remove(CACHE_KEYS.PEOPLE);
+        cacheService.remove(CACHE_KEYS.HIERARCHY);
+
+        return { person: reactivatedPerson, login: null };
+    }
+
+    // --- Brand new person: call Edge Function to create auth account ---
     const { data, error } = await supabase.functions.invoke('create-auth-user', {
         body: {
             fullName: personData.fullName,
@@ -149,16 +221,23 @@ export const createPerson = async (personData) => {
     });
 
     if (error) {
-        console.error("Error creating person via edge function:", error);
-        throw error;
+        // Try to extract the real error message from the Edge Function response body
+        let realMessage = error.message;
+        try {
+            if (error.context) {
+                const body = await error.context.json();
+                if (body?.error) realMessage = body.error;
+            }
+        } catch (_) {}
+        console.error("Edge function error:", realMessage, error);
+        throw new Error(realMessage);
     }
-    
+
     if (data?.error) {
         console.error("Edge function returned error:", data.error);
         throw new Error(data.error);
     }
 
-    // Invalidate People + Hierarchy caches (dashboard counts change)
     cacheService.remove(CACHE_KEYS.PEOPLE);
     cacheService.remove(CACHE_KEYS.HIERARCHY);
 

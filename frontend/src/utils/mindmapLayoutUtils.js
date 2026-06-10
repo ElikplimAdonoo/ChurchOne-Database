@@ -41,7 +41,7 @@ export const getStyle = (type, isSelected, role) => {
     const isCellShepherd = role?.toLowerCase() === 'cell shepherd';
 
     switch (type) {
-        case 'ZONAL': return { 
+        case 'ZONE': return { 
             ...style, 
             borderLeftColor: '#6366f1', 
             borderLeftWidth: '4px', 
@@ -65,12 +65,33 @@ export const getStyle = (type, isSelected, role) => {
             borderLeftWidth: '4px', 
             background: isSelected ? 'rgba(249, 115, 22, 0.15)' : style.background 
         };
-        case 'PERSON': return {
-            ...style,
-            borderLeftColor: '#10b981',
-            borderLeftWidth: '4px',
-            background: isSelected ? 'rgba(16, 185, 129, 0.15)' : style.background 
-        };
+        case 'PERSON': {
+            const roleLower = role?.toLowerCase() || '';
+            const isCellShepherd = roleLower.includes('cell shepherd');
+            const isShepherd = roleLower === 'shepherd';
+            if (isCellShepherd) {
+                return {
+                    ...style,
+                    borderLeftColor: '#f59e0b', // Amber/Gold for Cell Shepherd
+                    borderLeftWidth: '4px',
+                    background: isSelected ? 'rgba(245, 158, 11, 0.15)' : style.background
+                };
+            } else if (isShepherd) {
+                return {
+                    ...style,
+                    borderLeftColor: '#8b5cf6', // Violet/Purple for Shepherd
+                    borderLeftWidth: '4px',
+                    background: isSelected ? 'rgba(139, 92, 246, 0.15)' : style.background
+                };
+            } else {
+                return {
+                    ...style,
+                    borderLeftColor: '#10b981', // Emerald for Member
+                    borderLeftWidth: '4px',
+                    background: isSelected ? 'rgba(16, 185, 129, 0.15)' : style.background
+                };
+            }
+        }
         default: return style;
     }
 };
