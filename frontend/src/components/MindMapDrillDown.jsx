@@ -526,14 +526,12 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                     <div className="w-0.5 h-5 bg-slate-700/60" />
                   </div>
 
-                  {/* ── Lane Container ──
-                      px-3 padding makes the card inside float centered and slightly
-                      narrower than the lane, so the colored lane is visible on both sides */}
-                  <div className={`w-full flex flex-col items-center pt-4 pb-6 min-h-[350px] ${theme.columnTint} ${roundedClass} px-3 gap-4 overflow-hidden`}>
-                    {/* MC Card — sits inside the lane, slightly narrower */}
-                    <div className={`w-full rounded-2xl overflow-hidden border shadow-xl ${theme.cardBg} hover:scale-[1.01] transition-all duration-300 shrink-0`}>
+                  {/* ── MC Photo Card ── sits on the page background, ABOVE the colored lane.
+                      This matches the Figma reference: photos are outside/above the lane strips */}
+                  <div className="w-full px-1.5 shrink-0">
+                    <div className="w-full rounded-2xl overflow-hidden border border-slate-800/60 shadow-xl bg-slate-900 hover:scale-[1.01] transition-all duration-300">
                       {/* Photo */}
-                      <div className="w-full h-48 bg-black/30 overflow-hidden">
+                      <div className="w-full h-40 bg-slate-950 overflow-hidden">
                         {mcLeader?.photo ? (
                           <img
                             src={mcLeader.photo}
@@ -543,28 +541,31 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-6xl font-black text-white/20">
+                            <span className="text-6xl font-black text-slate-700">
                               {mcLeader?.name?.charAt(0).toUpperCase() || "?"}
                             </span>
                           </div>
                         )}
                       </div>
-
-                      {/* Name plate */}
-                      <div className={`px-4 py-3.5 ${theme.namePlateBg}`}>
-                        <span className={`inline-block mb-1.5 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider bg-white/5 border border-white/10 rounded ${theme.textColor}`}>
+                      {/* Name plate — uses the column's theme color */}
+                      <div className={`px-3 py-2.5 ${theme.namePlateBg}`}>
+                        <span className={`inline-block mb-1 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider bg-white/5 border border-white/10 rounded ${theme.textColor}`}>
                           {mc.unit_type === 'CELL' ? 'CELL SHEPHERD' : (mcLeader?.role?.toUpperCase() || getRoleLabel(mc.unit_type))}
                         </span>
-                        <h4 className="text-xs font-black text-white leading-tight uppercase tracking-tight truncate">
+                        <h4 className="text-[11px] font-black text-white leading-tight uppercase tracking-tight truncate">
                           {mcLeader?.name || "No Leader Assigned"}
                         </h4>
-                        <p
-                          className={`text-[9px] ${theme.textColor} font-bold uppercase tracking-wider mt-0.5 truncate`}
-                        >
+                        <p className={`text-[8px] ${theme.textColor} font-bold uppercase tracking-wider mt-0.5 truncate`}>
                           {mc.name}
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* ── Colored Lane ── starts directly below the photo card.
+                      This is the vertical colored strip visible in the Figma reference.
+                      It contains ONLY the buscenta / cell rows below, not the photo. */}
+                  <div className={`w-full flex flex-col pt-3 pb-6 min-h-[200px] ${theme.columnTint} px-2 gap-3 overflow-hidden`}>
 
                     {/* ── Content Column (adapts label based on unit_type) ── */}
                     <div className="w-full flex flex-col gap-3">
