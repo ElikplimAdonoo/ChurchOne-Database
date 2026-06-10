@@ -11,88 +11,82 @@ import { ChevronRight, Users, Home } from "lucide-react";
 // ==========================================
 const MC_THEMES = [
   {
-    // 1 — Violet
-    columnTint: "bg-violet-500/15",
-    cardBg: "bg-violet-950/90 border-violet-700/50",
-    namePlateBg: "bg-violet-950 border-t border-violet-800/60",
+    // 1 — Violet (very light pastel)
+    columnTint: "bg-violet-400/8",
+    namePlateBg: "bg-slate-900 border-t border-slate-800/60",
     textColor: "text-violet-400",
     accentText: "text-violet-300",
-    buscentaBg: "bg-violet-900/25 border-violet-700/30",
-    buscentaActiveBg: "bg-violet-800/50 border-violet-500/50 text-violet-100",
-    cellBg: "bg-violet-900/15 border-violet-800/20",
-    cellActiveBg: "bg-violet-800/40 border-violet-500/50 text-violet-100",
-    shepherdBg: "bg-violet-900/20 border-violet-700/30 text-violet-300",
-    memberBg: "bg-violet-900/10 border-violet-800/20 text-violet-400"
+    buscentaBg: "bg-white/5 border-violet-300/20",
+    buscentaActiveBg: "bg-violet-500/20 border-violet-500/40 text-white",
+    cellBg: "bg-white/5 border-violet-300/15",
+    cellActiveBg: "bg-violet-500/20 border-violet-500/40 text-white",
+    shepherdBg: "bg-violet-400/10 border-violet-300/20 text-violet-300",
+    memberBg: "bg-violet-400/5 border-violet-300/10 text-violet-400"
   },
   {
-    // 2 — Rose/Pink
-    columnTint: "bg-rose-500/15",
-    cardBg: "bg-rose-950/90 border-rose-700/50",
-    namePlateBg: "bg-rose-950 border-t border-rose-800/60",
+    // 2 — Rose (very light pastel)
+    columnTint: "bg-rose-400/8",
+    namePlateBg: "bg-slate-900 border-t border-slate-800/60",
     textColor: "text-rose-400",
     accentText: "text-rose-300",
-    buscentaBg: "bg-rose-900/25 border-rose-700/30",
-    buscentaActiveBg: "bg-rose-800/50 border-rose-500/50 text-rose-100",
-    cellBg: "bg-rose-900/15 border-rose-800/20",
-    cellActiveBg: "bg-rose-800/40 border-rose-500/50 text-rose-100",
-    shepherdBg: "bg-rose-900/20 border-rose-700/30 text-rose-300",
-    memberBg: "bg-rose-900/10 border-rose-800/20 text-rose-400"
+    buscentaBg: "bg-white/5 border-rose-300/20",
+    buscentaActiveBg: "bg-rose-500/20 border-rose-500/40 text-white",
+    cellBg: "bg-white/5 border-rose-300/15",
+    cellActiveBg: "bg-rose-500/20 border-rose-500/40 text-white",
+    shepherdBg: "bg-rose-400/10 border-rose-300/20 text-rose-300",
+    memberBg: "bg-rose-400/5 border-rose-300/10 text-rose-400"
   },
   {
-    // 3 — Sky/Blue
-    columnTint: "bg-sky-500/15",
-    cardBg: "bg-sky-950/90 border-sky-700/50",
-    namePlateBg: "bg-sky-950 border-t border-sky-800/60",
-    textColor: "text-sky-400",
-    accentText: "text-sky-300",
-    buscentaBg: "bg-sky-900/25 border-sky-700/30",
-    buscentaActiveBg: "bg-sky-800/50 border-sky-500/50 text-sky-100",
-    cellBg: "bg-sky-900/15 border-sky-800/20",
-    cellActiveBg: "bg-sky-800/40 border-sky-500/50 text-sky-100",
-    shepherdBg: "bg-sky-900/20 border-sky-700/30 text-sky-300",
-    memberBg: "bg-sky-900/10 border-sky-800/20 text-sky-400"
+    // 3 — BLACK (replaces sky/blue by user request)
+    columnTint: "bg-black",
+    namePlateBg: "bg-slate-900 border-t border-slate-800/60",
+    textColor: "text-slate-400",
+    accentText: "text-slate-300",
+    buscentaBg: "bg-white/5 border-white/10",
+    buscentaActiveBg: "bg-white/15 border-white/25 text-white",
+    cellBg: "bg-white/5 border-white/8",
+    cellActiveBg: "bg-white/15 border-white/25 text-white",
+    shepherdBg: "bg-white/8 border-white/10 text-slate-300",
+    memberBg: "bg-white/5 border-white/8 text-slate-400"
   },
   {
-    // 4 — Teal/Green
-    columnTint: "bg-teal-500/15",
-    cardBg: "bg-teal-950/90 border-teal-700/50",
-    namePlateBg: "bg-teal-950 border-t border-teal-800/60",
+    // 4 — Teal (very light pastel)
+    columnTint: "bg-teal-400/8",
+    namePlateBg: "bg-slate-900 border-t border-slate-800/60",
     textColor: "text-teal-400",
     accentText: "text-teal-300",
-    buscentaBg: "bg-teal-900/25 border-teal-700/30",
-    buscentaActiveBg: "bg-teal-800/50 border-teal-500/50 text-teal-100",
-    cellBg: "bg-teal-900/15 border-teal-800/20",
-    cellActiveBg: "bg-teal-800/40 border-teal-500/50 text-teal-100",
-    shepherdBg: "bg-teal-900/20 border-teal-700/30 text-teal-300",
-    memberBg: "bg-teal-900/10 border-teal-800/20 text-teal-400"
+    buscentaBg: "bg-white/5 border-teal-300/20",
+    buscentaActiveBg: "bg-teal-500/20 border-teal-500/40 text-white",
+    cellBg: "bg-white/5 border-teal-300/15",
+    cellActiveBg: "bg-teal-500/20 border-teal-500/40 text-white",
+    shepherdBg: "bg-teal-400/10 border-teal-300/20 text-teal-300",
+    memberBg: "bg-teal-400/5 border-teal-300/10 text-teal-400"
   },
   {
-    // 5 — Amber/Orange
-    columnTint: "bg-amber-500/15",
-    cardBg: "bg-amber-950/90 border-amber-700/50",
-    namePlateBg: "bg-amber-950 border-t border-amber-800/60",
+    // 5 — Amber (very light pastel)
+    columnTint: "bg-amber-400/8",
+    namePlateBg: "bg-slate-900 border-t border-slate-800/60",
     textColor: "text-amber-400",
     accentText: "text-amber-300",
-    buscentaBg: "bg-amber-900/25 border-amber-700/30",
-    buscentaActiveBg: "bg-amber-800/50 border-amber-500/50 text-amber-100",
-    cellBg: "bg-amber-900/15 border-amber-800/20",
-    cellActiveBg: "bg-amber-800/40 border-amber-500/50 text-amber-100",
-    shepherdBg: "bg-amber-900/20 border-amber-700/30 text-amber-300",
-    memberBg: "bg-amber-900/10 border-amber-800/20 text-amber-400"
+    buscentaBg: "bg-white/5 border-amber-300/20",
+    buscentaActiveBg: "bg-amber-500/20 border-amber-500/40 text-white",
+    cellBg: "bg-white/5 border-amber-300/15",
+    cellActiveBg: "bg-amber-500/20 border-amber-500/40 text-white",
+    shepherdBg: "bg-amber-400/10 border-amber-300/20 text-amber-300",
+    memberBg: "bg-amber-400/5 border-amber-300/10 text-amber-400"
   },
   {
-    // 6 — Emerald
-    columnTint: "bg-emerald-500/15",
-    cardBg: "bg-emerald-950/90 border-emerald-700/50",
-    namePlateBg: "bg-emerald-950 border-t border-emerald-800/60",
+    // 6 — Emerald (very light pastel)
+    columnTint: "bg-emerald-400/8",
+    namePlateBg: "bg-slate-900 border-t border-slate-800/60",
     textColor: "text-emerald-400",
     accentText: "text-emerald-300",
-    buscentaBg: "bg-emerald-900/25 border-emerald-700/30",
-    buscentaActiveBg: "bg-emerald-800/50 border-emerald-500/50 text-emerald-100",
-    cellBg: "bg-emerald-900/15 border-emerald-800/20",
-    cellActiveBg: "bg-emerald-800/40 border-emerald-500/50 text-emerald-100",
-    shepherdBg: "bg-emerald-900/20 border-emerald-700/30 text-emerald-300",
-    memberBg: "bg-emerald-900/10 border-emerald-800/20 text-emerald-400"
+    buscentaBg: "bg-white/5 border-emerald-300/20",
+    buscentaActiveBg: "bg-emerald-500/20 border-emerald-500/40 text-white",
+    cellBg: "bg-white/5 border-emerald-300/15",
+    cellActiveBg: "bg-emerald-500/20 border-emerald-500/40 text-white",
+    shepherdBg: "bg-emerald-400/10 border-emerald-300/20 text-emerald-300",
+    memberBg: "bg-emerald-400/5 border-emerald-300/10 text-emerald-400"
   },
 ];
 
@@ -526,9 +520,8 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                     <div className="w-0.5 h-5 bg-slate-700/60" />
                   </div>
 
-                  {/* ── MC Photo Card ── sits on the page background, ABOVE the colored lane.
-                      This matches the Figma reference: photos are outside/above the lane strips */}
-                  <div className="w-full px-1.5 shrink-0">
+                  {/* ── MC Photo Card ── z-10 so it sits visually above the lane */}
+                  <div className="w-full px-1.5 shrink-0 relative z-10">
                     <div className="w-full rounded-2xl overflow-hidden border border-slate-800/60 shadow-xl bg-slate-900 hover:scale-[1.01] transition-all duration-300">
                       {/* Photo */}
                       <div className="w-full h-40 bg-slate-950 overflow-hidden">
@@ -547,7 +540,7 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                           </div>
                         )}
                       </div>
-                      {/* Name plate — uses the column's theme color */}
+                      {/* Name plate */}
                       <div className={`px-3 py-2.5 ${theme.namePlateBg}`}>
                         <span className={`inline-block mb-1 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider bg-white/5 border border-white/10 rounded ${theme.textColor}`}>
                           {mc.unit_type === 'CELL' ? 'CELL SHEPHERD' : (mcLeader?.role?.toUpperCase() || getRoleLabel(mc.unit_type))}
@@ -562,10 +555,14 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                     </div>
                   </div>
 
-                  {/* ── Colored Lane ── starts directly below the photo card.
-                      This is the vertical colored strip visible in the Figma reference.
-                      It contains ONLY the buscenta / cell rows below, not the photo. */}
-                  <div className={`w-full flex flex-col pt-3 pb-6 min-h-[200px] ${theme.columnTint} px-2 gap-3 overflow-hidden`}>
+                  {/* ── Colored Lane ──
+                      Negative marginTop pulls the lane UP so its top aligns with the
+                      nameplate on the photo card (not below the full card).
+                      paddingTop compensates so content starts below the nameplate. */}
+                  <div
+                    className={`w-full flex flex-col pb-6 min-h-[200px] ${theme.columnTint} px-2 gap-3 overflow-hidden`}
+                    style={{ marginTop: '-55px', paddingTop: '60px' }}
+                  >
 
                     {/* ── Content Column (adapts label based on unit_type) ── */}
                     <div className="w-full flex flex-col gap-3">
