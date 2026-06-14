@@ -14,7 +14,7 @@ export default function Login() {
   const location = useLocation();
   const from = location.state?.from?.pathname || '/attendance';
 
-  const EMAIL_GATE_ACTIVATION_DATE = "2026-06-13";
+  const EMAIL_GATE_ACTIVATION_DATE = "2026-06-25";
   const gateDate = new Date(EMAIL_GATE_ACTIVATION_DATE);
   const isGateActive = new Date() >= gateDate;
 
@@ -113,7 +113,7 @@ export default function Login() {
         {/* Pre-gate period soft banner */}
         {!isGateActive && (
              <div className="mb-6 p-4 bg-church-blue-500/10 border border-church-blue-500/20 rounded-2xl text-church-blue-300 text-xs text-center font-semibold leading-relaxed">
-                  📢 <strong>Security Update:</strong> Starting June 13, a personal email (Gmail) will be required to log in. You can link yours in Profile now!
+                  📢 <strong>Security Update:</strong> Starting June 25, a personal email (Gmail) will be required to log in. You can link yours in Profile now!
              </div>
         )}
 
@@ -133,7 +133,7 @@ export default function Login() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="w-full bg-black/50 border-2 border-gray-700 text-white px-4 py-3 pl-11 rounded-xl focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500 transition-all placeholder:text-gray-500 font-medium"
-                        placeholder={isGateActive ? "yourname@gmail.com" : "you@churchone.com"}
+                        placeholder={isGateActive ? "yourname@gmail.com" : "yourname@churchone.com"}
                     />
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-church-blue-400" size={20} />
                 </div>

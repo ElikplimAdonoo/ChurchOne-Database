@@ -137,16 +137,47 @@ export const createFirstTimer = async (personData) => {
 };
 
 export const createPerson = async (personData) => {
-    // --- FIX: Always check if a person with this name already exists (active OR inactive) ---
-    // Search all records by name. Exclude system placeholder slots (name ends in ' - Leader').
-    const { data: existingMatches } = await supabase
-        .from('people')
-        .select('*')
-        .ilike('full_name', personData.fullName)
-        .limit(10);
+    // Trim and normalize the input name
+    const trimmedName = (personData.fullName || '').trim();
+    if (!trimmedName) throw new Error("Full name is required");
+
+    // Generate the default church email using same logic as the Edge Function
+    const names = trimmedName.split(/\s+/);
+    const firstName = names[0]?.toLowerCase().replace(/[^a-z0-9]/g, "") || "member";
+    const lastName = names.length > 1 ? names[names.length - 1].toLowerCase().replace(/[^a-z0-9]/g, "") : "member";
+    const generatedEmail = `${firstName}.${lastName}@churchone.com`;
+
+    // Query DB in parallel by name, generated email, and personal email (if provided)
+    const queries = [
+        supabase.from('people').select('*').ilike('full_name', trimmedName).limit(5),
+        supabase.from('people').select('*').ilike('full_name', `%${trimmedName}%`).limit(5)
+    ];
+
+    if (generatedEmail) {
+        queries.push(supabase.from('people').select('*').eq('email', generatedEmail).limit(5));
+    }
+
+    if (personData.personalEmail) {
+        queries.push(supabase.from('people').select('*').eq('personal_email', personData.personalEmail.trim()).limit(5));
+    }
+
+    const queryResults = await Promise.all(queries);
+    const existingMatches = [];
+    const seenIds = new Set();
+
+    for (const r of queryResults) {
+        if (r.data) {
+            for (const p of r.data) {
+                if (!seenIds.has(p.id)) {
+                    seenIds.add(p.id);
+                    existingMatches.push(p);
+                }
+            }
+        }
+    }
 
     // Filter out system-generated leader placeholder slots in JS (name like "KB2 Zone - Leader")
-    const realMatches = (existingMatches || []).filter(p => !p.full_name?.endsWith(' - Leader'));
+    const realMatches = existingMatches.filter(p => !p.full_name?.endsWith(' - Leader'));
 
     // Try to find the best match: prefer one assigned to the same unit, or else the first one
     let existingPerson = null;
@@ -177,7 +208,7 @@ export const createPerson = async (personData) => {
             .update({
                 is_active: true,
                 is_placeholder: false,
-                full_name: personData.fullName,
+                full_name: trimmedName, // Save it trimmed
                 personal_email: personData.personalEmail || existingPerson.personal_email
             })
             .eq('id', existingPerson.id)
@@ -209,6 +240,7 @@ export const createPerson = async (personData) => {
 
         return { person: reactivatedPerson, login: null };
     }
+
 
     // --- Brand new person: call Edge Function to create auth account ---
     const { data, error } = await supabase.functions.invoke('create-auth-user', {

@@ -39,7 +39,7 @@ export function AuthProvider({ children }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const EMAIL_GATE_ACTIVATION_DATE = "2026-06-13";
+  const EMAIL_GATE_ACTIVATION_DATE = "2026-06-25";
 
   async function fetchUserRole(userId) {
     try {

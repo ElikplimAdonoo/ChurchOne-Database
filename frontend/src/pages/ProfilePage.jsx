@@ -121,47 +121,24 @@ export default function ProfilePage() {
     setPersonalEmailLoading(true);
 
     try {
-      // 1. Update email in Supabase Auth
-      const { error: updateError } = await supabase.auth.updateUser({
-        email: personalEmail.trim().toLowerCase()
+      // Call secure RPC function to update email directly without verification links
+      const { data, error: rpcError } = await supabase.rpc('link_personal_email', {
+        p_personal_email: personalEmail.trim().toLowerCase()
       });
 
-      if (updateError) throw updateError;
+      if (rpcError) throw rpcError;
 
-      setPersonalEmailSent(true);
-      setSentEmail(personalEmail.trim().toLowerCase());
-      setPersonalEmailSuccess('Verification email sent successfully!');
-    } catch (err) {
-      setPersonalEmailError(err.message || 'Failed to update email.');
-    } finally {
-      setPersonalEmailLoading(false);
-    }
-  };
-
-  const checkPersonalEmailVerification = async () => {
-    setPersonalEmailLoading(true);
-    setPersonalEmailError('');
-    setPersonalEmailSuccess('');
-    try {
-      // 1. Refresh the AuthContext state
-      await refreshUserRole();
+      setPersonalEmailSuccess('Email linked and verified successfully!');
       
-      // 2. Fetch fresh user details from Supabase to check if email was updated in auth
-      const { data: { user: updatedUser }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw userError;
+      // Refresh AuthContext user role
+      await refreshUserRole();
 
-      if (updatedUser?.email === sentEmail) {
-        setPersonalEmailSuccess('Email verified and linked successfully!');
-        setTimeout(() => {
-          setShowPersonalEmailForm(false);
-          setPersonalEmailSent(false);
-          setPersonalEmailSuccess('');
-        }, 2000);
-      } else {
-        setPersonalEmailError('Email verification is still pending. Please click the link in the verification email sent to ' + sentEmail + '.');
-      }
+      setTimeout(() => {
+        setShowPersonalEmailForm(false);
+        setPersonalEmailSuccess('');
+      }, 2000);
     } catch (err) {
-      setPersonalEmailError(err.message || 'Could not verify status. Please try again.');
+      setPersonalEmailError(err.message || 'Failed to link email.');
     } finally {
       setPersonalEmailLoading(false);
     }
@@ -271,7 +248,7 @@ export default function ProfilePage() {
                 {!userRole?.personalEmail && !showPersonalEmailForm ? (
                   <div className="border-t border-white/5 mt-4 pt-4 space-y-4">
                     <div className="p-3.5 bg-church-blue-500/10 border border-church-blue-500/20 rounded-xl text-church-blue-300 text-xs font-semibold leading-relaxed">
-                      📢 Starting June 13, a personal email (Gmail) is required to secure your account. Link yours now to ensure uninterrupted access.
+                      📢 Starting June 25, a personal email (Gmail) is required to secure your account. Link yours now to ensure uninterrupted access.
                     </div>
                     <button
                       onClick={() => setShowPersonalEmailForm(true)}
@@ -296,97 +273,62 @@ export default function ProfilePage() {
                       </div>
                     )}
 
-                    {personalEmailSent ? (
-                      <div className="space-y-3">
-                        <div className="p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-xl text-emerald-300 text-xs font-medium leading-relaxed">
-                          We've sent a verification email to <strong className="text-white">{sentEmail}</strong>. 
-                          Please click the link in that email to verify, then click <strong>Confirm Verification</strong> below.
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Personal Email</label>
+                          <input
+                            type="email"
+                            required
+                            value={personalEmail}
+                            onChange={(e) => setPersonalEmail(e.target.value)}
+                            className="w-full bg-black/40 border border-slate-700 text-white px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-church-blue-500/55 focus:border-church-blue-500 transition-all font-medium"
+                            placeholder="e.g. name@gmail.com"
+                          />
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={checkPersonalEmailVerification}
-                            disabled={personalEmailLoading}
-                            className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl font-black text-xs uppercase tracking-wider shadow-lg transition-all"
-                          >
-                            {personalEmailLoading ? (
-                              <Loader2 className="animate-spin" size={14} />
-                            ) : (
-                              <Check size={14} />
-                            )}
-                            Confirm Verification
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setPersonalEmailSent(false);
-                              setSentEmail('');
-                              setPersonalEmailSuccess('');
-                            }}
-                            className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-xl text-xs font-bold transition-all border border-white/5"
-                          >
-                            Edit Email
-                          </button>
+                        <div>
+                          <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Confirm Email</label>
+                          <input
+                            type="email"
+                            required
+                            value={confirmPersonalEmail}
+                            onChange={(e) => setConfirmPersonalEmail(e.target.value)}
+                            className="w-full bg-black/40 border border-slate-700 text-white px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-church-blue-500/55 focus:border-church-blue-500 transition-all font-medium"
+                            placeholder="Confirm personal email"
+                          />
                         </div>
                       </div>
-                    ) : (
-                      <>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Personal Email</label>
-                            <input
-                              type="email"
-                              required
-                              value={personalEmail}
-                              onChange={(e) => setPersonalEmail(e.target.value)}
-                              className="w-full bg-black/40 border border-slate-700 text-white px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-church-blue-500/55 focus:border-church-blue-500 transition-all font-medium"
-                              placeholder="e.g. name@gmail.com"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Confirm Email</label>
-                            <input
-                              type="email"
-                              required
-                              value={confirmPersonalEmail}
-                              onChange={(e) => setConfirmPersonalEmail(e.target.value)}
-                              className="w-full bg-black/40 border border-slate-700 text-white px-3 py-2.5 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-church-blue-500/55 focus:border-church-blue-500 transition-all font-medium"
-                              placeholder="Confirm personal email"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setShowPersonalEmailForm(false);
-                              setPersonalEmailError('');
-                              setPersonalEmailSuccess('');
-                            }}
-                            className="px-3.5 py-1.5 hover:bg-white/5 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all border border-transparent hover:border-white/5"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="submit"
-                            disabled={personalEmailLoading}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-church-blue-600 hover:bg-church-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-lg transition-all"
-                          >
-                            {personalEmailLoading ? (
-                              <>
-                                <Loader2 className="animate-spin" size={13} />
-                                Sending...
-                              </>
-                            ) : (
-                              <>
-                                <Check size={13} />
-                                Link Email
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </>
-                    )}
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowPersonalEmailForm(false);
+                            setPersonalEmailError('');
+                            setPersonalEmailSuccess('');
+                          }}
+                          className="px-3.5 py-1.5 hover:bg-white/5 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-all border border-transparent hover:border-white/5"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={personalEmailLoading}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-church-blue-600 hover:bg-church-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-lg transition-all"
+                        >
+                          {personalEmailLoading ? (
+                            <>
+                              <Loader2 className="animate-spin" size={13} />
+                              Linking...
+                            </>
+                          ) : (
+                            <>
+                              <Check size={13} />
+                              Link Email
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </>
                   </form>
                 ) : null}
               </motion.div>
