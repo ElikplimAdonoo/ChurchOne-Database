@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Save, UserCheck, UserX, Loader2, CheckCircle, XCircle, Check, X, UserPlus, Flame, ExternalLink, Share2, LayoutGrid, ChevronDown, Clock, AlertTriangle, Calendar, Globe, FileText } from 'lucide-react';
+import { Save, UserCheck, UserX, Loader2, CheckCircle, XCircle, Check, X, UserPlus, Flame, ExternalLink, Share2, LayoutGrid, ChevronDown, Clock, AlertTriangle, Calendar, Globe, FileText, RotateCcw, Trash2 } from 'lucide-react';
 import ImageModal from '../common/ImageModal';
 import PersonActionModal from '../PersonActionModal';
 import { fetchHierarchyData, fetchPositions } from '../../services/hierarchyService';
@@ -98,6 +98,11 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   const [positions, setPositions] = useState([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  // Undo session state
+  const [sessionId, setSessionId] = useState(null);
+  const [sessionCreatedAt, setSessionCreatedAt] = useState(null);
+  const [showUndoModal, setShowUndoModal] = useState(false);
+  const [undoing, setUndoing] = useState(false);
 
   // Derived: compute the session date and deadline from serviceType
   const serviceDate = useMemo(() => getServiceDate(serviceType), [serviceType]);
@@ -154,13 +159,15 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
         if (effectiveUnitId && date && resolvedServiceName) {
             const { data: sessionData } = await supabase
                 .from('attendance_sessions')
-                .select('id')
+                .select('id, created_at')
                 .eq('unit_id', effectiveUnitId)
                 .eq('session_date', date)
                 .eq('service_name', resolvedServiceName)
                 .maybeSingle();
 
             if (sessionData) {
+                setSessionId(sessionData.id);
+                setSessionCreatedAt(sessionData.created_at);
                 const { data: recordsData } = await supabase
                     .from('attendance_records')
                     .select('person_id, status')
@@ -170,6 +177,9 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                         existingRecords[r.person_id] = r.status;
                     });
                 }
+            } else {
+                setSessionId(null);
+                setSessionCreatedAt(null);
             }
         }
 
@@ -346,6 +356,48 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
         alert("Failed to submit attendance: " + (error.message || JSON.stringify(error)));
     } finally {
         setSubmitting(false);
+    }
+  };
+
+  // ── Undo Session ─────────────────────────────────────────────────────────────
+  const ADMIN_ROLES = ['Zonal Head', 'MC Head', 'Buscenta Head', 'Assembly Head', 'MC Live Head'];
+  const isAdmin = ADMIN_ROLES.includes(currentRole?.title);
+  const sessionAgeHours = sessionCreatedAt
+    ? (Date.now() - new Date(sessionCreatedAt).getTime()) / (1000 * 60 * 60)
+    : Infinity;
+  const canUndoSession = !!sessionId && (isAdmin || (canMark && sessionAgeHours <= 24));
+  const undoBlockedReason = !!sessionId && !canUndoSession
+    ? 'The 24-hour undo window has passed. Contact an admin to undo this session.'
+    : null;
+
+  const handleUndoSession = async () => {
+    if (!canUndoSession || !sessionId) return;
+    setUndoing(true);
+    try {
+      // Delete the session — attendance_records should cascade delete via FK
+      const { error } = await supabase
+        .from('attendance_sessions')
+        .delete()
+        .eq('id', sessionId);
+      if (error) throw error;
+
+      // Invalidate caches
+      cacheService.remove(CACHE_KEYS.PEOPLE);
+      cacheService.remove(CACHE_KEYS.HIERARCHY);
+
+      // Reset local state and reload
+      setSessionId(null);
+      setSessionCreatedAt(null);
+      setAttendance({});
+      setFirstTimers(0);
+      setSoulsWon(0);
+      setShowUndoModal(false);
+      await loadMembers(false);
+    } catch (err) {
+      console.error('Error undoing session:', err);
+      alert('Failed to undo session: ' + (err.message || JSON.stringify(err)));
+    } finally {
+      setUndoing(false);
     }
   };
 
@@ -686,7 +738,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
             </div>
             )}
 
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex gap-2 w-full md:w-auto flex-wrap">
               {['Zonal Head', 'MC Head', 'Buscenta Head'].includes(currentRole?.title) && (
                   <button 
                       type="button"
@@ -699,6 +751,24 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                   </button>
               )}
 
+              {/* Undo Session Button — shown only when a session exists */}
+              {sessionId && (
+                <button
+                  type="button"
+                  onClick={() => canUndoSession ? setShowUndoModal(true) : alert(undoBlockedReason)}
+                  disabled={undoing || submitting || loading}
+                  title={undoBlockedReason || 'Undo this attendance session'}
+                  className={`flex-1 md:flex-none flex items-center justify-center gap-1.5 border px-4 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed ${
+                    canUndoSession
+                      ? 'border-rose-500/40 hover:border-rose-500/70 hover:bg-rose-500/10 text-rose-400 hover:text-rose-300'
+                      : 'border-slate-700/40 text-slate-600 cursor-not-allowed'
+                  }`}
+                >
+                  {undoing ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+                  <span>{undoing ? 'Undoing...' : 'Undo Session'}</span>
+                </button>
+              )}
+
               <button 
                   onClick={handleSubmit}
                   disabled={!canMark || submitting || loading || deadlinePassed || isSpecialMeetingInvalid}
@@ -709,6 +779,21 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
               </button>
             </div>
           </div>
+      )}
+
+      {/* Admin Undo button — visible when admin is scoped to another unit (canMark=false) but a session exists */}
+      {!canMark && isAdmin && sessionId && (
+        <div className="flex justify-end pt-6 border-t border-white/5 mt-4">
+          <button
+            type="button"
+            onClick={() => canUndoSession ? setShowUndoModal(true) : alert(undoBlockedReason)}
+            disabled={undoing || loading}
+            className="flex items-center justify-center gap-1.5 border border-rose-500/40 hover:border-rose-500/70 hover:bg-rose-500/10 text-rose-400 hover:text-rose-300 px-4 py-2.5 rounded-xl font-bold text-xs transition-all whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {undoing ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+            <span>{undoing ? 'Undoing...' : 'Undo Session'}</span>
+          </button>
+        </div>
       )}
 
       <ImageModal 
@@ -757,33 +842,74 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
           className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
           onClick={() => setShowSuccessModal(false)}
         >
-          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-
-          {/* Card */}
           <div
             className="relative w-full max-w-xs sm:max-w-sm bg-[#0d1117] border border-white/8 rounded-2xl p-5 shadow-2xl flex flex-col items-center gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300"
             onClick={e => e.stopPropagation()}
           >
-            {/* Icon */}
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
               <CheckCircle size={22} className="text-emerald-400" />
             </div>
-
-            {/* Text */}
             <div className="text-center">
               <p className="text-sm font-black text-slate-100 leading-snug">Attendance Submitted</p>
               <p className="text-[11px] text-slate-400 font-semibold mt-1">{successServiceInfo.service}</p>
               <p className="text-[10px] text-slate-500 font-bold mt-0.5">{successServiceInfo.date}</p>
             </div>
-
-            {/* Dismiss */}
             <button
               onClick={() => setShowSuccessModal(false)}
               className="mt-1 text-[10px] font-black uppercase tracking-widest text-slate-500 hover:text-slate-300 transition-colors"
             >
               Dismiss
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Undo Session Confirmation Modal */}
+      {showUndoModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          onClick={() => !undoing && setShowUndoModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+          <div
+            className="relative w-full max-w-xs sm:max-w-sm bg-[#0d1117] border border-rose-500/20 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="w-14 h-14 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+              <Trash2 size={24} className="text-rose-400" />
+            </div>
+
+            {/* Text */}
+            <div className="text-center space-y-1">
+              <p className="text-base font-black text-slate-100">Undo Attendance Session?</p>
+              <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+                This will permanently delete the <span className="text-white font-black">{resolvedServiceName}</span> session for <span className="text-white font-black">{activeUnitName}</span> on <span className="text-white font-black">{formatDateShort(serviceDate)}</span>.
+              </p>
+              <p className="text-[10px] text-rose-400 font-bold mt-2">
+                ⚠ All attendance records for this session will be erased. This cannot be undone.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 w-full mt-1">
+              <button
+                onClick={() => setShowUndoModal(false)}
+                disabled={undoing}
+                className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-400 font-black text-xs hover:bg-slate-800 transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUndoSession}
+                disabled={undoing}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                {undoing ? <Loader2 className="animate-spin" size={13} /> : <Trash2 size={13} />}
+                {undoing ? 'Deleting...' : 'Yes, Undo'}
+              </button>
+            </div>
           </div>
         </div>
       )}
