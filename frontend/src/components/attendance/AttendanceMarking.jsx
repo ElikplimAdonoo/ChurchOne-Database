@@ -533,36 +533,36 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                                 {/* Present/Online/Absent actions */}
                                 <div className="flex items-center gap-1.5 shrink-0">
                                     <button
-                                        disabled={!canMark}
+                                        disabled={!canMark || !!sessionId}
                                         onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'PRESENT' ? null : 'PRESENT' }))}
-                                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:cursor-not-allowed ${
                                             attendance[member.id] === 'PRESENT'
-                                                ? 'bg-emerald-700 text-white shadow-md shadow-emerald-500/30'
-                                                : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
+                                                ? 'bg-emerald-700 text-white shadow-md shadow-emerald-500/30 font-bold'
+                                                : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300 disabled:opacity-30'
                                         }`}
                                         title="Mark Present"
                                     >
                                         <Check size={16} strokeWidth={attendance[member.id] === 'PRESENT' ? 3 : 2} />
                                     </button>
                                     <button
-                                        disabled={!canMark}
+                                        disabled={!canMark || !!sessionId}
                                         onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'ONLINE' ? null : 'ONLINE' }))}
-                                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:cursor-not-allowed ${
                                             attendance[member.id] === 'ONLINE'
-                                                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-                                                : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
+                                                ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
+                                                : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300 disabled:opacity-30'
                                         }`}
                                         title="Mark Online"
                                     >
                                         <Globe size={15} strokeWidth={attendance[member.id] === 'ONLINE' ? 3 : 2} />
                                     </button>
                                     <button
-                                        disabled={!canMark}
+                                        disabled={!canMark || !!sessionId}
                                         onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'ABSENT' ? null : 'ABSENT' }))}
-                                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                        className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:cursor-not-allowed ${
                                             attendance[member.id] === 'ABSENT'
-                                                ? 'bg-rose-700 text-white shadow-md shadow-rose-500/30'
-                                                : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
+                                                ? 'bg-rose-700 text-white shadow-md shadow-rose-500/30 font-bold'
+                                                : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300 disabled:opacity-30'
                                         }`}
                                         title="Mark Absent"
                                     >
@@ -635,36 +635,36 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
                                     {/* Present/Online/Absent actions */}
                                     <div className="flex items-center gap-1.5 shrink-0">
                                         <button
-                                            disabled={!canMark}
+                                            disabled={!canMark || !!sessionId}
                                             onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'PRESENT' ? null : 'PRESENT' }))}
-                                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:cursor-not-allowed ${
                                                 attendance[member.id] === 'PRESENT'
-                                                    ? 'bg-emerald-700 text-white shadow-md shadow-emerald-500/30'
-                                                    : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
+                                                    ? 'bg-emerald-700 text-white shadow-md shadow-emerald-500/30 font-bold'
+                                                    : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300 disabled:opacity-30'
                                             }`}
                                             title="Mark Present"
                                         >
                                             <Check size={16} strokeWidth={attendance[member.id] === 'PRESENT' ? 3 : 2} />
                                         </button>
                                         <button
-                                            disabled={!canMark}
+                                            disabled={!canMark || !!sessionId}
                                             onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'ONLINE' ? null : 'ONLINE' }))}
-                                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:cursor-not-allowed ${
                                                 attendance[member.id] === 'ONLINE'
-                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
-                                                    : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
+                                                    ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30 font-bold'
+                                                    : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300 disabled:opacity-30'
                                             }`}
                                             title="Mark Online"
                                         >
                                             <Globe size={15} strokeWidth={attendance[member.id] === 'ONLINE' ? 3 : 2} />
                                         </button>
                                         <button
-                                            disabled={!canMark}
+                                            disabled={!canMark || !!sessionId}
                                             onClick={() => setAttendance(prev => ({ ...prev, [member.id]: attendance[member.id] === 'ABSENT' ? null : 'ABSENT' }))}
-                                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:opacity-30 disabled:cursor-not-allowed ${
+                                            className={`w-7 h-7 md:w-8 md:h-8 rounded-full transition-all flex items-center justify-center disabled:cursor-not-allowed ${
                                                 attendance[member.id] === 'ABSENT'
-                                                    ? 'bg-rose-700 text-white shadow-md shadow-rose-500/30'
-                                                    : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300'
+                                                    ? 'bg-rose-700 text-white shadow-md shadow-rose-500/30 font-bold'
+                                                    : 'bg-transparent text-slate-600 hover:bg-slate-800/50 hover:text-slate-300 disabled:opacity-30'
                                             }`}
                                             title="Mark Absent"
                                         >
@@ -771,8 +771,8 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
 
               <button 
                   onClick={handleSubmit}
-                  disabled={!canMark || submitting || loading || deadlinePassed || isSpecialMeetingInvalid}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-gradient-church hover:opacity-90 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md shadow-church-blue-500/20 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                  disabled={!canMark || submitting || loading || deadlinePassed || isSpecialMeetingInvalid || !!sessionId}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-1.5 bg-gradient-church hover:opacity-90 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md shadow-church-blue-500/20 disabled:opacity-50 disabled:bg-none disabled:bg-slate-800 disabled:text-slate-500 disabled:border-slate-700/50 disabled:shadow-none disabled:cursor-not-allowed whitespace-nowrap"
               >
                   {submitting ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
                   <span>{submitting ? 'Saving...' : 'Submit Attendance'}</span>
