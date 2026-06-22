@@ -9,6 +9,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
+  const [linkSuccess, setLinkSuccess] = useState('');
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -23,6 +24,11 @@ export default function Login() {
     if (savedError) {
       setError(savedError);
       sessionStorage.removeItem('auth_error');
+    }
+    const savedSuccess = sessionStorage.getItem('link_success');
+    if (savedSuccess) {
+      setLinkSuccess(savedSuccess);
+      sessionStorage.removeItem('link_success');
     }
   }, []);
 
@@ -110,8 +116,16 @@ export default function Login() {
             <p className="text-church-blue-400 font-semibold text-sm mt-1">Love Economy Church · ChurchOne</p>
         </div>
 
+        {/* Gmail linked success banner */}
+        {linkSuccess && (
+          <div className="mb-6 p-4 bg-emerald-900/40 border border-emerald-500/30 rounded-2xl text-emerald-300 text-sm text-center font-semibold leading-relaxed flex items-center gap-2 justify-center">
+            <CheckCircle2 size={18} className="shrink-0" />
+            <span>{linkSuccess}</span>
+          </div>
+        )}
+
         {/* Pre-gate period soft banner */}
-        {!isGateActive && (
+        {!isGateActive && !linkSuccess && (
              <div className="mb-6 p-4 bg-church-blue-500/10 border border-church-blue-500/20 rounded-2xl text-church-blue-300 text-xs text-center font-semibold leading-relaxed">
                   📢 <strong>Security Update:</strong> Starting June 25, a personal email (Gmail) will be required to log in. You can link yours in Profile now!
              </div>
