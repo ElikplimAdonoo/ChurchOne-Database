@@ -103,3 +103,13 @@ BEGIN
   RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- 3. Update the foreign key constraint to use ON DELETE SET NULL.
+-- This prevents "Database error deleting user" by automatically unlinking the profile
+-- when an auth user (like an orphaned Google account) is deleted.
+ALTER TABLE public.people
+DROP CONSTRAINT IF EXISTS people_auth_user_id_fkey,
+ADD CONSTRAINT people_auth_user_id_fkey 
+  FOREIGN KEY (auth_user_id) 
+  REFERENCES auth.users(id) 
+  ON DELETE SET NULL;
