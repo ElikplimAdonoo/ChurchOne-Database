@@ -1,6 +1,8 @@
 -- 1. Update get_current_user_role to match by email in addition to auth_user_id.
 -- This ensures that a user can log in with EITHER their password-based @churchone.com account
 -- OR their linked Google OAuth account without being locked out.
+DROP FUNCTION IF EXISTS get_current_user_role();
+
 CREATE OR REPLACE FUNCTION get_current_user_role()
 RETURNS TABLE (
     user_id UUID,
