@@ -20,15 +20,18 @@ export default function Login() {
   const isGateActive = new Date() >= gateDate;
 
   useEffect(() => {
-    const savedError = sessionStorage.getItem('auth_error');
-    if (savedError) {
-      setError(savedError);
-      sessionStorage.removeItem('auth_error');
-    }
     const savedSuccess = sessionStorage.getItem('link_success');
     if (savedSuccess) {
       setLinkSuccess(savedSuccess);
       sessionStorage.removeItem('link_success');
+      sessionStorage.removeItem('auth_error');
+      setError('');
+    } else {
+      const savedError = sessionStorage.getItem('auth_error');
+      if (savedError) {
+        setError(savedError);
+        sessionStorage.removeItem('auth_error');
+      }
     }
   }, []);
 

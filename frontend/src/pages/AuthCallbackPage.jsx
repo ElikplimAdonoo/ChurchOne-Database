@@ -77,6 +77,7 @@ export default function AuthCallbackPage() {
 
         // Clean up
         sessionStorage.removeItem('linking_person_id');
+        sessionStorage.removeItem('auth_error');
 
         // Sign out the transient Google session
         await supabase.auth.signOut();
