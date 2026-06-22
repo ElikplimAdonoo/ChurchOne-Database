@@ -13,7 +13,8 @@ RETURNS TABLE (
     level INTEGER,
     photo_url TEXT,
     email_verified BOOLEAN,
-    personal_email VARCHAR
+    personal_email VARCHAR,
+    churchone_email VARCHAR
 ) SECURITY DEFINER
 AS $$
 DECLARE
@@ -39,7 +40,8 @@ BEGIN
         pos.level,
         p.photo_url,
         p.email_verified,
-        p.personal_email
+        p.personal_email,
+        p.email as churchone_email
     FROM people p
     JOIN position_assignments pa ON p.id = pa.person_id
     JOIN positions pos ON pa.position_id = pos.id

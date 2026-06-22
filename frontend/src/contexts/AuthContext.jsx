@@ -60,7 +60,8 @@ export function AuthProvider({ children }) {
           fullName: data[0].full_name,
           photoUrl: data[0].photo_url,
           emailVerified: data[0].email_verified,
-          personalEmail: data[0].personal_email
+          personalEmail: data[0].personal_email,
+          churchoneEmail: data[0].churchone_email
         });
       } else {
          // User logged in but no profile found in 'people' table logic

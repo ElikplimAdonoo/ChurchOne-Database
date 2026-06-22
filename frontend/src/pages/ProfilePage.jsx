@@ -183,8 +183,8 @@ export default function ProfilePage() {
                   <Mail className="text-church-blue-400" size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Email Address</p>
-                  <p className="text-white font-bold truncate">{user.email}</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">ChurchOne Email</p>
+                  <p className="text-white font-bold truncate">{userRole?.churchoneEmail || user.email}</p>
                 </div>
               </motion.div>
 
