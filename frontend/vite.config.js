@@ -17,7 +17,7 @@ export default defineConfig({
         background_color: '#0a0a0a',
         display: 'standalone',
         start_url: '/',
-        orientation: 'portrait-primary',
+        orientation: 'any',
         icons: [
           {
             src: '/lec-logo.jpeg',

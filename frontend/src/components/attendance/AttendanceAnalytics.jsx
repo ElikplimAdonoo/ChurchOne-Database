@@ -5,10 +5,11 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { Loader2, TrendingUp, TrendingDown, Users, Calendar, UserX, Activity, UserPlus, Flame, ArrowDownRight, ArrowUpRight, ChevronDown, Search } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Users, Calendar, UserX, Activity, UserPlus, Flame, ArrowDownRight, ArrowUpRight, ChevronDown, Search, RotateCcw, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useAnimatedCounter } from '../../hooks/useAnimatedCounter';
 import Modal from '../ui/Modal';
+import { cacheService, CACHE_KEYS } from '../../services/cacheService';
 
 // ─── Animation Variants ─────────────────────────────────────────────────────
 const stagger = {
@@ -181,101 +182,186 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
   const [modalData, setModalData] = useState([]);
   const [modalLoading, setModalLoading] = useState(false);
 
-  useEffect(() => {
-    async function fetchAnalytics() {
-      const effectiveUnitId = overrideUnitId || currentRole.unitId;
-      const effectiveUnitType = overrideUnitType || currentRole.unitType;
+  // Undo session state
+  const [activeSession, setActiveSession] = useState(null); // { id, created_at }
+  const [undoing, setUndoing] = useState(false);
+  const [showUndoModal, setShowUndoModal] = useState(false);
 
-      if (!effectiveUnitId) return;
-      setLoading(true);
+  const fetchAnalytics = async () => {
+    const effectiveUnitId = overrideUnitId || currentRole.unitId;
+    const effectiveUnitType = overrideUnitType || currentRole.unitType;
 
-      try {
-        let unitIds = [effectiveUnitId];
+    if (!effectiveUnitId) return;
+    setLoading(true);
 
-        if (effectiveUnitType !== 'CELL') {
-          const { data: managedData, error: managedError } = await supabase
-            .rpc('get_managed_units', { root_parent_id: effectiveUnitId });
+    try {
+      let unitIds = [effectiveUnitId];
 
-          if (!managedError && managedData) {
-            unitIds = managedData.map((row) =>
-              typeof row === 'object' ? (row.id || row.get_managed_units || Object.values(row)[0]) : row
-            );
-          } else {
-            console.error('Failed to fetch managed units for analytics:', managedError);
-            unitIds = [];
-          }
+      if (effectiveUnitType !== 'CELL') {
+        const { data: managedData, error: managedError } = await supabase
+          .rpc('get_managed_units', { root_parent_id: effectiveUnitId });
+
+        if (!managedError && managedData) {
+          unitIds = managedData.map((row) =>
+            typeof row === 'object' ? (row.id || row.get_managed_units || Object.values(row)[0]) : row
+          );
+        } else {
+          console.error('Failed to fetch managed units for analytics:', managedError);
+          unitIds = [];
         }
+      }
 
-        if (unitIds.length === 0) {
-          setLoading(false);
-          setStats({ total: 0 });
+      if (unitIds.length === 0) {
+        setLoading(false);
+        setStats({ total: 0 });
+        setRawSessionData([]);
+        setHistory([]);
+        return;
+      }
+
+      const { data: sessionData } = await supabase
+        .from('attendance_analytics_view')
+        .select('*')
+        .in('unit_id', unitIds)
+        .order('session_date', { ascending: true });
+
+      if (sessionData) {
+        setRawSessionData(sessionData);
+        const historyMap = {};
+        sessionData.forEach((s) => {
+          const date = s.session_date;
+          if (!historyMap[date]) historyMap[date] = { date, present: 0, absent: 0, total: 0, firstTimers: 0, soulsWon: 0 };
+          historyMap[date].present += s.total_present || 0;
+          historyMap[date].absent += s.total_absent || 0;
+          historyMap[date].total += s.total_marked || 0;
+          historyMap[date].firstTimers += s.first_timers_count || 0;
+          historyMap[date].soulsWon += s.souls_won_count || 0;
+        });
+
+        const sortedHistory = Object.values(historyMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        let trend = null;
+        let trendValue = null;
+        let latestRate = 0;
+        let latestTotal = 0;
+        let latestPresent = 0;
+        let latestAbsent = 0;
+        let latestFirstTimers = 0;
+        let latestSoulsWon = 0;
+
+        if (sortedHistory.length > 0) {
+          const last = sortedHistory[sortedHistory.length - 1];
+          latestTotal = last.total;
+          latestPresent = last.present;
+          latestAbsent = last.absent;
+          latestFirstTimers = last.firstTimers;
+          latestSoulsWon = last.soulsWon;
+          latestRate = latestTotal > 0 ? Math.round((latestPresent / latestTotal) * 100) : 0;
+
+          if (sortedHistory.length >= 2) {
+            const prev = sortedHistory[sortedHistory.length - 2];
+            const prevRate = prev.total > 0 ? Math.round((prev.present / prev.total) * 100) : 0;
+            const diff = latestRate - prevRate;
+            trend = diff >= 0 ? 'up' : 'down';
+            trendValue = diff;
+          }
+        } else {
+          setStats(null);
+          setHistory([]);
           return;
         }
 
-        const { data: sessionData } = await supabase
-          .from('attendance_analytics_view')
-          .select('*')
-          .in('unit_id', unitIds)
-          .order('session_date', { ascending: true });
-
-        if (sessionData) {
-          setRawSessionData(sessionData);
-          const historyMap = {};
-          sessionData.forEach((s) => {
-            const date = s.session_date;
-            if (!historyMap[date]) historyMap[date] = { date, present: 0, absent: 0, total: 0, firstTimers: 0, soulsWon: 0 };
-            historyMap[date].present += s.total_present || 0;
-            historyMap[date].absent += s.total_absent || 0;
-            historyMap[date].total += s.total_marked || 0;
-            historyMap[date].firstTimers += s.first_timers_count || 0;
-            historyMap[date].soulsWon += s.souls_won_count || 0;
-          });
-
-          const sortedHistory = Object.values(historyMap).sort((a, b) => new Date(a.date) - new Date(b.date));
-
-          let trend = null;
-          let trendValue = null;
-          let latestRate = 0;
-          let latestTotal = 0;
-          let latestPresent = 0;
-          let latestAbsent = 0;
-          let latestFirstTimers = 0;
-          let latestSoulsWon = 0;
-
-          if (sortedHistory.length > 0) {
-            const last = sortedHistory[sortedHistory.length - 1];
-            latestTotal = last.total;
-            latestPresent = last.present;
-            latestAbsent = last.absent;
-            latestFirstTimers = last.firstTimers;
-            latestSoulsWon = last.soulsWon;
-            latestRate = latestTotal > 0 ? Math.round((latestPresent / latestTotal) * 100) : 0;
-
-            if (sortedHistory.length >= 2) {
-              const prev = sortedHistory[sortedHistory.length - 2];
-              const prevRate = prev.total > 0 ? Math.round((prev.present / prev.total) * 100) : 0;
-              const diff = latestRate - prevRate;
-              trend = diff >= 0 ? 'up' : 'down';
-              trendValue = diff;
-            }
-          }
-
-          setStats({
-            rate: latestRate, total: latestTotal, present: latestPresent,
-            absent: latestAbsent, firstTimers: latestFirstTimers,
-            soulsWon: latestSoulsWon, trend, trendValue
-          });
-          setHistory(sortedHistory);
-        }
-      } catch (error) {
-        console.error('Error fetching analytics:', error);
-      } finally {
-        setLoading(false);
+        setStats({
+          rate: latestRate, total: latestTotal, present: latestPresent,
+          absent: latestAbsent, firstTimers: latestFirstTimers,
+          soulsWon: latestSoulsWon, trend, trendValue
+        });
+        setHistory(sortedHistory);
+      } else {
+        setRawSessionData([]);
+        setStats(null);
+        setHistory([]);
       }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchAnalytics();
   }, [currentRole.unitId, currentRole.unitType, overrideUnitId, overrideUnitType]);
+
+  // Fetch the active session for the current selection and scope
+  useEffect(() => {
+    async function fetchActiveSession() {
+      if (!selectedSessionKey) {
+        setActiveSession(null);
+        return;
+      }
+      const [datePart, ...serviceParts] = selectedSessionKey.split('_');
+      const serviceNamePart = serviceParts.join('_');
+      const effectiveUnitId = overrideUnitId || currentRole.unitId;
+
+      const { data, error } = await supabase
+        .from('attendance_sessions')
+        .select('id, created_at')
+        .eq('unit_id', effectiveUnitId)
+        .eq('session_date', datePart)
+        .eq('service_name', serviceNamePart)
+        .maybeSingle();
+
+      if (!error && data) {
+        setActiveSession(data);
+      } else {
+        setActiveSession(null);
+      }
+    }
+    fetchActiveSession();
+  }, [selectedSessionKey, overrideUnitId, currentRole.unitId]);
+
+  const ADMIN_ROLES = ['Zonal Head', 'MC Head', 'Buscenta Head', 'Assembly Head', 'MC Live Head'];
+  const isAdmin = ADMIN_ROLES.includes(currentRole?.title);
+  const isDirectUnit = (overrideUnitId || currentRole.unitId) === currentRole.unitId;
+  const canMark = isDirectUnit || currentRole.unitType === 'MC';
+
+  const sessionAgeHours = activeSession?.created_at
+    ? (Date.now() - new Date(activeSession.created_at).getTime()) / (1000 * 60 * 60)
+    : Infinity;
+
+  const canUndoSession = !!activeSession && (isAdmin || (canMark && sessionAgeHours <= 24));
+  const undoBlockedReason = !!activeSession && !canUndoSession
+    ? 'The 24-hour undo window has passed. Contact an admin to undo this session.'
+    : null;
+
+  const handleUndoSession = async () => {
+    if (!canUndoSession || !activeSession) return;
+    setUndoing(true);
+    try {
+      const { error } = await supabase
+        .from('attendance_sessions')
+        .delete()
+        .eq('id', activeSession.id);
+
+      if (error) throw error;
+
+      cacheService.remove(CACHE_KEYS.PEOPLE);
+      cacheService.remove(CACHE_KEYS.HIERARCHY);
+
+      setShowUndoModal(false);
+      setActiveSession(null);
+      setSelectedSessionKey('');
+      
+      // Reload analytics to update charts/dropdown
+      await fetchAnalytics();
+    } catch (err) {
+      console.error('Error undoing session:', err);
+      alert('Failed to undo session: ' + (err.message || JSON.stringify(err)));
+    } finally {
+      setUndoing(false);
+    }
+  };
 
   // ── Derive historical sessions dropdown list ──
   const sessionsList = useMemo(() => {
@@ -592,9 +678,9 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
 
       {/* ── Row 0: Redesigned Session Selector ── */}
       {sessionsList.length > 0 && (
-        <div className="flex items-center gap-3 w-full mb-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full mb-2">
           {/* Custom Styled Select Dropdown (matches image exactly) */}
-          <div className="relative w-full">
+          <div className="relative flex-1">
             <select
               value={selectedSessionKey}
               onChange={(e) => setSelectedSessionKey(e.target.value)}
@@ -612,6 +698,24 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
             <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-400 pointer-events-none" size={18} />
             <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" size={18} />
           </div>
+
+          {/* Undo Session Button */}
+          {activeSession && (
+            <button
+              type="button"
+              onClick={() => canUndoSession ? setShowUndoModal(true) : alert(undoBlockedReason)}
+              disabled={undoing || loading}
+              title={undoBlockedReason || 'Undo this attendance session'}
+              className={`flex items-center justify-center gap-1.5 border px-4 py-3.5 rounded-2xl font-bold text-xs transition-all whitespace-nowrap disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${
+                canUndoSession
+                  ? 'border-rose-500/40 hover:border-rose-500/70 hover:bg-rose-500/10 text-rose-400 hover:text-rose-300'
+                  : 'border-slate-800 text-slate-600 cursor-not-allowed'
+              }`}
+            >
+              {undoing ? <Loader2 className="animate-spin" size={14} /> : <RotateCcw size={14} />}
+              <span>{undoing ? 'Undoing...' : 'Undo Session'}</span>
+            </button>
+          )}
         </div>
       )}
 
@@ -893,6 +997,55 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
           </div>
         </div>
       </Modal>
+
+      {/* Undo Session Confirmation Modal */}
+      {showUndoModal && selectedSessionInfo && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          onClick={() => !undoing && setShowUndoModal(false)}
+        >
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" />
+          <div
+            className="relative w-full max-w-xs sm:max-w-sm bg-[#0d1117] border border-rose-500/20 rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-4 animate-in fade-in slide-in-from-bottom-4 duration-300"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Icon */}
+            <div className="w-14 h-14 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center">
+              <Trash2 size={24} className="text-rose-400" />
+            </div>
+
+            {/* Text */}
+            <div className="text-center space-y-1">
+              <p className="text-base font-black text-slate-100">Undo Attendance Session?</p>
+              <p className="text-xs text-slate-400 font-semibold leading-relaxed">
+                This will permanently delete the <span className="text-white font-black">{selectedSessionInfo.serviceName}</span> session for <span className="text-white font-black">{overrideUnitName || currentRole.unitName}</span> on <span className="text-white font-black">{new Date(selectedSessionInfo.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>.
+              </p>
+              <p className="text-[10px] text-rose-400 font-bold mt-2">
+                ⚠ All attendance records for this session will be erased. This cannot be undone.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 w-full mt-1">
+              <button
+                onClick={() => setShowUndoModal(false)}
+                disabled={undoing}
+                className="flex-1 py-2.5 rounded-xl border border-slate-700 text-slate-400 font-black text-xs hover:bg-slate-800 transition-colors disabled:opacity-40"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUndoSession}
+                disabled={undoing}
+                className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs transition-colors flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                {undoing ? <Loader2 className="animate-spin" size={13} /> : <Trash2 size={13} />}
+                {undoing ? 'Deleting...' : 'Yes, Undo'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
