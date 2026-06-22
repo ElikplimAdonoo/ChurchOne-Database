@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { BrowserRouter as Router, Routes, Route, Outlet } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
+import ErrorBoundary from './components/ErrorBoundary'
 import Login from './components/Login'
 import MainLayout from './components/layout/MainLayout'
 
@@ -12,6 +13,7 @@ import AttendancePage from './pages/AttendancePage'
 import ProfilePage from './pages/ProfilePage'
 import EmailGatePage from './pages/EmailGatePage'
 import AdminPasswordLogPage from './pages/AdminPasswordLogPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 
 function AppContent() {
   const { needsEmailGate } = useAuth();
@@ -25,6 +27,9 @@ function AppContent() {
       <Routes>
         {/* Public Routes */}
         <Route path="/login" element={<Login />} />
+
+        {/* Google OAuth callback — must be a named route inside the Router */}
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
 
         {/* Public Main Layout Routes */}
         <Route element={<MainLayout />}>
@@ -47,13 +52,12 @@ function AppContent() {
 
 function App() {
   return (
-    // <IonApp>
+    <ErrorBoundary>
       <AuthProvider>
         <AppContent />
       </AuthProvider>
-    // </IonApp>
+    </ErrorBoundary>
   )
 }
 
 export default App
-
