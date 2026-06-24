@@ -108,10 +108,11 @@ export default function Login() {
     try {
       const queryParams = authMode === 'google' && email.trim()
         ? {
-            // login_hint tells Google to pre-select this exact account
-            // We do NOT pass prompt=none as it causes a bounce-back if the
-            // user is not actively signed into Google in their browser
+            // login_hint pre-fills the email field on the Google sign-in page
             login_hint: email.trim().toLowerCase(),
+            // prompt=login forces Google to show the sign-in page for that
+            // specific account directly — no account picker, no switching accounts
+            prompt: 'login',
           }
         : { prompt: 'select_account' }; // let them pick freely
 
