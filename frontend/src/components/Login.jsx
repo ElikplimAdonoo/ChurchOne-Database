@@ -39,8 +39,10 @@ export default function Login() {
 
   // Debounced email check to toggle login mode
   useEffect(() => {
-    const trimmed = email.trim();
-    if (!trimmed || !trimmed.includes('@') || trimmed.length < 5) {
+    const trimmed = email.trim().toLowerCase();
+    // Only check Google mode for non-churchone emails
+    // ChurchOne emails (@churchone.com) always use password login
+    if (!trimmed || !trimmed.includes('@') || trimmed.length < 5 || trimmed.endsWith('@churchone.com')) {
       setAuthMode('password');
       return;
     }
@@ -106,9 +108,10 @@ export default function Login() {
     try {
       const queryParams = authMode === 'google' && email.trim()
         ? {
-            // login_hint tells Google to pre-select this exact account — no picker shown
+            // login_hint tells Google to pre-select this exact account
+            // We do NOT pass prompt=none as it causes a bounce-back if the
+            // user is not actively signed into Google in their browser
             login_hint: email.trim().toLowerCase(),
-            prompt: 'none',   // skip account chooser if already signed in to that account
           }
         : { prompt: 'select_account' }; // let them pick freely
 

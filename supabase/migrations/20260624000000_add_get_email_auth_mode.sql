@@ -7,14 +7,14 @@ AS $$
 DECLARE
     v_verified BOOLEAN;
 BEGIN
-    -- Look up the email_verified status of the person matching the email or personal_email
+    -- Only match on personal_email (Gmail).
+    -- ChurchOne @churchone.com emails always use password auth and should never match here.
     SELECT email_verified INTO v_verified
     FROM public.people
-    WHERE email ILIKE LOWER(TRIM(input_email)) OR personal_email ILIKE LOWER(TRIM(input_email))
+    WHERE personal_email ILIKE LOWER(TRIM(input_email))
     LIMIT 1;
 
-    -- If the email belongs to a person who has already linked and verified their personal email,
-    -- enforce Google OAuth sign-in.
+    -- Only return 'google' if the personal email is verified
     IF v_verified = TRUE THEN
         RETURN 'google';
     ELSE
