@@ -161,7 +161,7 @@ export default function Login() {
                 </div>
             </div>
             <h2 className="text-3xl font-black text-white">Welcome Back!</h2>
-            <p className="text-church-blue-400 font-semibold text-sm mt-1">Love Economy Church · ChurchOne</p>
+            <p className="text-church-blue-400 font-semibold text-sm mt-1">Love Economy Church · Alpha Branch</p>
         </div>
 
         {/* Gmail linked success banner */}
@@ -215,7 +215,7 @@ export default function Login() {
               <div className="p-4 bg-amber-900/20 border border-amber-500/30 rounded-2xl text-amber-300 text-sm font-semibold leading-relaxed space-y-2">
                 <p className="flex items-center gap-2">
                   <span className="text-amber-400 text-base">⚠️</span>
-                  <span>This Google account is <strong>not linked</strong> to any ChurchOne profile.</span>
+                  <span>This Google account is <strong>not linked</strong> to any LEC Alpha profile.</span>
                 </p>
                 <p className="text-amber-300/80 text-xs leading-relaxed">
                   Please sign in with your church email (e.g. <strong>@churchone.com</strong> or <strong>@churchtwo.com</strong>) instead, then go to your <strong>Profile</strong> to link your Gmail.

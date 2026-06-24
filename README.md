@@ -1,7 +1,7 @@
-# ChurchOne Database
+# LEC - Alpha
 
 This repository contains the database design, documentation, and backend
-structure for the ChurchOne hierarchical leadership and membership system.
+structure for the Love Economy Church Alpha Branch hierarchical leadership and membership system.
 
 ## System Purpose
 

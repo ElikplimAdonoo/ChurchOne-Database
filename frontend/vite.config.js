@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['lec-logo.jpeg'],
       manifest: {
-        name: 'ChurchOne — LEC',
-        short_name: 'ChurchOne',
+        name: 'LEC - Alpha',
+        short_name: 'LEC Alpha',
         description: 'Love Economy Church — Attendance & Member Management',
         theme_color: '#0066FF',
         background_color: '#0a0a0a',

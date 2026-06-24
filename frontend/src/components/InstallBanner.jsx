@@ -59,7 +59,7 @@ export default function InstallBanner() {
                     <img src="/lec-logo.png" alt="LEC" className="w-full h-full object-contain p-0.5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <p className="text-white font-black text-sm leading-tight">Install ChurchOne</p>
+                    <p className="text-white font-black text-sm leading-tight">Install LEC - Alpha</p>
                     {isIOS ? (
                         <p className="text-slate-400 text-xs mt-0.5">
                             Tap <span className="text-church-blue-400 font-bold">Share</span> → <span className="text-church-blue-400 font-bold">Add to Home Screen</span>

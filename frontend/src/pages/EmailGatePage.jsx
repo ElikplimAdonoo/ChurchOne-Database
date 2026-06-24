@@ -80,7 +80,7 @@ export default function EmailGatePage() {
             <h2 className="text-2xl font-black text-white">Verify Your Gmail</h2>
             <p className="text-slate-400 text-sm mt-2 font-medium leading-relaxed max-w-sm mx-auto">
               Hi <span className="text-white font-bold">{userRole?.fullName || 'there'}</span>.
-              Starting {formattedDate}, ChurchOne requires a verified personal Gmail
+              Starting {formattedDate}, LEC - Alpha requires a verified personal Gmail
               to keep your account secure. Click below to link yours now.
             </p>
           </div>

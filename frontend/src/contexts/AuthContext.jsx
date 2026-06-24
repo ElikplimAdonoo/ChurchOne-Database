@@ -67,7 +67,7 @@ export function AuthProvider({ children }) {
          // User logged in but no profile found in 'people' table logic
          console.warn("User logged in but no linked 'people' record found. Signing out.");
          setUserRole(null);
-         sessionStorage.setItem('auth_error', "This account isn't linked to a ChurchOne profile. Contact your admin.");
+         sessionStorage.setItem('auth_error', "This account isn't linked to an LEC Alpha profile. Contact your admin.");
          await supabase.auth.signOut();
       }
     } catch (err) {
