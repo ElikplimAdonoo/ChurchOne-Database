@@ -104,12 +104,19 @@ export default function Login() {
     setGoogleLoading(true);
     setError('');
     try {
+      const queryParams = authMode === 'google' && email.trim()
+        ? {
+            // login_hint tells Google to pre-select this exact account — no picker shown
+            login_hint: email.trim().toLowerCase(),
+            prompt: 'none',   // skip account chooser if already signed in to that account
+          }
+        : { prompt: 'select_account' }; // let them pick freely
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          // After Google authenticates, Supabase redirects back here.
-          // The auth token is in the URL hash and picked up by onAuthStateChange.
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: `${window.location.origin}/auth/callback`,
+          queryParams,
         }
       });
       if (error) throw error;
