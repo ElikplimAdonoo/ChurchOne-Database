@@ -227,7 +227,8 @@ export default function DashboardPage() {
     return 'Good Evening'
   }, [])
 
-  const dashboardTitle = userRole?.unitName || 'ChurchOne'
+  const dashboardTitle = userRole?.unitName || 'Alpha Branch'
+  const titleSuffix = userRole?.unitName ? 'Dashboard' : 'Homepage'
 
   return (
     // <IonPage>
@@ -246,12 +247,12 @@ export default function DashboardPage() {
             {greeting}
           </p>
           <h1 className="text-2xl md:text-4xl font-black text-white leading-tight">
-            {dashboardTitle} <span className="text-slate-500 font-bold">Dashboard</span>
+            {dashboardTitle} <span className="text-slate-500 font-bold">{titleSuffix}</span>
           </h1>
           <div className="flex items-center gap-2 mt-2 text-slate-500">
            
             <span className="text-[11px] font-semibold">
-              Here is what is happening in your Church
+              {userRole?.unitName ? 'Here is what is happening in your Church' : 'Welcome to the Alpha Branch portal'}
             </span>
           </div>
         </div>

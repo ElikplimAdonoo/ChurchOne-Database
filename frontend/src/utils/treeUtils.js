@@ -23,16 +23,25 @@ export function buildTree(flatUnits) {
         }
     });
 
-    // Naturally sort parent and children lists to maintain numerical/chronological order (e.g. Cell 1 -> Cell 2 -> Cell 3 -> Cell 10)
-    const sortByName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    // Sort by order_index first (if available), then fallback to natural name sort
+    const sortByOrderOrName = (a, b) => {
+        // Use order_index if both are defined and not null
+        if (a.order_index != null && b.order_index != null) {
+            if (a.order_index !== b.order_index) {
+                return a.order_index - b.order_index;
+            }
+        }
+        // Fallback to natural sort for units without explicit ordering (e.g. Cell 1, Cell 2)
+        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    };
     
     Object.values(map).forEach(node => {
         if (node.children && node.children.length > 0) {
-            node.children.sort(sortByName);
+            node.children.sort(sortByOrderOrName);
         }
     });
     
-    roots.sort(sortByName);
+    roots.sort(sortByOrderOrName);
 
     return roots;
 }

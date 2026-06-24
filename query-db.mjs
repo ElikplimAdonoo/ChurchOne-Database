@@ -8,10 +8,42 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
 });
 
 async function main() {
-    const { data, error } = await supabase.rpc('exec_sql', {
-        sql_query: "SELECT prosrc FROM pg_proc WHERE proname = 'get_email_auth_mode';"
+    const { data: units, error } = await supabase
+        .from('organizational_units')
+        .select('id, parent_id, name, unit_type, order_index, is_placeholder')
+        .order('order_index', { ascending: true });
+        
+    if (error) {
+        console.error("DB error:", error);
+        return;
+    }
+    
+    // Check how the DB returns the churches
+    const churches = units.filter(u => u.unit_type === 'CHURCH');
+    console.log("CHURCHES from DB in order:");
+    churches.forEach(c => console.log(`${c.name} (order: ${c.order_index})`));
+
+    // Simulate tree building
+    const unitMap = new Map();
+    units.forEach(unit => {
+        unitMap.set(unit.id, { ...unit, children: [] });
     });
-    console.log(data, error);
+
+    const tree = [];
+    units.forEach(unit => {
+        if (unit.parent_id) {
+            const parent = unitMap.get(unit.parent_id);
+            if (parent) {
+                parent.children.push(unitMap.get(unit.id));
+            }
+        } else {
+            tree.push(unitMap.get(unit.id));
+        }
+    });
+
+    const root = tree[0];
+    console.log("\nROOT CHILDREN IN TREE:");
+    root.children.forEach(c => console.log(`${c.name} (order: ${c.order_index})`));
 }
 
 main();
