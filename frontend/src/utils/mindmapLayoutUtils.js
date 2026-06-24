@@ -41,11 +41,17 @@ export const getStyle = (type, isSelected, role) => {
     const isCellShepherd = role?.toLowerCase() === 'cell shepherd';
 
     switch (type) {
-        case 'ZONE': return { 
+        case 'BRANCH': return { 
             ...style, 
-            borderLeftColor: '#6366f1', 
+            borderLeftColor: '#eab308', 
             borderLeftWidth: '4px', 
-            background: isSelected ? 'rgba(99, 102, 241, 0.15)' : style.background 
+            background: isSelected ? 'rgba(234, 179, 8, 0.15)' : style.background 
+        };
+        case 'CHURCH': return { 
+            ...style, 
+            borderLeftColor: '#8b5cf6', 
+            borderLeftWidth: '4px', 
+            background: isSelected ? 'rgba(139, 92, 246, 0.15)' : style.background 
         };
         case 'MC': return { 
             ...style, 

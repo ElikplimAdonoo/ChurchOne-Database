@@ -92,7 +92,8 @@ export default function DashboardPage() {
         let inactiveCount = 0;
         let pendingCount = 0;
         
-        let memZone = 0;
+        let memBranch = 0;
+        let memChurch = 0;
         let memMC = 0;
         let memBusc = 0;
         let memCell = 0;
@@ -102,7 +103,8 @@ export default function DashboardPage() {
             else if (p.status === 'Inactive') inactiveCount++;
             else if (p.status === 'Pending') pendingCount++;
             
-            if (p.unit_type === 'ZONE') memZone++;
+            if (p.unit_type === 'BRANCH') memBranch++;
+            else if (p.unit_type === 'CHURCH') memChurch++;
             else if (p.unit_type === 'MC') memMC++;
             else if (p.unit_type === 'BUSCENTA') memBusc++;
             else if (p.unit_type === 'CELL') memCell++;
@@ -141,13 +143,15 @@ export default function DashboardPage() {
         const totalUnits = units?.length || 0
         const cells = units?.filter(u => u.unit_type === 'CELL') || []
         
-        const zonesCount = units?.filter(u => u.unit_type === 'ZONE').length || 0
+        const branchesCount = units?.filter(u => u.unit_type === 'BRANCH').length || 0
+        const churchesCount = units?.filter(u => u.unit_type === 'CHURCH').length || 0
         const mcsCount = units?.filter(u => u.unit_type === 'MC').length || 0
         const buscentasCount = units?.filter(u => u.unit_type === 'BUSCENTA').length || 0
         const cellsCount = cells.length
         
         const unitBreakdown = [
-            { label: 'Zones', value: zonesCount, colorClass: 'text-church-purple-400' },
+            { label: 'Branches', value: branchesCount, colorClass: 'text-church-yellow-400' },
+            { label: 'Churches', value: churchesCount, colorClass: 'text-church-purple-400' },
             { label: 'MCs', value: mcsCount, colorClass: 'text-church-blue-400' },
             { label: 'Buscentas', value: buscentasCount, colorClass: 'text-church-magenta-400' },
             { label: 'Cells', value: cellsCount, colorClass: 'text-church-coral-400' }

@@ -10,7 +10,8 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
     const [loading, setLoading] = useState(true);
 
     // Selected states
-    const [selectedZone, setSelectedZone] = useState('');
+    const [selectedBranch, setSelectedBranch] = useState('');
+    const [selectedChurch, setSelectedChurch] = useState('');
     const [selectedMC, setSelectedMC] = useState('');
     const [selectedBuscenta, setSelectedBuscenta] = useState('');
     const [selectedCell, setSelectedCell] = useState('');
@@ -43,22 +44,16 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
                 const myUnit = allowedUnits.find(u => u.id === userRole.unitId);
                 
                 if (myUnit) {
-                    // Pre-select based on their level
-                    if (myUnit.unit_type === 'ZONE') setSelectedZone(myUnit.id);
-                    if (myUnit.unit_type === 'MC') {
-                        // Find this MC's zone parent (if it's in allowed list)
-                        const parentZone = allowedUnits.find(u => u.id === myUnit.parent_id);
-                        if (parentZone) setSelectedZone(parentZone.id);
-                        setSelectedMC(myUnit.id);
-                    }
-                    if (myUnit.unit_type === 'BUSCENTA') {
-                        const parentMC = allowedUnits.find(u => u.id === myUnit.parent_id);
-                        if (parentMC) {
-                            setSelectedMC(parentMC.id);
-                            const parentZone = allowedUnits.find(u => u.id === parentMC.parent_id);
-                            if (parentZone) setSelectedZone(parentZone.id);
-                        }
-                        setSelectedBuscenta(myUnit.id);
+                    // Climb up parents to pre-populate selectors
+                    let current = myUnit;
+                    while (current) {
+                        if (current.unit_type === 'BRANCH') setSelectedBranch(current.id);
+                        else if (current.unit_type === 'CHURCH') setSelectedChurch(current.id);
+                        else if (current.unit_type === 'MC') setSelectedMC(current.id);
+                        else if (current.unit_type === 'BUSCENTA') setSelectedBuscenta(current.id);
+                        else if (current.unit_type === 'CELL') setSelectedCell(current.id);
+                        
+                        current = current.parent_id ? allowedUnits.find(u => u.id === current.parent_id) : null;
                     }
                     
                     // Dispatch initial scope
@@ -91,31 +86,33 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
         } else if (selectedMC) {
             activeId = selectedMC;
             activeType = 'MC';
-        } else if (selectedZone) {
-            activeId = selectedZone;
-            activeType = 'ZONE';
+        } else if (selectedChurch) {
+            activeId = selectedChurch;
+            activeType = 'CHURCH';
+        } else if (selectedBranch) {
+            activeId = selectedBranch;
+            activeType = 'BRANCH';
         }
 
         const unitObj = units.find(u => u.id === activeId);
         
-        // If we found a unit (Zonal/MC), use its names.
-        // If not (e.g., cleared back to Admin defaults), bubble up the original userRole values.
         if (unitObj) {
             onScopeChange(activeId, activeType, unitObj.name);
         } else {
             onScopeChange(activeId, activeType, activeName);
         }
 
-    }, [selectedZone, selectedMC, selectedBuscenta, selectedCell, units, loading]);
+    }, [selectedBranch, selectedChurch, selectedMC, selectedBuscenta, selectedCell, units, loading]);
 
     if (userRole?.unitType === 'CELL') return null; // Hide completely for cell leaders
     if (loading) return <div className="h-14 animate-pulse bg-slate-800/50 rounded-xl border border-slate-700"></div>;
 
-    // Derived dropdown options sorted naturally/chronologically (e.g. Zone 1 -> Zone 2 -> Zone 10)
+    // Derived dropdown options sorted naturally/chronologically (e.g. Branch 1 -> Branch 2 -> Branch 10)
     const sortByName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
 
-    const targetZones = units.filter(u => u.unit_type === 'ZONE').sort(sortByName);
-    const targetMCs = units.filter(u => u.unit_type === 'MC' && u.parent_id === selectedZone).sort(sortByName);
+    const targetBranches = units.filter(u => u.unit_type === 'BRANCH').sort(sortByName);
+    const targetChurches = units.filter(u => u.unit_type === 'CHURCH' && u.parent_id === selectedBranch).sort(sortByName);
+    const targetMCs = units.filter(u => u.unit_type === 'MC' && u.parent_id === selectedChurch).sort(sortByName);
     const targetBuscentas = units.filter(u => u.unit_type === 'BUSCENTA' && u.parent_id === selectedMC).sort(sortByName);
     const targetCells = units.filter(u => u.unit_type === 'CELL' && u.parent_id === selectedBuscenta).sort(sortByName);
 
@@ -124,30 +121,52 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
             <h3 className="text-lg font-black text-slate-200">Scope</h3>
 
             <div className="space-y-3">
-                {/* ZONE */}
-                {(targetZones.length > 0 || selectedZone) && (
+                {/* BRANCH */}
+                {(targetBranches.length > 0 || selectedBranch) && (
                     <div className="relative">
                         <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select
-                            value={selectedZone}
+                            value={selectedBranch}
                             onChange={(e) => {
-                                setSelectedZone(e.target.value);
+                                setSelectedBranch(e.target.value);
+                                setSelectedChurch('');
                                 setSelectedMC('');
                                 setSelectedBuscenta('');
                                 setSelectedCell('');
                             }}
-                            disabled={targetZones.length <= 1}
+                            disabled={targetBranches.length <= 1}
                             className="w-full bg-[#0b1120] border border-slate-600/60 rounded-2xl pl-12 pr-10 py-4 text-sm font-bold text-slate-200 appearance-none focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            <option value="">-- All Zones --</option>
-                            {targetZones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                            <option value="">-- All Branches --</option>
+                            {targetBranches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                        </select>
+                        <ChevronRight size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
+                    </div>
+                )}
+
+                {/* CHURCH */}
+                {(targetChurches.length > 0 || selectedChurch) && selectedBranch && (
+                    <div className="relative">
+                        <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
+                        <select
+                            value={selectedChurch}
+                            onChange={(e) => {
+                                setSelectedChurch(e.target.value);
+                                setSelectedMC('');
+                                setSelectedBuscenta('');
+                                setSelectedCell('');
+                            }}
+                            className="w-full bg-[#0b1120] border border-slate-600/60 rounded-2xl pl-12 pr-10 py-4 text-sm font-bold text-slate-200 appearance-none focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500/50 transition-colors"
+                        >
+                            <option value="">-- All Churches --</option>
+                            {targetChurches.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                         </select>
                         <ChevronRight size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
                     </div>
                 )}
 
                 {/* MC */}
-                {(targetMCs.length > 0 || selectedMC) && selectedZone && (
+                {(targetMCs.length > 0 || selectedMC) && selectedChurch && (
                     <div className="relative">
                         <Users size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select

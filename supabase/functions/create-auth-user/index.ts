@@ -75,7 +75,35 @@ serve(async (req: Request) => {
             .replace(/[^a-z0-9]/g, "")
         : "member"
 
-    const baseEmail = `${firstName}.${lastName}@churchone.com`
+    let domain = "churchone.com"
+    if (unitId) {
+      let currentId = unitId
+      for (let i = 0; i < 5; i++) {
+        const { data: unit } = await supabaseClient
+          .from("organizational_units")
+          .select("id, name, unit_type, parent_id")
+          .eq("id", currentId)
+          .maybeSingle()
+
+        if (!unit) break
+        if (unit.unit_type === "BRANCH") {
+          // Derive domain from first word of branch name: "Alpha Branch" → "alpha.com"
+          const firstWord = unit.name.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, "")
+          domain = `${firstWord}.com`
+          break
+        }
+        if (unit.unit_type === "CHURCH") {
+          // Derive domain from church name: "ChurchOne" → "churchone.com"
+          const cleanName = unit.name.toLowerCase().replace(/[^a-z0-9]/g, "")
+          domain = `${cleanName}.com`
+          break
+        }
+        if (!unit.parent_id) break
+        currentId = unit.parent_id
+      }
+    }
+
+    const baseEmail = `${firstName}.${lastName}@${domain}`
 
     // Ensure email uniqueness
     let generatedEmail = baseEmail
@@ -89,7 +117,7 @@ serve(async (req: Request) => {
         .maybeSingle()
 
       if (data) {
-        generatedEmail = `${firstName}.${lastName}${counter}@churchone.com`
+        generatedEmail = `${firstName}.${lastName}${counter}@${domain}`
         counter++
       } else {
         break

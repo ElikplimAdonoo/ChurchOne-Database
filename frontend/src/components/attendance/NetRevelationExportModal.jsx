@@ -205,10 +205,11 @@ export default function NetRevelationExportModal({
       // Clean up empty buscenter groups
       const formattedBuscenters = Object.values(buscenterMap).filter(b => b.cells.length > 0);
 
-      // Calculate Leader Attendance (MC Head, Buscenta Heads, Zonal Head)
+      // Calculate Leader Attendance (MC Head, Buscenta Heads, Church Head, Branch Pastor)
       let mcHeadsPresent = 0;
       let buscentaHeadsPresent = 0;
-      let zonalHeadsPresent = 0;
+      let churchHeadsPresent = 0;
+      let branchPastorsPresent = 0;
 
       sessions.forEach(session => {
         if (session.attendance_records) {
@@ -216,7 +217,8 @@ export default function NetRevelationExportModal({
             if (rec.status === 'PRESENT') {
               const isMcHead = rec.person?.assignments?.some(a => a.is_active && a.position?.title === 'MC Head');
               const isBuscentaHead = rec.person?.assignments?.some(a => a.is_active && a.position?.title === 'Buscenta Head');
-              const isZonalHead = rec.person?.assignments?.some(a => a.is_active && a.position?.title === 'Zonal Head');
+              const isChurchHead = rec.person?.assignments?.some(a => a.is_active && a.position?.title === 'Church Head');
+              const isBranchPastor = rec.person?.assignments?.some(a => a.is_active && a.position?.title === 'Alpha Branch Pastor');
 
               if (isMcHead && session.unit_id === activeScopeId) {
                 mcHeadsPresent++;
@@ -224,8 +226,11 @@ export default function NetRevelationExportModal({
               if (isBuscentaHead && buscentaIdsSet.has(session.unit_id)) {
                 buscentaHeadsPresent++;
               }
-              if (isZonalHead && session.unit_id === activeScopeId) {
-                zonalHeadsPresent++;
+              if (isChurchHead && session.unit_id === activeScopeId) {
+                churchHeadsPresent++;
+              }
+              if (isBranchPastor && session.unit_id === activeScopeId) {
+                branchPastorsPresent++;
               }
             }
           });
@@ -235,12 +240,14 @@ export default function NetRevelationExportModal({
       // Default Fallbacks if sessions weren't marked for leadership units
       let finalMcHeadCount = mcHeadsPresent;
       let finalBuscentaHeadCount = buscentaHeadsPresent;
-      let finalZonalHeadCount = zonalHeadsPresent;
+      let finalChurchHeadCount = churchHeadsPresent;
+      let finalBranchPastorCount = branchPastorsPresent;
 
       if (activeScopeType === 'MC' && finalMcHeadCount === 0) finalMcHeadCount = 1;
-      if (activeScopeType === 'ZONE' && finalMcHeadCount === 0) finalMcHeadCount = scopedBuscentas.length > 0 ? Math.round(scopedBuscentas.length / 3) : 1;
+      if (['CHURCH', 'BRANCH'].includes(activeScopeType) && finalMcHeadCount === 0) finalMcHeadCount = scopedBuscentas.length > 0 ? Math.round(scopedBuscentas.length / 3) : 1;
       if (scopedBuscentas.length > 0 && finalBuscentaHeadCount === 0) finalBuscentaHeadCount = scopedBuscentas.length;
-      if (activeScopeType === 'ZONE' && finalZonalHeadCount === 0) finalZonalHeadCount = 1;
+      if (['CHURCH', 'BRANCH'].includes(activeScopeType) && finalChurchHeadCount === 0) finalChurchHeadCount = 1;
+      if (activeScopeType === 'BRANCH' && finalBranchPastorCount === 0) finalBranchPastorCount = 1;
 
       // Expected target and leaders present based on scope level
       let target = 0;
@@ -262,11 +269,16 @@ export default function NetRevelationExportModal({
         leadersCountText = `*SENIOR SHEPHERDS* - ${finalBuscentaHeadCount}\n*MC HEAD* - ${finalMcHeadCount}`;
         leadersCountVal = finalBuscentaHeadCount + finalMcHeadCount;
         physicalTotal = physicalCellAttendance + finalBuscentaHeadCount + finalMcHeadCount;
-      } else if (activeScopeType === 'ZONE') {
-        target = (scopedCells.length * 13) + finalZonalHeadCount + finalMcHeadCount + finalBuscentaHeadCount;
-        leadersCountText = `*SENIOR SHEPHERDS* - ${finalBuscentaHeadCount}\n*MC HEADS* - ${finalMcHeadCount}\n*ZONAL HEAD* - ${finalZonalHeadCount}`;
-        leadersCountVal = finalBuscentaHeadCount + finalMcHeadCount + finalZonalHeadCount;
-        physicalTotal = physicalCellAttendance + finalBuscentaHeadCount + finalMcHeadCount + finalZonalHeadCount;
+      } else if (activeScopeType === 'CHURCH') {
+        target = (scopedCells.length * 13) + finalChurchHeadCount + finalMcHeadCount + finalBuscentaHeadCount;
+        leadersCountText = `*SENIOR SHEPHERDS* - ${finalBuscentaHeadCount}\n*MC HEADS* - ${finalMcHeadCount}\n*CHURCH HEAD* - ${finalChurchHeadCount}`;
+        leadersCountVal = finalBuscentaHeadCount + finalMcHeadCount + finalChurchHeadCount;
+        physicalTotal = physicalCellAttendance + finalBuscentaHeadCount + finalMcHeadCount + finalChurchHeadCount;
+      } else if (activeScopeType === 'BRANCH') {
+        target = (scopedCells.length * 13) + finalBranchPastorCount + finalChurchHeadCount + finalMcHeadCount + finalBuscentaHeadCount;
+        leadersCountText = `*SENIOR SHEPHERDS* - ${finalBuscentaHeadCount}\n*MC HEADS* - ${finalMcHeadCount}\n*CHURCH HEADS* - ${finalChurchHeadCount}\n*ALPHA BRANCH PASTOR* - ${finalBranchPastorCount}`;
+        leadersCountVal = finalBuscentaHeadCount + finalMcHeadCount + finalChurchHeadCount + finalBranchPastorCount;
+        physicalTotal = physicalCellAttendance + finalBuscentaHeadCount + finalMcHeadCount + finalChurchHeadCount + finalBranchPastorCount;
       }
 
       const totalGathered = physicalTotal + onlineCellAttendance;

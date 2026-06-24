@@ -220,9 +220,9 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
                                     onClick={() => onAddChild(node)}
                                     className="w-full py-2 px-3 bg-gradient-church hover:opacity-90 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95 border-2 border-church-blue-600"
                                 >
-                                    <Plus size={16} />
-                                    {unit_type === 'ROOT' ? 'Add Zone' : 
-                                     unit_type === 'ZONE' ? 'Add new MC' : 
+                                    <Plus size={16} />                                     {unit_type === 'ROOT' ? 'Add Branch' : 
+                                     unit_type === 'BRANCH' ? 'Add Church' : 
+                                     unit_type === 'CHURCH' ? 'Add new MC' : 
                                      unit_type === 'MC' ? 'Add Buscenta' : 
                                      unit_type === 'BUSCENTA' ? 'Add Cell' : 'Add Sub-Unit'}
                                 </button>
@@ -244,7 +244,8 @@ export default function NodeDetailsPanel({ node, onClose, onAddChild, onViewRegi
 
 function Badge({ type }) {
     const colors = {
-        ZONE: 'bg-church-blue-500/20 text-church-blue-300 border-church-blue-500/30',
+        BRANCH: 'bg-church-yellow-500/20 text-church-yellow-300 border-church-yellow-500/30',
+        CHURCH: 'bg-church-purple-500/20 text-church-purple-300 border-church-purple-500/30',
         MC: 'bg-church-blue-500/20 text-church-blue-300 border-church-blue-500/30',
         BUSCENTA: 'bg-church-magenta-500/20 text-church-magenta-300 border-church-magenta-500/30',
         CELL: 'bg-church-coral-500/20 text-church-coral-300 border-church-coral-500/30',

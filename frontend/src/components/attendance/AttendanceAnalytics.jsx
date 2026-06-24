@@ -321,7 +321,7 @@ export default function AttendanceAnalytics({ currentRole, overrideUnitId = null
     fetchActiveSession();
   }, [selectedSessionKey, overrideUnitId, currentRole.unitId]);
 
-  const ADMIN_ROLES = ['Zonal Head', 'MC Head', 'Buscenta Head', 'Assembly Head', 'MC Live Head'];
+  const ADMIN_ROLES = ['Alpha Branch Pastor', 'Church Head', 'MC Head', 'Buscenta Head', 'Assembly Head', 'MC Live Head'];
   const isAdmin = ADMIN_ROLES.includes(currentRole?.title);
   const isDirectUnit = (overrideUnitId || currentRole.unitId) === currentRole.unitId;
   const canMark = isDirectUnit || currentRole.unitType === 'MC';

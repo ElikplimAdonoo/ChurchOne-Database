@@ -86,8 +86,8 @@ export const fetchHierarchyData = async () => {
                     level: a.positions?.level
                 };
 
-                // Level < 5 is a leader. 5+ or missing level is a member.
-                if (a.positions?.level !== undefined && a.positions?.level !== null && a.positions.level < 5) {
+                // Level < 6 is a leader. 6+ or missing level is a member.
+                if (a.positions?.level !== undefined && a.positions?.level !== null && a.positions.level < 6) {
                     leaders.push(person);
                 } else {
                     members.push(person);

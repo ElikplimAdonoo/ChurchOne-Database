@@ -42,7 +42,13 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
     // Visual cues for different unit types
     const getStyles = (type) => {
         switch (type) {
-            case 'ZONE': return {
+            case 'BRANCH': return {
+                bg: 'bg-slate-800',
+                border: 'border-l-4 border-l-church-yellow-500 border-t border-r border-b border-slate-700',
+                text: 'text-church-yellow-300',
+                icon: <FolderTree size={22} className="text-church-yellow-400" />
+            };
+            case 'CHURCH': return {
                 bg: 'bg-slate-800',
                 border: 'border-l-4 border-l-church-purple-500 border-t border-r border-b border-slate-700',
                 text: 'text-church-purple-300',

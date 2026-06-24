@@ -392,8 +392,8 @@ export default function ProfilePage() {
                 </div>
               </motion.div>
 
-              {/* Admin Section (Only visible to levels <= 3) */}
-              {userRole && userRole.level <= 3 && (
+              {/* Admin Section (Only visible to levels <= 4) */}
+              {userRole && userRole.level <= 4 && (
                 <motion.div variants={fadeUp} className="bg-slate-900/50 backdrop-blur-md border border-church-blue-500/30 rounded-2xl p-5 shadow-lg flex flex-col sm:flex-row sm:items-center gap-4 transition-colors hover:bg-slate-800/50">
                   <div className="flex items-center gap-4 flex-1">
                     <div className="w-12 h-12 rounded-xl bg-church-blue-500/10 flex items-center justify-center shrink-0">

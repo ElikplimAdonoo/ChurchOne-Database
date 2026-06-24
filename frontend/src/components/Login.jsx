@@ -40,8 +40,13 @@ export default function Login() {
   // Debounced email check to toggle login mode
   useEffect(() => {
     const trimmed = email.trim().toLowerCase();
-    // ChurchOne emails always use password login — skip the check
-    if (!trimmed || !trimmed.includes('@') || trimmed.length < 5 || trimmed.endsWith('@churchone.com')) {
+    const domain = trimmed.split('@')[1] || '';
+    // Personal email providers — these go through the Google/magic-link flow
+    const PERSONAL_DOMAINS = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com', 'me.com', 'live.com', 'protonmail.com'];
+    // Any domain that is NOT a known personal provider is treated as an org email (password login)
+    const isOrgEmail = domain.length > 0 && !PERSONAL_DOMAINS.includes(domain);
+    // Org/generated emails always use password login — skip the Google auth check
+    if (!trimmed || !trimmed.includes('@') || trimmed.length < 5 || isOrgEmail) {
       setAuthMode('password');
       return;
     }
@@ -213,7 +218,7 @@ export default function Login() {
                   <span>This Google account is <strong>not linked</strong> to any ChurchOne profile.</span>
                 </p>
                 <p className="text-amber-300/80 text-xs leading-relaxed">
-                  Please sign in with your <strong>@churchone.com</strong> account instead, then go to your <strong>Profile</strong> to link your Gmail.
+                  Please sign in with your church email (e.g. <strong>@churchone.com</strong> or <strong>@churchtwo.com</strong>) instead, then go to your <strong>Profile</strong> to link your Gmail.
                 </p>
               </div>
             </motion.div>
@@ -287,7 +292,7 @@ export default function Login() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-black/50 border-2 border-gray-700 text-white px-4 py-3 pl-11 rounded-xl focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500 transition-all placeholder:text-gray-500 font-medium"
-                      placeholder={isGateActive ? "yourname@gmail.com" : "yourname@churchone.com"}
+                      placeholder={isGateActive ? "yourname@gmail.com" : "yourname@church.com"}
                     />
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-church-blue-400" size={20} />
                   </div>

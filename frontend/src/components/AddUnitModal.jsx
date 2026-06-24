@@ -16,8 +16,9 @@ export default function AddUnitModal({ isOpen, onClose, parentNode, onSubmit }) 
     let childType = 'CELL';
     let childLabel = 'Cell';
     
-    if (parentType === 'ROOT') { childType = 'ZONE'; childLabel = 'Zone'; }
-    else if (parentType === 'ZONE') { childType = 'MC'; childLabel = 'Ministry Center (MC)'; }
+    if (parentType === 'ROOT') { childType = 'BRANCH'; childLabel = 'Branch'; }
+    else if (parentType === 'BRANCH') { childType = 'CHURCH'; childLabel = 'Church'; }
+    else if (parentType === 'CHURCH') { childType = 'MC'; childLabel = 'Ministry Center (MC)'; }
     else if (parentType === 'MC') { childType = 'BUSCENTA'; childLabel = 'Buscenta'; }
     else if (parentType === 'BUSCENTA') { childType = 'CELL'; childLabel = 'Cell'; }
 

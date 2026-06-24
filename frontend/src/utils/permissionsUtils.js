@@ -2,11 +2,12 @@ import { supabase } from '../lib/supabase';
 
 // High-level rank matrix for quick comparison
 const ROLE_RANKS = {
-    'ADMIN': 100,
-    'ZONAL_PASTOR': 80,
-    'MC_HEAD': 60,
-    'BUSCENTA_HEAD': 40,
-    'CELL_SHEPHERD': 20
+    'ADMIN': 120,
+    'BRANCH': 100,
+    'CHURCH': 80,
+    'MC': 60,
+    'BUSCENTA': 40,
+    'CELL': 20
 };
 
 /**
@@ -29,7 +30,7 @@ export async function canManageUnit(currentRole, targetUnitId) {
     // If it's not their own unit, they can only manage it if:
     // 1. They are above a Cell Shepherd AND
     // 2. The target unit is a descendant of their own unit
-    if (ROLE_RANKS[currentRole.unitType] <= ROLE_RANKS['CELL_SHEPHERD']) {
+    if (ROLE_RANKS[currentRole.unitType] <= ROLE_RANKS['CELL']) {
         return false; // Cell Shepherds can never manage units other than their own
     }
 

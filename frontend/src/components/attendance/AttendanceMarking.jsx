@@ -360,7 +360,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   };
 
   // ── Undo Session ─────────────────────────────────────────────────────────────
-  const ADMIN_ROLES = ['Zonal Head', 'MC Head', 'Buscenta Head', 'Assembly Head', 'MC Live Head'];
+  const ADMIN_ROLES = ['Alpha Branch Pastor', 'Church Head', 'MC Head', 'Buscenta Head', 'Assembly Head', 'MC Live Head'];
   const isAdmin = ADMIN_ROLES.includes(currentRole?.title);
   const sessionAgeHours = sessionCreatedAt
     ? (Date.now() - new Date(sessionCreatedAt).getTime()) / (1000 * 60 * 60)
@@ -739,7 +739,7 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
             )}
 
             <div className="flex gap-2 w-full md:w-auto flex-wrap">
-              {['Zonal Head', 'MC Head', 'Buscenta Head'].includes(currentRole?.title) && (
+              {['Alpha Branch Pastor', 'Church Head', 'MC Head', 'Buscenta Head'].includes(currentRole?.title) && (
                   <button 
                       type="button"
                       onClick={() => setIsExportModalOpen(true)}

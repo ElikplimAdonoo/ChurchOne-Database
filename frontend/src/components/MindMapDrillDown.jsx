@@ -162,7 +162,8 @@ function countDescendantMembers(node) {
  */
 function getRoleLabel(unitType) {
   switch (unitType) {
-    case "ZONE":     return "ZONAL HEAD";
+    case "BRANCH":   return "ALPHA BRANCH PASTOR";
+    case "CHURCH":   return "CHURCH HEAD";
     case "MC":       return "MC HEAD";
     case "BUSCENTA": return "BUSCENTA HEAD";
     case "CELL":     return "CELL SHEPHERD";
@@ -176,7 +177,8 @@ function getRoleLabel(unitType) {
  */
 function getChildLabel(unitType) {
   switch (unitType) {
-    case "ZONE":     return "MCs";
+    case "BRANCH":   return "Churches";
+    case "CHURCH":   return "MCs";
     case "MC":       return "Buscentas";
     case "BUSCENTA": return "Cells";
     case "CELL":     return "Members";
@@ -226,6 +228,148 @@ function getCellPeople(unit) {
   });
 
   return list;
+}
+
+// ==========================================
+// DRILLDOWN NODE COMPONENT (RECURSIVE)
+// ==========================================
+function DrillDownNode({ unit, theme }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const isCell = unit.unit_type === "CELL";
+  const leader = isCell
+    ? (unit.leaders?.find(l => l.role?.toLowerCase() === 'cell shepherd') || null)
+    : unit.leaders?.[0];
+    
+  const subUnitCount = isCell ? 0 : (unit.children?.length || 0);
+  const totalMembers = isCell
+    ? (unit.members?.length || 0)
+    : countDescendantMembers(unit);
+
+  const handleToggle = () => {
+    setIsOpen(prev => !prev);
+  };
+
+  // Determine styles based on depth/type
+  const bgClass = isCell
+    ? (isOpen ? theme.cellActiveBg : `${theme.cellBg} hover:brightness-110`)
+    : (isOpen ? theme.buscentaActiveBg : `${theme.buscentaBg} hover:brightness-110`);
+    
+  const paddingClass = isCell ? "p-2.5 rounded-xl text-xs" : "p-3 rounded-2xl text-sm";
+  const titleSize = isCell ? "text-[9px]" : "text-[10px]";
+
+  return (
+    <div className="space-y-1.5 w-full">
+      <button
+        onClick={handleToggle}
+        className={`w-full flex items-center gap-2.5 ${paddingClass} text-left border transition-all duration-200 shadow-sm ${bgClass}`}
+      >
+        <Avatar
+          person={leader}
+          size="sm"
+          accent="border-white/10"
+        />
+        <div className="min-w-0 flex-1">
+          <h5 className={`${titleSize} font-black text-white leading-tight uppercase tracking-tight truncate`}>
+            {isCell ? unit.name : (leader?.name || "No Leader")}
+          </h5>
+          <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 truncate">
+            {isCell ? (leader?.name || "No Shepherd Assigned") : unit.name}
+          </p>
+          <div className="flex items-center gap-3 mt-1">
+            {!isCell && (
+              <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
+                <Home size={9} className="shrink-0" />
+                <span className="font-black text-white">{subUnitCount}</span>{" "}
+                {getChildLabel(unit.unit_type)}
+              </span>
+            )}
+            <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
+              <Users size={9} className="shrink-0" />
+              <span className="font-black text-white">{totalMembers}</span>{" "}
+              Members
+            </span>
+          </div>
+        </div>
+        <ChevronRight
+          size={12}
+          className={`text-slate-600 transition-transform duration-300 shrink-0 ${
+            isOpen ? "rotate-90 text-church-blue-400" : ""
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden border-l border-slate-800/80 ml-1.5 pl-1.5 space-y-1.5 py-1 w-full"
+          >
+            {isCell ? (
+              (() => {
+                const cellPeople = getCellPeople(unit);
+                const shepherds = cellPeople.filter(p => p.isShepherd);
+                const members = cellPeople.filter(p => !p.isShepherd);
+                return cellPeople.length === 0 ? (
+                  <p className="text-[8px] text-slate-600 italic pl-1">
+                    No members in this cell
+                  </p>
+                ) : (
+                  <div className="space-y-2 py-1 px-1">
+                    {shepherds.length > 0 && (
+                      <div>
+                        <p className="text-[7px] font-black uppercase tracking-widest text-violet-400/70 mb-1.5 px-0.5">
+                          Shepherds
+                        </p>
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {shepherds.map((p, i) => (
+                            <div key={i} className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 ${theme.shepherdBg}`}>
+                              <Avatar person={p} size="sm" accent="border-white/10" />
+                              <span className="text-[10px] font-bold truncate">{p.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {members.length > 0 && (
+                      <div>
+                        <p className="text-[7px] font-black uppercase tracking-widest text-slate-500/70 mb-1.5 px-0.5">
+                          Members
+                        </p>
+                        <div className="grid grid-cols-1 gap-1.5">
+                          {members.map((p, i) => (
+                            <div key={i} className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 ${theme.memberBg}`}>
+                              <Avatar person={p} size="sm" accent="border-white/10" />
+                              <span className="text-[10px] font-bold truncate">{p.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
+            ) : (
+              (unit.children || []).length === 0 ? (
+                <p className="text-[8px] text-slate-600 italic pl-1">
+                  No {getChildLabel(unit.unit_type).toLowerCase()} yet
+                </p>
+              ) : (
+                (unit.children || []).map(child => (
+                  <DrillDownNode
+                    key={child.id}
+                    unit={child}
+                    theme={theme}
+                  />
+                ))
+              ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 }
 
 // ==========================================
@@ -361,10 +505,10 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
         </div>
       )}
 
-      {/* ── Hierarchy Tree Container (Zone + MCs) ── 
+      {/* ── Hierarchy Tree Container (Church + MCs) ── 
           Wrapped in a flex-col to eliminate the space-y-6 gap from parent */}
       <div className="flex flex-col w-full">
-        {/* ── Zone / Zonal Head card ── */}
+        {/* ── Church / Church Head card ── */}
         {activeZone && (
         <div className="flex flex-col items-center">
           {(() => {
@@ -658,242 +802,15 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                         );
                       })()}
 
-                      {/* ── Non-CELL mc: show child unit rows (buscentas or cells) ── */}
+                      {/* ── Non-CELL mc: recursively render children ── */}
                       {mc.unit_type !== "CELL" &&
-                        (mc.children || []).map((buscenta) => {
-                          const isBuscentaSelected =
-                            selectedBuscentaId === buscenta.id;
-                          const isCell = buscenta.unit_type === "CELL";
-                          const buscentaLeader = isCell
-                            ? getPrimaryCellShepherd(buscenta)
-                            : buscenta.leaders?.[0];
-                          const subUnitCount = isCell
-                            ? 0
-                            : (buscenta.children?.length || 0);
-                          const totalMembers = isCell
-                            ? (buscenta.members?.length || 0)
-                            : countDescendantMembers(buscenta);
-
-                          return (
-                            <div key={buscenta.id} className="space-y-2">
-                              {/* Sub-unit row (buscenta or cell) */}
-                              <button
-                                onClick={() => handleBuscentaSelect(buscenta.id)}
-                                className={`w-full flex items-center gap-2.5 p-3 rounded-2xl text-left border transition-all duration-200 shadow-sm ${
-                                  isBuscentaSelected
-                                    ? theme.buscentaActiveBg
-                                    : `${theme.buscentaBg} hover:brightness-110`
-                                }`}
-                              >
-                                <Avatar
-                                  person={buscentaLeader}
-                                  size="sm"
-                                  accent="border-white/10"
-                                />
-                                <div className="min-w-0 flex-1">
-                                  <h5 className="text-[10px] font-black text-white leading-tight uppercase tracking-tight truncate">
-                                    {buscentaLeader?.name || "No Leader"}
-                                  </h5>
-                                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 truncate">
-                                    {buscenta.name}
-                                  </p>
-                                  <div className="flex items-center gap-3 mt-1.5">
-                                    {!isCell && (
-                                      <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
-                                        <Home size={9} />
-                                        <span className="font-black text-white">
-                                          {subUnitCount}
-                                        </span>{" "}
-                                        {getChildLabel(buscenta.unit_type)}
-                                      </span>
-                                    )}
-                                    <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
-                                      <Users size={9} />
-                                      <span className="font-black text-white">
-                                        {totalMembers}
-                                      </span>{" "}
-                                      Members
-                                    </span>
-                                  </div>
-                                </div>
-                                <ChevronRight
-                                  size={12}
-                                  className={`text-slate-600 transition-transform duration-300 shrink-0 ${
-                                    isBuscentaSelected
-                                      ? "rotate-90 text-church-blue-400"
-                                      : ""
-                                  }`}
-                                />
-                              </button>
-
-                              {/* ── Expanded Content ── */}
-                              <AnimatePresence>
-                                {isBuscentaSelected && (
-                                  <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="overflow-hidden border-l border-slate-800/80 ml-1.5 pl-1.5 space-y-1.5 py-1"
-                                  >
-                                    {isCell ? (
-                                      (() => {
-                                        const cellPeople = getCellPeople(buscenta);
-                                        const cellShepherdCount = cellPeople.filter(p => p.isShepherd).length;
-                                        const cellMemberCount = cellPeople.filter(p => !p.isShepherd).length;
-                                        return cellPeople.length === 0 ? (
-                                          <p className="text-[8px] text-slate-600 italic pl-1">
-                                            No members in this cell
-                                          </p>
-                                        ) : (
-                                          <div className="overflow-hidden space-y-2 py-1 px-1">
-                                            {/* Shepherds section */}
-                                            {cellShepherdCount > 0 && (
-                                              <div>
-                                                <p className="text-[7px] font-black uppercase tracking-widest text-violet-400/70 mb-1.5 px-0.5">
-                                                  Shepherds
-                                                </p>
-                                                <div className="grid grid-cols-1 gap-1.5">
-                                                  {cellPeople.filter(p => p.isShepherd).map((p, i) => (
-                                                    <div key={i} className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 ${theme.shepherdBg}`}>
-                                                      <Avatar person={p} size="sm" accent="border-white/10" />
-                                                      <span className="text-[10px] font-bold truncate">{p.name}</span>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </div>
-                                            )}
-                                            {/* Members section */}
-                                            {cellMemberCount > 0 && (
-                                              <div>
-                                                <p className="text-[7px] font-black uppercase tracking-widest text-slate-500/70 mb-1.5 px-0.5">
-                                                  Members
-                                                </p>
-                                                <div className="grid grid-cols-1 gap-1.5">
-                                                  {cellPeople.filter(p => !p.isShepherd).map((p, i) => (
-                                                    <div key={i} className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 ${theme.memberBg}`}>
-                                                      <Avatar person={p} size="sm" accent="border-white/10" />
-                                                      <span className="text-[10px] font-bold truncate">{p.name}</span>
-                                                    </div>
-                                                  ))}
-                                                </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })()
-                                    ) : (
-                                      (buscenta.children || []).length === 0 ? (
-                                        <p className="text-[8px] text-slate-600 italic pl-1">
-                                          No cells in this Buscenta
-                                        </p>
-                                      ) : (
-                                        (buscenta.children || []).map((cell) => {
-                                          const isCellSelected =
-                                            selectedCellId === cell.id;
-                                          const cellLeader = getPrimaryCellShepherd(cell);
-                                          const cellPeopleAll = getCellPeople(cell);
-                                          const cellShepherdCount = cellPeopleAll.filter(p => p.isShepherd).length;
-                                          const cellMemberCount = cellPeopleAll.filter(p => !p.isShepherd).length;
-
-                                          return (
-                                            <div
-                                              key={cell.id}
-                                              className="space-y-1.5"
-                                            >
-                                              {/* Cell row */}
-                                              <button
-                                                onClick={() =>
-                                                  handleCellSelect(cell.id)
-                                                }
-                                                className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all duration-200 ${
-                                                  isCellSelected
-                                                    ? theme.cellActiveBg
-                                                    : `${theme.cellBg} hover:brightness-110`
-                                                }`}
-                                              >
-                                                <div className="min-w-0">
-                                                  <h6 className="text-[9px] font-black text-white uppercase truncate">
-                                                    {cell.name}
-                                                  </h6>
-                                                  {cellLeader && (
-                                                    <p className="text-[8px] text-slate-500 font-bold truncate mt-0.5 uppercase">
-                                                      {cellLeader.name}
-                                                    </p>
-                                                  )}
-                                                </div>
-                                                <div className="flex items-center gap-1 shrink-0 ml-1">
-                                                  {cellShepherdCount > 0 && (
-                                                    <span className="flex items-center gap-0.5 text-[7px] font-black text-violet-400 bg-violet-500/10 border border-violet-500/20 px-1.5 py-0.5 rounded-full">
-                                                      <Users size={7} />
-                                                      {cellShepherdCount}
-                                                    </span>
-                                                  )}
-                                                  <span className="flex items-center gap-1 text-[8px] font-black text-slate-400 bg-white/5 border border-white/5 px-1.5 py-0.5 rounded-full">
-                                                    <Users size={8} />
-                                                    {cellMemberCount}
-                                                  </span>
-                                                </div>
-                                              </button>
-
-                                              {/* ── Members list ── */}
-                                              <AnimatePresence>
-                                                {isCellSelected && (
-                                                  <motion.div
-                                                    initial={{ opacity: 0, height: 0 }}
-                                                    animate={{ opacity: 1, height: "auto" }}
-                                                    exit={{ opacity: 0, height: 0 }}
-                                                    className="overflow-hidden space-y-2 py-1 px-1"
-                                                  >
-                                                    {cellPeopleAll.length === 0 ? (
-                                                      <p className="text-[8px] text-slate-600 italic">
-                                                        No members in this cell
-                                                      </p>
-                                                    ) : (
-                                                      <div className="space-y-2">
-                                                        {/* Shepherds section */}
-                                                        {cellShepherdCount > 0 && (
-                                                          <div>
-                                                            <p className="text-[7px] font-black uppercase tracking-widest text-violet-400/70 mb-1.5 px-0.5">Shepherds</p>
-                                                            <div className="grid grid-cols-1 gap-1.5">
-                                                              {cellPeopleAll.filter(p => p.isShepherd).map((p, i) => (
-                                                                <div key={i} className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 ${theme.shepherdBg}`}>
-                                                                  <Avatar person={p} size="sm" accent="border-white/10" />
-                                                                  <span className="text-[10px] font-bold truncate">{p.name}</span>
-                                                                </div>
-                                                              ))}
-                                                            </div>
-                                                          </div>
-                                                        )}
-                                                        {/* Members section */}
-                                                        {cellMemberCount > 0 && (
-                                                          <div>
-                                                            <p className="text-[7px] font-black uppercase tracking-widest text-slate-500/70 mb-1.5 px-0.5">Members</p>
-                                                            <div className="grid grid-cols-1 gap-1.5">
-                                                              {cellPeopleAll.filter(p => !p.isShepherd).map((p, i) => (
-                                                                <div key={i} className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 ${theme.memberBg}`}>
-                                                                  <Avatar person={p} size="sm" accent="border-white/10" />
-                                                                  <span className="text-[10px] font-bold truncate">{p.name}</span>
-                                                                </div>
-                                                              ))}
-                                                            </div>
-                                                          </div>
-                                                        )}
-                                                      </div>
-                                                    )}
-                                                  </motion.div>
-                                                )}
-                                              </AnimatePresence>
-                                            </div>
-                                          );
-                                        })
-                                      )
-                                    )}
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-                          );
-                        })}
+                        (mc.children || []).map((child) => (
+                          <DrillDownNode
+                            key={child.id}
+                            unit={child}
+                            theme={theme}
+                          />
+                        ))}
                     </div>
                   </div>
                 </div>

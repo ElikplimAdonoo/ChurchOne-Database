@@ -145,7 +145,33 @@ export const createPerson = async (personData) => {
     const names = trimmedName.split(/\s+/);
     const firstName = names[0]?.toLowerCase().replace(/[^a-z0-9]/g, "") || "member";
     const lastName = names.length > 1 ? names[names.length - 1].toLowerCase().replace(/[^a-z0-9]/g, "") : "member";
-    const generatedEmail = `${firstName}.${lastName}@churchone.com`;
+    
+    let domain = 'churchone.com';
+    if (personData.unitId) {
+        let currentId = personData.unitId;
+        for (let i = 0; i < 5; i++) {
+            const { data: unit } = await supabase
+                .from('organizational_units')
+                .select('id, name, unit_type, parent_id')
+                .eq('id', currentId)
+                .maybeSingle();
+            if (!unit) break;
+            if (unit.unit_type === 'BRANCH') {
+                // Derive domain from first word of branch name: "Alpha Branch" → "alpha.com"
+                const firstWord = unit.name.trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+                domain = `${firstWord}.com`;
+                break;
+            }
+            if (unit.unit_type === 'CHURCH') {
+                const cleanName = unit.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+                domain = `${cleanName}.com`;
+                break;
+            }
+            if (!unit.parent_id) break;
+            currentId = unit.parent_id;
+        }
+    }
+    const generatedEmail = `${firstName}.${lastName}@${domain}`;
 
     // Query DB in parallel by name, generated email, and personal email (if provided)
     const queries = [

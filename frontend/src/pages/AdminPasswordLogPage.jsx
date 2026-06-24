@@ -55,7 +55,7 @@ export default function AdminPasswordLogPage() {
   }
 
   // If unauthorized
-  if (error || !userRole || userRole.level > 3) {
+  if (error || !userRole || userRole.level > 4) {
     return (
       <div className="p-6 bg-red-950/20 border-2 border-red-500/30 rounded-xl text-center max-w-xl mx-auto my-12">
         <ShieldAlert className="mx-auto mb-4 text-red-500" size={48} />
