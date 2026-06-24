@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { CheckCircle2, Lock, Mail, Loader2 } from 'lucide-react';
+import { CheckCircle2, Lock, Mail, Loader2, ShieldCheck } from 'lucide-react';
+import { AnimatePresence, motion } from 'framer-motion';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ export default function Login() {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [linkSuccess, setLinkSuccess] = useState('');
+  const [authMode, setAuthMode] = useState('password'); // 'password' | 'google'
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,6 +36,31 @@ export default function Login() {
       }
     }
   }, []);
+
+  // Debounced email check to toggle login mode
+  useEffect(() => {
+    const trimmed = email.trim();
+    if (!trimmed || !trimmed.includes('@') || trimmed.length < 5) {
+      setAuthMode('password');
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      try {
+        const { data: mode, error } = await supabase.rpc('get_email_auth_mode', { input_email: trimmed });
+        if (!error && mode) {
+          setAuthMode(mode);
+        } else {
+          setAuthMode('password');
+        }
+      } catch (err) {
+        console.error("Error checking auth mode:", err);
+        setAuthMode('password');
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [email]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -140,74 +167,138 @@ export default function Login() {
             </div>
         )}
 
-        <form onSubmit={handleLogin} className="space-y-4">
-            <div>
+        <AnimatePresence mode="wait">
+          {authMode === 'google' ? (
+            /* ── Google-only mode: email is linked to a Google account ── */
+            <motion.div
+              key="google-mode"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-4"
+            >
+              {/* Email display */}
+              <div>
                 <label className="block text-sm font-bold uppercase text-gray-400 tracking-wider mb-2">Email Address</label>
                 <div className="relative">
-                    <input 
-                        type="email" 
-                        required
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-black/50 border-2 border-gray-700 text-white px-4 py-3 pl-11 rounded-xl focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500 transition-all placeholder:text-gray-500 font-medium"
-                        placeholder={isGateActive ? "yourname@gmail.com" : "yourname@churchone.com"}
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-black/50 border-2 border-gray-700 text-white px-4 py-3 pl-11 rounded-xl focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500 transition-all placeholder:text-gray-500 font-medium"
+                    placeholder="yourname@gmail.com"
+                  />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-church-blue-400" size={20} />
+                </div>
+              </div>
+
+              {/* Google-only info banner */}
+              <div className="p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl text-emerald-300 text-xs font-semibold leading-relaxed flex items-start gap-2.5">
+                <ShieldCheck size={16} className="shrink-0 mt-0.5" />
+                <span>This account uses <strong>Google Sign-In</strong> for security. Click below to continue.</span>
+              </div>
+
+              {/* Google Sign-In button */}
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading || googleLoading}
+                className="w-full bg-white hover:bg-gray-100 text-gray-800 font-black py-4 rounded-xl border border-white/10 transition-all flex items-center justify-center gap-2.5 text-sm shadow-md hover:scale-[1.01] disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+              >
+                {googleLoading ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.62-.62-1.07-1.42-1.42-2.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                )}
+                <span>{googleLoading ? 'Redirecting to Google…' : 'Continue with Google'}</span>
+              </button>
+            </motion.div>
+          ) : (
+            /* ── Password mode: standard email + password form ── */
+            <motion.div
+              key="password-mode"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+            >
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold uppercase text-gray-400 tracking-wider mb-2">Email Address</label>
+                  <div className="relative">
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full bg-black/50 border-2 border-gray-700 text-white px-4 py-3 pl-11 rounded-xl focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500 transition-all placeholder:text-gray-500 font-medium"
+                      placeholder={isGateActive ? "yourname@gmail.com" : "yourname@churchone.com"}
                     />
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-church-blue-400" size={20} />
+                  </div>
                 </div>
-            </div>
 
-            <div>
-                <label className="block text-sm font-bold uppercase text-gray-400 tracking-wider mb-2">Password</label>
-                <div className="relative">
-                    <input 
-                        type="password" 
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full bg-black/50 border-2 border-gray-700 text-white px-4 py-3 pl-11 rounded-xl focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500 transition-all placeholder:text-gray-500 font-medium"
-                        placeholder="••••••••"
+                <div>
+                  <label className="block text-sm font-bold uppercase text-gray-400 tracking-wider mb-2">Password</label>
+                  <div className="relative">
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full bg-black/50 border-2 border-gray-700 text-white px-4 py-3 pl-11 rounded-xl focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500 transition-all placeholder:text-gray-500 font-medium"
+                      placeholder="••••••••"
                     />
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-church-blue-400" size={20} />
+                  </div>
                 </div>
-            </div>
 
-            <button 
-                type="submit" 
-                disabled={loading}
-                className="w-full bg-gradient-church hover:opacity-90 text-white font-black py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6 text-lg border-2 border-church-blue-600"
-            >
-                {loading ? <Loader2 className="animate-spin" size={24} /> : <CheckCircle2 size={24} />}
-                <span>{loading ? 'Signing In...' : 'Sign In'}</span>
-            </button>
-        </form>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full bg-gradient-church hover:opacity-90 text-white font-black py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-6 text-lg border-2 border-church-blue-600"
+                >
+                  {loading ? <Loader2 className="animate-spin" size={24} /> : <CheckCircle2 size={24} />}
+                  <span>{loading ? 'Signing In...' : 'Sign In'}</span>
+                </button>
+              </form>
 
-        <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-800"></div>
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-[#0b0c10] px-3 text-slate-500 font-black tracking-wider">Or continue with</span>
-            </div>
-        </div>
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-800"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-[#0b0c10] px-3 text-slate-500 font-black tracking-wider">Or continue with</span>
+                </div>
+              </div>
 
-        <button
-            type="button"
-            onClick={handleGoogleLogin}
-            disabled={loading || googleLoading}
-            className="w-full bg-white/5 hover:bg-white/10 text-white font-black py-3.5 rounded-xl border border-white/10 transition-all flex items-center justify-center gap-2.5 text-sm shadow-md hover:scale-[1.01] disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-            {googleLoading ? (
-              <Loader2 className="animate-spin" size={20} />
-            ) : (
-              <svg className="w-5 h-5 mr-1 shrink-0" viewBox="0 0 24 24">
-                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.62-.62-1.07-1.42-1.42-2.63z" />
-                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-              </svg>
-            )}
-            <span>{googleLoading ? 'Redirecting to Google…' : 'Sign In with Google'}</span>
-        </button>
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                disabled={loading || googleLoading}
+                className="w-full bg-white/5 hover:bg-white/10 text-white font-black py-3.5 rounded-xl border border-white/10 transition-all flex items-center justify-center gap-2.5 text-sm shadow-md hover:scale-[1.01] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {googleLoading ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <svg className="w-5 h-5 mr-1 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.62-.62-1.07-1.42-1.42-2.63z" />
+                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                  </svg>
+                )}
+                <span>{googleLoading ? 'Redirecting to Google…' : 'Sign In with Google'}</span>
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
