@@ -40,8 +40,7 @@ export default function Login() {
   // Debounced email check to toggle login mode
   useEffect(() => {
     const trimmed = email.trim().toLowerCase();
-    // Only check Google mode for non-churchone emails
-    // ChurchOne emails (@churchone.com) always use password login
+    // ChurchOne emails always use password login — skip the check
     if (!trimmed || !trimmed.includes('@') || trimmed.length < 5 || trimmed.endsWith('@churchone.com')) {
       setAuthMode('password');
       return;
@@ -51,13 +50,16 @@ export default function Login() {
       try {
         const { data: mode, error } = await supabase.rpc('get_email_auth_mode', { input_email: trimmed });
         if (!error && mode) {
+          // 'google'    → verified Gmail linked to a profile
+          // 'password'  → fallback (shouldn't normally reach here for personal emails)
+          // 'unlinked'  → Gmail typed but not linked to any profile
           setAuthMode(mode);
         } else {
-          setAuthMode('password');
+          setAuthMode('unlinked');
         }
       } catch (err) {
         console.error("Error checking auth mode:", err);
-        setAuthMode('password');
+        setAuthMode('unlinked');
       }
     }, 500);
 
@@ -179,7 +181,43 @@ export default function Login() {
         )}
 
         <AnimatePresence mode="wait">
-          {authMode === 'google' ? (
+          {authMode === 'unlinked' ? (
+            /* ── Unlinked mode: personal email typed but not linked to any profile ── */
+            <motion.div
+              key="unlinked-mode"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-4"
+            >
+              {/* Email display */}
+              <div>
+                <label className="block text-sm font-bold uppercase text-gray-400 tracking-wider mb-2">Email Address</label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full bg-black/50 border-2 border-gray-700 text-white px-4 py-3 pl-11 rounded-xl focus:outline-none focus:ring-2 focus:ring-church-blue-500/50 focus:border-church-blue-500 transition-all placeholder:text-gray-500 font-medium"
+                    placeholder="yourname@gmail.com"
+                  />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-church-blue-400" size={20} />
+                </div>
+              </div>
+
+              {/* Not linked message */}
+              <div className="p-4 bg-amber-900/20 border border-amber-500/30 rounded-2xl text-amber-300 text-sm font-semibold leading-relaxed space-y-2">
+                <p className="flex items-center gap-2">
+                  <span className="text-amber-400 text-base">⚠️</span>
+                  <span>This Google account is <strong>not linked</strong> to any ChurchOne profile.</span>
+                </p>
+                <p className="text-amber-300/80 text-xs leading-relaxed">
+                  Please sign in with your <strong>@churchone.com</strong> account instead, then go to your <strong>Profile</strong> to link your Gmail.
+                </p>
+              </div>
+            </motion.div>
+          ) : authMode === 'google' ? (
             /* ── Google-only mode: email is linked to a Google account ── */
             <motion.div
               key="google-mode"
