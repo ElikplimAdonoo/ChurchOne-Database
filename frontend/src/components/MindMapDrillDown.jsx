@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { fetchHierarchyData } from "../services/hierarchyService";
 import { buildTree } from "../utils/treeUtils";
 import { useAuth } from "../contexts/AuthContext";
@@ -53,7 +53,7 @@ const MC_THEMES = [
     memberBg: "bg-zinc-950/20 border-zinc-800/10 text-zinc-400"
   },
   {
-    // 4 — Blue (New Testament MC - changed from Teal)
+    // 4 — Blue (New Testament MC)
     namePlateBg: "bg-blue-900/90",
     darkTint: "bg-blue-950/50",
     lightTint: "bg-blue-950/10",
@@ -98,7 +98,6 @@ const MC_THEMES = [
 
 // ==========================================
 // AVATAR — full-face photo or initial
-// Fix 3: object-[center_20%] focuses on face area rather than top
 // ==========================================
 function Avatar({ person, size = "md", accent = "border-white/20" }) {
   const dims =
@@ -145,7 +144,6 @@ function Avatar({ person, size = "md", accent = "border-white/20" }) {
 // HELPERS
 // ==========================================
 
-/** Recursively sum all members across a node and its descendants */
 function countDescendantMembers(node) {
   const direct = node.members?.length || 0;
   const fromChildren = (node.children || []).reduce(
@@ -155,11 +153,6 @@ function countDescendantMembers(node) {
   return direct + fromChildren;
 }
 
-/**
- * Returns the correct role label for a given unit_type.
- * Used on the MC-card badge so it always shows the right title
- * regardless of which hierarchy level is currently the "root".
- */
 function getRoleLabel(unitType) {
   switch (unitType) {
     case "BRANCH":   return "ALPHA BRANCH PASTOR";
@@ -171,10 +164,6 @@ function getRoleLabel(unitType) {
   }
 }
 
-/**
- * Returns the correct label for the children of a given unit_type.
- * e.g. MC → "Buscentas", BUSCENTA → "Cells", CELL → "Members"
- */
 function getChildLabel(unitType) {
   switch (unitType) {
     case "BRANCH":   return "Churches";
@@ -186,31 +175,20 @@ function getChildLabel(unitType) {
   }
 }
 
-/**
- * Returns the designated Cell Shepherd for a CELL unit.
- * ONLY matches role === 'cell shepherd' from the DB — no fallback.
- * Returns null if the cell has no designated Cell Shepherd.
- */
 function getPrimaryCellShepherd(unit) {
   const leaders = unit.leaders || [];
   return leaders.find(l => l.role?.toLowerCase() === 'cell shepherd') || null;
 }
 
-/**
- * Returns all NON-primary leaders and members for a CELL unit,
- * tagged with isShepherd so the UI can colour them correctly.
- * The primary cell shepherd is EXCLUDED (shown on the card instead).
- */
 function getCellPeople(unit) {
   const list = [];
   const leaders = unit.leaders || [];
   const primary = getPrimaryCellShepherd(unit);
   const primaryId = primary?.id || primary?.person_id;
 
-  // All leaders other than the primary → assistant shepherds
   leaders.forEach(l => {
     const lId = l.id || l.person_id;
-    if (primaryId && lId === primaryId) return; // skip primary (shown on card)
+    if (primaryId && lId === primaryId) return;
     list.push({
       ...l,
       isShepherd: true,
@@ -231,155 +209,63 @@ function getCellPeople(unit) {
 }
 
 // ==========================================
-// DRILLDOWN NODE COMPONENT (RECURSIVE)
-// Now accordion-controlled: openId + onOpen ensure only one sibling is open.
+// HORIZONTAL CARD — used in horizontal rows (L3, L4, L5)
 // ==========================================
-function DrillDownNode({ unit, theme, openId, onOpen }) {
-  // Whether THIS node is the currently-open one (controlled by parent)
-  const isOpen = openId === unit.id;
-
-  // Per-level open-tracking for children of this node
-  const [childOpenId, setChildOpenId] = useState(null);
-
-  const isCell = unit.unit_type === "CELL";
-  const leader = isCell
-    ? (unit.leaders?.find(l => l.role?.toLowerCase() === 'cell shepherd') || null)
-    : unit.leaders?.[0];
-
-  const subUnitCount = isCell ? 0 : (unit.children?.length || 0);
-  const totalMembers = isCell
-    ? (unit.members?.length || 0)
-    : countDescendantMembers(unit);
-
-  const handleToggle = () => {
-    // Toggle: if already open → close it; else open this one (closing the previous)
-    onOpen(isOpen ? null : unit.id);
-    // Reset child accordion whenever this node is toggled
-    setChildOpenId(null);
-  };
-
-  // Determine styles based on depth/type
-  const bgClass = isCell
-    ? (isOpen ? theme.cellActiveBg : `${theme.cellBg} hover:brightness-110`)
-    : (isOpen ? theme.buscentaActiveBg : `${theme.buscentaBg} hover:brightness-110`);
-
-  const paddingClass = isCell ? "p-2.5 rounded-xl text-xs" : "p-3 rounded-2xl text-sm";
-  const titleSize = isCell ? "text-[9px]" : "text-[10px]";
+function HorzCard({ person, title, subtitle, count, isSelected, onClick, noClick, theme }) {
+  const base = noClick
+    ? "cursor-default bg-slate-900/40 border-white/5"
+    : isSelected
+    ? (theme?.buscentaActiveBg || "bg-church-blue-600/30 border-church-blue-400/60 text-white")
+    : (theme?.buscentaBg || "bg-slate-900/60 border-white/5 hover:border-white/20 hover:bg-slate-800/50");
 
   return (
-    <div className="space-y-1.5 w-full">
-      <button
-        onClick={handleToggle}
-        className={`w-full flex items-center gap-2.5 ${paddingClass} text-left border transition-all duration-200 shadow-sm ${bgClass}`}
-      >
-        <Avatar
-          person={leader}
-          size="sm"
-          accent="border-white/10"
-        />
-        <div className="min-w-0 flex-1">
-          <h5 className={`${titleSize} font-black text-white leading-tight uppercase tracking-tight truncate`}>
-            {isCell ? unit.name : (leader?.name || "No Leader")}
-          </h5>
-          <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 truncate">
-            {isCell ? (leader?.name || "No Shepherd Assigned") : unit.name}
-          </p>
-          <div className="flex items-center gap-3 mt-1">
-            {!isCell && (
-              <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
-                <Home size={9} className="shrink-0" />
-                <span className="font-black text-white">{subUnitCount}</span>{" "}
-                {getChildLabel(unit.unit_type)}
-              </span>
-            )}
-            <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
-              <Users size={9} className="shrink-0" />
-              <span className="font-black text-white">{totalMembers}</span>{" "}
-              Members
-            </span>
-          </div>
-        </div>
-        <ChevronRight
-          size={12}
-          className={`text-slate-600 transition-transform duration-300 shrink-0 ${
-            isOpen ? "rotate-90 text-church-blue-400" : ""
-          }`}
-        />
-      </button>
+    <button
+      disabled={noClick}
+      onClick={!noClick ? onClick : undefined}
+      className={`shrink-0 flex flex-col items-center gap-1.5 p-3 rounded-2xl border transition-all duration-200 text-center ${base}`}
+      style={{ width: 110 }}
+    >
+      <Avatar person={person} size="md" accent={isSelected ? "border-church-blue-400" : "border-white/10"} />
+      <p className="text-[9px] font-black text-white leading-tight w-full truncate">{title}</p>
+      {subtitle && <p className="text-[8px] text-slate-500 font-bold w-full truncate">{subtitle}</p>}
+      {count !== undefined && <p className="text-[7px] text-slate-400 mt-0.5">{count}</p>}
+      {!noClick && isSelected && <div className="w-1.5 h-1.5 rounded-full bg-church-blue-400 mt-0.5" />}
+    </button>
+  );
+}
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden border-l border-slate-800/80 ml-1.5 pl-1.5 space-y-1.5 py-1 w-full"
-          >
-            {isCell ? (
-              (() => {
-                const cellPeople = getCellPeople(unit);
-                const shepherds = cellPeople.filter(p => p.isShepherd);
-                const members = cellPeople.filter(p => !p.isShepherd);
-                return cellPeople.length === 0 ? (
-                  <p className="text-[8px] text-slate-600 italic pl-1">
-                    No members in this cell
-                  </p>
-                ) : (
-                  <div className="space-y-2 py-1 px-1">
-                    {shepherds.length > 0 && (
-                      <div>
-                        <p className="text-[7px] font-black uppercase tracking-widest text-violet-400/70 mb-1.5 px-0.5">
-                          Shepherds
-                        </p>
-                        <div className="grid grid-cols-1 gap-1.5">
-                          {shepherds.map((p, i) => (
-                            <div key={i} className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 ${theme.shepherdBg}`}>
-                              <Avatar person={p} size="sm" accent="border-white/10" />
-                              <span className="text-[10px] font-bold truncate">{p.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {members.length > 0 && (
-                      <div>
-                        <p className="text-[7px] font-black uppercase tracking-widest text-slate-500/70 mb-1.5 px-0.5">
-                          Members
-                        </p>
-                        <div className="grid grid-cols-1 gap-1.5">
-                          {members.map((p, i) => (
-                            <div key={i} className={`flex items-center gap-2 border rounded-lg px-2 py-1.5 ${theme.memberBg}`}>
-                              <Avatar person={p} size="sm" accent="border-white/10" />
-                              <span className="text-[10px] font-bold truncate">{p.name}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })()
-            ) : (
-              (unit.children || []).length === 0 ? (
-                <p className="text-[8px] text-slate-600 italic pl-1">
-                  No {getChildLabel(unit.unit_type).toLowerCase()} yet
-                </p>
-              ) : (
-                // Each child accordion is governed by childOpenId at this level
-                (unit.children || []).map(child => (
-                  <DrillDownNode
-                    key={child.id}
-                    unit={child}
-                    theme={theme}
-                    openId={childOpenId}
-                    onOpen={setChildOpenId}
-                  />
-                ))
-              ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
+// ==========================================
+// SECTION DIVIDER — label between rows
+// ==========================================
+function RowDivider({ label }) {
+  return (
+    <div className="flex items-center gap-3 px-1">
+      <div className="h-px flex-1 bg-slate-800/80" />
+      <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 shrink-0">{label}</span>
+      <div className="h-px flex-1 bg-slate-800/80" />
     </div>
+  );
+}
+
+// ==========================================
+// HORIZONTAL ROW WRAPPER — animated slide-in
+// ==========================================
+function HorzRow({ id, refProp, label, children }) {
+  return (
+    <motion.div
+      ref={refProp}
+      key={id}
+      initial={{ opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="space-y-2.5 px-4 w-full"
+    >
+      <RowDivider label={label} />
+      <div className="overflow-x-auto no-scrollbar -mx-4 px-4">
+        <div className="flex gap-2.5 w-max pb-1">{children}</div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -393,8 +279,15 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
   const [error, setError] = useState(null);
 
   const [activeZoneIndex, setActiveZoneIndex] = useState(0);
-  const [selectedBuscentaId, setSelectedBuscentaId] = useState(null);
-  const [selectedCellId, setSelectedCellId] = useState(null);
+
+  const [selectedL2Id, setSelectedL2Id] = useState(null);
+  const [selectedL3Id, setSelectedL3Id] = useState(null);
+  const [selectedL4Id, setSelectedL4Id] = useState(null);
+  const [selectedL5Id, setSelectedL5Id] = useState(null);
+
+  const l3Ref = useRef(null);
+  const l4Ref = useRef(null);
+  const l5Ref = useRef(null);
 
   useEffect(() => {
     async function load() {
@@ -418,16 +311,62 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
     load();
   }, [getManagedUnits]);
 
-  const handleBuscentaSelect = useCallback((id) => {
-    setSelectedBuscentaId((prev) => (prev === id ? null : id));
-    setSelectedCellId(null);
-  }, []);
-
-  const handleCellSelect = useCallback((id) => {
-    setSelectedCellId((prev) => (prev === id ? null : id));
-  }, []);
-
   const activeZone = tree[activeZoneIndex];
+
+  // Reset on zone change
+  useEffect(() => {
+    setSelectedL2Id(null);
+    setSelectedL3Id(null);
+    setSelectedL4Id(null);
+    setSelectedL5Id(null);
+  }, [activeZoneIndex]);
+
+  // Auto-scroll rows into view when they appear
+  useEffect(() => {
+    if (selectedL2Id) {
+      setTimeout(() => {
+        l3Ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 220);
+    }
+  }, [selectedL2Id]);
+
+  useEffect(() => {
+    if (selectedL3Id) {
+      setTimeout(() => {
+        l4Ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 220);
+    }
+  }, [selectedL3Id]);
+
+  useEffect(() => {
+    if (selectedL4Id) {
+      setTimeout(() => {
+        l5Ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 220);
+    }
+  }, [selectedL4Id]);
+
+  const handleL2Click = useCallback((id) => {
+    setSelectedL2Id(prev => prev === id ? null : id);
+    setSelectedL3Id(null);
+    setSelectedL4Id(null);
+    setSelectedL5Id(null);
+  }, []);
+
+  const handleL3Click = useCallback((id) => {
+    setSelectedL3Id(prev => prev === id ? null : id);
+    setSelectedL4Id(null);
+    setSelectedL5Id(null);
+  }, []);
+
+  const handleL4Click = useCallback((id) => {
+    setSelectedL4Id(prev => prev === id ? null : id);
+    setSelectedL5Id(null);
+  }, []);
+
+  const handleL5Click = useCallback((id) => {
+    setSelectedL5Id(prev => prev === id ? null : id);
+  }, []);
 
   // Search filtering
   const filteredMCs = useMemo(() => {
@@ -472,6 +411,40 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
       .filter(Boolean);
   }, [activeZone, searchTerm]);
 
+  // Derived selections
+  const allL2Items = useMemo(() => {
+    return filteredMCs.flatMap(mc => mc.children || []);
+  }, [filteredMCs]);
+
+  const selectedL2Node = useMemo(() => {
+    return allL2Items.find(item => item.id === selectedL2Id) || null;
+  }, [allL2Items, selectedL2Id]);
+
+  const l3Items = useMemo(() => {
+    return selectedL2Node?.children || [];
+  }, [selectedL2Node]);
+
+  const selectedL3Node = useMemo(() => {
+    return l3Items.find(item => item.id === selectedL3Id) || null;
+  }, [l3Items, selectedL3Id]);
+
+  const l4Items = useMemo(() => {
+    return selectedL3Node?.children || [];
+  }, [selectedL3Node]);
+
+  const selectedL4Node = useMemo(() => {
+    return l4Items.find(item => item.id === selectedL4Id) || null;
+  }, [l4Items, selectedL4Id]);
+
+  // Find the theme of the active L2 item's parent MC column
+  const activeMcIdx = useMemo(() => {
+    return filteredMCs.findIndex(mc => (mc.children || []).some(c => c.id === selectedL2Id));
+  }, [filteredMCs, selectedL2Id]);
+
+  const activeTheme = useMemo(() => {
+    return MC_THEMES[(activeMcIdx >= 0 ? activeMcIdx : 0) % MC_THEMES.length];
+  }, [activeMcIdx]);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
@@ -491,6 +464,76 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
     );
   }
 
+  const renderRow = (selectedNode, ref, selectedChildId, onChildClick, theme) => {
+    if (!selectedNode) return null;
+
+    const isCell = selectedNode.unit_type === "CELL";
+    const label = `${selectedNode.name} · ${isCell ? "People" : getChildLabel(selectedNode.unit_type)}`;
+
+    if (isCell) {
+      const people = getCellPeople(selectedNode);
+      return (
+        <HorzRow id={`row-people-${selectedNode.id}`} refProp={ref} label={label}>
+          {people.length === 0 ? (
+            <p className="text-[9px] text-slate-500 italic py-3 px-2">No shepherds or members in this cell yet</p>
+          ) : (
+            people.map((p, i) => (
+              <HorzCard
+                key={i}
+                person={p}
+                title={p.name}
+                subtitle={p.isShepherd ? (p.displayRole || "Shepherd") : "Member"}
+                noClick
+                theme={theme}
+                isSelected={false}
+              />
+            ))
+          )}
+        </HorzRow>
+      );
+    }
+
+    const children = selectedNode.children || [];
+    return (
+      <HorzRow id={`row-children-${selectedNode.id}`} refProp={ref} label={label}>
+        {children.length === 0 ? (
+          <p className="text-[9px] text-slate-500 italic py-3 px-2">
+            No {getChildLabel(selectedNode.unit_type).toLowerCase()} yet
+          </p>
+        ) : (
+          children.map((child) => {
+            const isSel = selectedChildId === child.id;
+            const isChildCell = child.unit_type === "CELL";
+            const leader = isChildCell
+              ? getPrimaryCellShepherd(child)
+              : child.leaders?.[0];
+            const childCount = isChildCell ? 0 : (child.children?.length || 0);
+            const memCount = isChildCell
+              ? ((child.members?.length || 0) + (child.leaders?.length || 0))
+              : countDescendantMembers(child);
+
+            const countText = isChildCell
+              ? `${memCount} people`
+              : `${childCount} ${getChildLabel(child.unit_type).toLowerCase()}`;
+
+            return (
+              <HorzCard
+                key={child.id}
+                person={leader}
+                title={isChildCell ? child.name : (leader?.name || "No Leader")}
+                subtitle={isChildCell ? (leader?.name || "No Shepherd") : child.name}
+                count={countText}
+                isSelected={isSel}
+                onClick={() => onChildClick(child.id)}
+                theme={theme}
+              />
+            );
+          })
+        )}
+      </HorzRow>
+    );
+  };
+
   return (
     <div className="space-y-6 pb-12">
       {/* Zone Selector Tabs */}
@@ -501,8 +544,6 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
               key={zone.id}
               onClick={() => {
                 setActiveZoneIndex(idx);
-                setSelectedBuscentaId(null);
-                setSelectedCellId(null);
               }}
               className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 ${
                 activeZoneIndex === idx
@@ -516,331 +557,348 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
         </div>
       )}
 
-      {/* ── Hierarchy Tree Container (Church + MCs) ── 
-          Wrapped in a flex-col to eliminate the space-y-6 gap from parent */}
+      {/* ── Hierarchy Tree Container ── */}
       <div className="flex flex-col w-full">
-        {/* ── Church / Church Head card ── */}
+        {/* ── Active Zone Head Card ── */}
         {activeZone && (
-        <div className="flex flex-col items-center">
-          {(() => {
-            // For CELL zones: show the actual Cell Shepherd on the card
-            const zoneHead = activeZone.unit_type === 'CELL'
-              ? (activeZone.leaders?.find(l => l.role?.toLowerCase() === 'cell shepherd') || activeZone.leaders?.[0])
-              : activeZone.leaders?.[0];
-            return (
-              <motion.div
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center gap-5 px-6 py-5 bg-gradient-to-r from-slate-900 to-slate-800 border border-white/10 rounded-3xl shadow-2xl w-full max-w-sm hover:border-white/20 transition-all duration-300"
-              >
-                <Avatar
-                  person={zoneHead}
-                  size="xl"
-                  accent="border-church-blue-500/40"
-                />
-                <div className="min-w-0">
-                  <h3 className="text-base font-black text-white leading-tight uppercase tracking-tight">
-                    {zoneHead?.name || "Unassigned"}
-                  </h3>
-                  <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-1.5">
-                    {activeZone.unit_type === 'CELL'
-                      ? (zoneHead?.role?.toLowerCase() === 'cell shepherd' ? 'Cell Shepherd' : (zoneHead?.role || getRoleLabel(activeZone.unit_type)))
-                      : (zoneHead?.role || getRoleLabel(activeZone.unit_type))}
-                  </p>
+          <div className="flex flex-col items-center">
+            {(() => {
+              const zoneHead = activeZone.unit_type === 'CELL'
+                ? (activeZone.leaders?.find(l => l.role?.toLowerCase() === 'cell shepherd') || activeZone.leaders?.[0])
+                : activeZone.leaders?.[0];
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex items-center gap-5 px-6 py-5 bg-gradient-to-r from-slate-900 to-slate-800 border border-white/10 rounded-3xl shadow-2xl w-full max-w-sm hover:border-white/20 transition-all duration-300"
+                >
+                  <Avatar
+                    person={zoneHead}
+                    size="xl"
+                    accent="border-church-blue-500/40"
+                  />
+                  <div className="min-w-0">
+                    <h3 className="text-base font-black text-white leading-tight uppercase tracking-tight">
+                      {zoneHead?.name || "Unassigned"}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mt-1.5">
+                      {activeZone.unit_type === 'CELL'
+                        ? (zoneHead?.role?.toLowerCase() === 'cell shepherd' ? 'Cell Shepherd' : (zoneHead?.role || getRoleLabel(activeZone.unit_type)))
+                        : (zoneHead?.role || getRoleLabel(activeZone.unit_type))}
+                    </p>
+                  </div>
+                </motion.div>
+              );
+            })()}
+
+            {filteredMCs.length > 0 && (
+              <div className="w-0.5 h-6 bg-slate-700/60 mt-1" />
+            )}
+
+            {/* ── CELL-level zone view ── */}
+            {activeZone.unit_type === "CELL" && (() => {
+              const cellPeople = getCellPeople(activeZone);
+              const shepherds = cellPeople.filter(p => p.isShepherd);
+              const members = cellPeople.filter(p => !p.isShepherd);
+              const totalCount = shepherds.length + members.length;
+
+              return (
+                <div className="w-full max-w-sm space-y-3 mt-3">
+                  {totalCount === 0 ? (
+                    <p className="text-[9px] text-slate-600 italic text-center py-4">
+                      No shepherds or members in this cell yet
+                    </p>
+                  ) : (
+                    <>
+                      {shepherds.length > 0 && (
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-violet-400/70 mb-1.5 px-1">
+                            Shepherds
+                          </p>
+                          <div className="space-y-1.5">
+                            {shepherds.map((p, i) => (
+                              <div
+                                key={`shep-${i}`}
+                                className="flex items-center gap-3 bg-violet-950/10 border border-violet-500/20 rounded-2xl p-3"
+                              >
+                                <Avatar person={p} size="sm" accent="border-violet-500/30" />
+                                <span className="text-[11px] text-violet-300 font-bold truncate">
+                                  {p.name}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {members.length > 0 && (
+                        <div>
+                          <p className="text-[8px] font-black uppercase tracking-widest text-slate-500/70 mb-1.5 px-1">
+                            Members
+                          </p>
+                          <div className="space-y-1.5">
+                            {members.map((m, i) => (
+                              <div
+                                key={`mem-${i}`}
+                                className="flex items-center gap-3 bg-slate-900/50 rounded-2xl p-3 border border-white/5"
+                              >
+                                <Avatar person={m} size="sm" accent="border-white/10" />
+                                <span className="text-[11px] text-slate-300 font-bold truncate">
+                                  {m.name}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              </motion.div>
-            );
-          })()}
+              );
+            })()}
+          </div>
+        )}
 
-          {filteredMCs.length > 0 && (
-            <div className="w-0.5 h-6 bg-slate-700/60 mt-1" />
-          )}
+        {/* ── Columns (L1 columns, L2 items inside them) ── */}
+        {filteredMCs.length > 0 && (
+          <div className="w-full overflow-x-auto -mx-2 px-2 no-scrollbar">
+            <div
+              className="flex gap-0 w-max mx-auto"
+              style={{ scrollSnapType: "x mandatory" }}
+            >
+              {filteredMCs.map((mc, idx) => {
+                const theme = MC_THEMES[idx % MC_THEMES.length];
+                const mcLeader = mc.unit_type === 'CELL'
+                  ? mc.leaders?.find(l => l.role?.toLowerCase() === 'cell shepherd') || null
+                  : mc.leaders?.[0];
 
-          {/* ── CELL-level zone: show shepherds THEN members below the head card ── */}
-          {activeZone.unit_type === "CELL" && (() => {
-            const cellPeople = getCellPeople(activeZone);
-            const shepherds = cellPeople.filter(p => p.isShepherd);
-            const members = cellPeople.filter(p => !p.isShepherd);
-            const totalCount = shepherds.length + members.length;
-
-            return (
-              <div className="w-full max-w-sm space-y-3 mt-3">
-                {totalCount === 0 ? (
-                  <p className="text-[9px] text-slate-600 italic text-center py-4">
-                    No shepherds or members in this cell yet
-                  </p>
-                ) : (
-                  <>
-                    {/* Shepherds first — violet */}
-                    {shepherds.length > 0 && (
-                      <div>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-violet-400/70 mb-1.5 px-1">
-                          Shepherds
-                        </p>
-                        <div className="space-y-1.5">
-                          {shepherds.map((p, i) => (
-                            <div
-                              key={`shep-${i}`}
-                              className="flex items-center gap-3 bg-violet-950/10 border border-violet-500/20 rounded-2xl p-3"
-                            >
-                              <Avatar person={p} size="sm" accent="border-violet-500/30" />
-                              <span className="text-[11px] text-violet-300 font-bold truncate">
-                                {p.name}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Members after */}
-                    {members.length > 0 && (
-                      <div>
-                        <p className="text-[8px] font-black uppercase tracking-widest text-slate-500/70 mb-1.5 px-1">
-                          Members
-                        </p>
-                        <div className="space-y-1.5">
-                          {members.map((m, i) => (
-                            <div
-                              key={`mem-${i}`}
-                              className="flex items-center gap-3 bg-slate-900/50 rounded-2xl p-3 border border-white/5"
-                            >
-                              <Avatar person={m} size="sm" accent="border-white/10" />
-                              <span className="text-[11px] text-slate-300 font-bold truncate">
-                                {m.name}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            );
-          })()}
-        </div>
-      )}
-
-
-      {/* ── MC Columns ──
-          Fix 1: RESTORED horizontal scroll. On landscape the phone shows more
-          columns; snap scrolling keeps the UX smooth. ── */}
-      {filteredMCs.length > 0 && (
-        <div
-          className="w-full overflow-x-auto -mx-2 px-2 no-scrollbar"
-        >
-          <div
-            className="flex gap-0 w-max mx-auto"
-            style={{ scrollSnapType: "x mandatory" }}
-          >
-            {filteredMCs.map((mc, idx) => {
-              const theme = MC_THEMES[idx % MC_THEMES.length];
-              // For CELL: only use the actual Cell Shepherd (exact role match) — no fallback to leaders[0]
-              const mcLeader = mc.unit_type === 'CELL'
-                ? mc.leaders?.find(l => l.role?.toLowerCase() === 'cell shepherd') || null
-                : mc.leaders?.[0];
-
-              // For CELL: count total people (all leaders + all members)
-              const buscentaCount =
-                mc.unit_type === "CELL"
+                const childCount = mc.unit_type === "CELL"
                   ? (mc.members?.length || 0) + (mc.leaders?.length || 0)
                   : (mc.children?.length || 0);
 
-              // Determine roundness for the column lanes to form a unified block
-              const isFirst = idx === 0;
-              const isLast = idx === filteredMCs.length - 1;
-              const roundedClass = isFirst && isLast 
-                ? "rounded-3xl" 
-                : isFirst 
-                ? "rounded-l-3xl" 
-                : isLast 
-                ? "rounded-r-3xl" 
-                : "";
+                const isFirst = idx === 0;
+                const isLast = idx === filteredMCs.length - 1;
+                const roundedClass = isFirst && isLast 
+                  ? "rounded-3xl" 
+                  : isFirst 
+                  ? "rounded-l-3xl" 
+                  : isLast 
+                  ? "rounded-r-3xl" 
+                  : "";
 
-              return (
-                <div
-                  key={mc.id}
-                  className="flex flex-col items-center shrink-0"
-                  style={{ width: 220, scrollSnapAlign: "center" }}
-                >
-                  {/* Connector: horizontal bar across all columns + vertical drop into each */}
-                  <div className="w-full flex flex-col items-center">
-                    {/* Horizontal bar — uses extensions to span half or full gap */}
-                    <div className="w-full h-0.5 relative">
-                      {/* Left extension for non-first columns */}
-                      {idx > 0 && (
-                        <div className="absolute right-1/2 top-0 h-0.5 bg-slate-700/60" style={{ width: '50%' }} />
-                      )}
-                      {/* Right extension for non-last columns */}
-                      {idx < filteredMCs.length - 1 && (
-                        <div className="absolute left-1/2 top-0 h-0.5 bg-slate-700/60" style={{ width: '50%' }} />
-                      )}
+                return (
+                  <div
+                    key={mc.id}
+                    className="flex flex-col items-center shrink-0"
+                    style={{ width: 220, scrollSnapAlign: "center" }}
+                  >
+                    {/* Connector lines */}
+                    <div className="w-full flex flex-col items-center">
+                      <div className="w-full h-0.5 relative">
+                        {idx > 0 && (
+                          <div className="absolute right-1/2 top-0 h-0.5 bg-slate-700/60" style={{ width: '50%' }} />
+                        )}
+                        {idx < filteredMCs.length - 1 && (
+                          <div className="absolute left-1/2 top-0 h-0.5 bg-slate-700/60" style={{ width: '50%' }} />
+                        )}
+                      </div>
+                      <div className="w-0.5 h-5 bg-slate-700/60" />
                     </div>
-                    {/* Vertical drop line from horizontal bar into MC card */}
-                    <div className="w-0.5 h-5 bg-slate-700/60" />
-                  </div>
 
-                  {/* ── MC Photo Card ── */}
-                  <div className="w-full px-1.5 shrink-0 relative z-10">
-                    <div className="w-full rounded-2xl overflow-hidden border border-white/5 shadow-xl bg-slate-950/80 hover:scale-[1.01] transition-all duration-300">
-                      {/* Photo */}
-                      <div className="w-full h-40 bg-slate-950 overflow-hidden">
-                        {mcLeader?.photo ? (
-                          <img
-                            src={mcLeader.photo}
-                            alt={mcLeader.name}
-                            className="w-full h-full object-cover"
-                            style={{ objectPosition: "center 20%" }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <span className="text-6xl font-black text-slate-700">
-                              {mcLeader?.name?.charAt(0).toUpperCase() || "?"}
+                    {/* MC Photo Card */}
+                    <div className="w-full px-1.5 shrink-0 relative z-10">
+                      <div className="w-full rounded-2xl overflow-hidden border border-white/5 shadow-xl bg-slate-950/80 hover:scale-[1.01] transition-all duration-300">
+                        <div className="w-full h-40 bg-slate-950 overflow-hidden">
+                          {mcLeader?.photo ? (
+                            <img
+                              src={mcLeader.photo}
+                              alt={mcLeader.name}
+                              className="w-full h-full object-cover"
+                              style={{ objectPosition: "center 20%" }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="text-6xl font-black text-slate-700">
+                                {mcLeader?.name?.charAt(0).toUpperCase() || "?"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <div className={`px-3 py-2.5 ${theme.namePlateBg}`}>
+                          <span className={`inline-block mb-1 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider bg-white/5 border border-white/10 rounded ${theme.textColor}`}>
+                            {mc.unit_type === 'CELL' ? 'CELL SHEPHERD' : (mcLeader?.role?.toUpperCase() || getRoleLabel(mc.unit_type))}
+                          </span>
+                          <h4 className="text-[11px] font-black text-white leading-tight uppercase tracking-tight truncate">
+                            {mcLeader?.name || "No Leader Assigned"}
+                          </h4>
+                          <p className={`text-[8px] ${theme.textColor} font-bold uppercase tracking-wider mt-0.5 truncate`}>
+                            {mc.name}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Column Lane Container */}
+                    <div
+                      className={`w-full flex flex-col pb-6 min-h-[380px] relative overflow-hidden ${roundedClass} border-r border-slate-800/40 last:border-r-0 z-0`}
+                      style={{ marginTop: '-165px' }}
+                    >
+                      <div className="absolute inset-0 flex flex-col pointer-events-none -z-10">
+                        <div className={`w-full h-[165px] ${theme.darkTint}`} />
+                        <div className={`w-full flex-1 ${theme.lightTint}`} />
+                      </div>
+
+                      <div className="w-full shrink-0 pointer-events-none" style={{ height: 165 }} />
+
+                      {/* Content Area */}
+                      <div className="w-full flex flex-col px-2.5 gap-3 mt-1">
+                        {mc.unit_type !== 'CELL' && (
+                          <div className="flex items-center justify-between px-1 mb-0.5">
+                            <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">
+                              {getChildLabel(mc.unit_type)}
+                            </span>
+                            <span className="text-[8px] font-black text-slate-500 bg-white/5 border border-white/5 px-1.5 py-0.5 rounded-full">
+                              {childCount}
                             </span>
                           </div>
                         )}
-                      </div>
-                      {/* Name plate: Deepest Color */}
-                      <div className={`px-3 py-2.5 ${theme.namePlateBg}`}>
-                        <span className={`inline-block mb-1 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider bg-white/5 border border-white/10 rounded ${theme.textColor}`}>
-                          {mc.unit_type === 'CELL' ? 'CELL SHEPHERD' : (mcLeader?.role?.toUpperCase() || getRoleLabel(mc.unit_type))}
-                        </span>
-                        <h4 className="text-[11px] font-black text-white leading-tight uppercase tracking-tight truncate">
-                          {mcLeader?.name || "No Leader Assigned"}
-                        </h4>
-                        <p className={`text-[8px] ${theme.textColor} font-bold uppercase tracking-wider mt-0.5 truncate`}>
-                          {mc.name}
-                        </p>
+
+                        {childCount === 0 && (
+                          <p className="text-[9px] text-slate-600 italic text-center py-4">
+                            {mc.unit_type === 'CELL'
+                              ? 'No shepherds or members in this cell yet'
+                              : `No ${getChildLabel(mc.unit_type).toLowerCase()} yet`}
+                          </p>
+                        )}
+
+                        {/* CELL-type mc: show directly */}
+                        {mc.unit_type === "CELL" && (() => {
+                          const people = getCellPeople(mc);
+                          const shepherds = people.filter(p => p.isShepherd);
+                          const members = people.filter(p => !p.isShepherd);
+                          return (
+                            <div className="space-y-3 px-1">
+                              {shepherds.length > 0 && (
+                                <div>
+                                  <p className="text-[7px] font-black uppercase tracking-widest text-violet-400/70 mb-1.5 px-0.5">
+                                    Shepherds
+                                  </p>
+                                  <div className="grid grid-cols-1 gap-1.5">
+                                    {shepherds.map((p, i) => (
+                                      <div
+                                        key={i}
+                                        className={`flex items-center gap-2 border rounded-xl p-2 ${theme.shepherdBg}`}
+                                      >
+                                        <Avatar person={p} size="sm" accent="border-white/10" />
+                                        <span className="text-[10px] font-bold truncate">{p.name}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              {members.length > 0 && (
+                                <div>
+                                  <p className="text-[7px] font-black uppercase tracking-widest text-slate-500/70 mb-1.5 px-0.5">
+                                    Members
+                                  </p>
+                                  <div className="grid grid-cols-1 gap-1.5">
+                                    {members.map((p, i) => (
+                                      <div
+                                        key={i}
+                                        className={`flex items-center gap-2 border rounded-xl p-2 ${theme.memberBg}`}
+                                      >
+                                        <Avatar person={p} size="sm" accent="border-white/10" />
+                                        <span className="text-[10px] font-bold truncate">{p.name}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Non-CELL MC: render Level 2 nodes vertically inside the column */}
+                        {mc.unit_type !== "CELL" &&
+                          (mc.children || []).map((l2) => {
+                            const isSelected = selectedL2Id === l2.id;
+                            const isL2Cell = l2.unit_type === "CELL";
+                            const l2Leader = isL2Cell
+                              ? getPrimaryCellShepherd(l2)
+                              : l2.leaders?.[0];
+                            const subUnits = isL2Cell ? 0 : (l2.children?.length || 0);
+                            const totalMem = isL2Cell
+                              ? ((l2.members?.length || 0) + (l2.leaders?.length || 0))
+                              : countDescendantMembers(l2);
+
+                            return (
+                              <button
+                                key={l2.id}
+                                onClick={() => handleL2Click(l2.id)}
+                                className={`w-full flex items-center gap-2.5 p-3 rounded-2xl text-left border transition-all duration-200 shadow-sm ${
+                                  isSelected ? theme.buscentaActiveBg : `${theme.buscentaBg} hover:brightness-110`
+                                }`}
+                              >
+                                <Avatar person={l2Leader} size="sm" accent="border-white/10" />
+                                <div className="min-w-0 flex-1">
+                                  <h5 className="text-[10px] font-black text-white leading-tight uppercase tracking-tight truncate">
+                                    {isL2Cell ? l2.name : (l2Leader?.name || "No Leader")}
+                                  </h5>
+                                  <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 truncate">
+                                    {isL2Cell ? (l2Leader?.name || "No Shepherd Assigned") : l2.name}
+                                  </p>
+                                  <div className="flex items-center gap-3 mt-1">
+                                    {!isL2Cell && (
+                                      <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
+                                        <Home size={9} className="shrink-0" />
+                                        <span className="font-black text-white">{subUnits}</span>
+                                      </span>
+                                    )}
+                                    <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
+                                      <Users size={9} className="shrink-0" />
+                                      <span className="font-black text-white">{totalMem}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                                <ChevronRight
+                                  size={10}
+                                  className={`text-slate-600 transition-transform duration-300 shrink-0 ${
+                                    isSelected ? "rotate-90 text-church-blue-400" : ""
+                                  }`}
+                                />
+                              </button>
+                            );
+                          })}
                       </div>
                     </div>
                   </div>
-
-                  {/* ── Column Lane Container ── */}
-                  <div
-                    className={`w-full flex flex-col pb-6 min-h-[380px] relative overflow-hidden ${roundedClass} border-r border-slate-800/40 last:border-r-0 z-0`}
-                    style={{ marginTop: '-165px' }}
-                  >
-                    {/* Background divided into 2 shades */}
-                    <div className="absolute inset-0 flex flex-col pointer-events-none -z-10">
-                      {/* Top part: Darker shade where the MC head details/card is (bottom half of photo + nameplate = 165px) */}
-                      <div className={`w-full h-[165px] ${theme.darkTint}`} />
-                      {/* Bottom part: Lighter shade where the buscenta and cell details are */}
-                      <div className={`w-full flex-1 ${theme.lightTint}`} />
-                    </div>
-
-                    {/* Spacer to push content area down below the overlapping photo card bottom and nameplate */}
-                    <div className="w-full shrink-0 pointer-events-none" style={{ height: 165 }} />
-
-                    {/* ── Content Area ── */}
-                    <div className="w-full flex flex-col px-2.5 gap-3 mt-1">
-                      {/* Column header — only shown for non-CELL units to avoid duplicate labels */}
-                      {mc.unit_type !== 'CELL' && (
-                        <div className="flex items-center justify-between px-1 mb-0.5">
-                          <span className="text-[8px] font-black uppercase tracking-widest text-slate-500">
-                            {getChildLabel(mc.unit_type)}
-                          </span>
-                          <span className="text-[8px] font-black text-slate-500 bg-white/5 border border-white/5 px-1.5 py-0.5 rounded-full">
-                            {buscentaCount}
-                          </span>
-                        </div>
-                      )}
-
-                      {buscentaCount === 0 && (
-                        <p className="text-[9px] text-slate-600 italic text-center py-4">
-                          {mc.unit_type === 'CELL'
-                            ? 'No shepherds or members in this cell yet'
-                            : `No ${getChildLabel(mc.unit_type).toLowerCase()} yet`}
-                        </p>
-                      )}
-
-                      {/* ── CELL-type mc: show shepherds and members directly ── */}
-                      {mc.unit_type === "CELL" && (() => {
-                        const people = getCellPeople(mc);
-                        const shepherds = people.filter(p => p.isShepherd);
-                        const members = people.filter(p => !p.isShepherd);
-                        return (
-                          <div className="space-y-3 px-1">
-                            {shepherds.length > 0 && (
-                              <div>
-                                <p className="text-[7px] font-black uppercase tracking-widest text-violet-400/70 mb-1.5 px-0.5">
-                                  Shepherds
-                                </p>
-                                <div className="grid grid-cols-1 gap-1.5">
-                                  {shepherds.map((p, i) => (
-                                    <div
-                                      key={i}
-                                      className={`flex items-center gap-2 border rounded-xl p-2 ${theme.shepherdBg}`}
-                                    >
-                                      <Avatar
-                                        person={p}
-                                        size="sm"
-                                        accent="border-white/10"
-                                      />
-                                      <span className="text-[10px] font-bold truncate">
-                                        {p.name}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            {members.length > 0 && (
-                              <div>
-                                <p className="text-[7px] font-black uppercase tracking-widest text-slate-500/70 mb-1.5 px-0.5">
-                                  Members
-                                </p>
-                                <div className="grid grid-cols-1 gap-1.5">
-                                  {members.map((p, i) => (
-                                    <div
-                                      key={i}
-                                      className={`flex items-center gap-2 border rounded-xl p-2 ${theme.memberBg}`}
-                                    >
-                                      <Avatar
-                                        person={p}
-                                        size="sm"
-                                        accent="border-white/10"
-                                      />
-                                      <span className="text-[10px] font-bold truncate">
-                                        {p.name}
-                                      </span>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })()}
-
-                      {/* ── Non-CELL mc: recursively render children with per-column accordion ── */}
-                      {mc.unit_type !== "CELL" &&
-                        (mc.children || []).map((child) => (
-                          <DrillDownNode
-                            key={child.id}
-                            unit={child}
-                            theme={theme}
-                            openId={selectedBuscentaId}
-                            onOpen={handleBuscentaSelect}
-                          />
-                        ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
-      {/* Close flex-col wrapper */}
+        )}
       </div>
+
+      {/* ── L3 Horizontal Row (Cells or People of selected L2 node) ── */}
+      <AnimatePresence>
+        {selectedL2Node && renderRow(selectedL2Node, l3Ref, selectedL3Id, handleL3Click, activeTheme)}
+      </AnimatePresence>
+
+      {/* ── L4 Horizontal Row (Cells or People of selected L3 node) ── */}
+      <AnimatePresence>
+        {selectedL3Node && renderRow(selectedL3Node, l4Ref, selectedL4Id, handleL4Click, activeTheme)}
+      </AnimatePresence>
+
+      {/* ── L5 Horizontal Row (People of selected L4 node) ── */}
+      <AnimatePresence>
+        {selectedL4Node && renderRow(selectedL4Node, l5Ref, selectedL5Id, handleL5Click, activeTheme)}
+      </AnimatePresence>
 
       {/* Empty search state */}
       {searchTerm && filteredMCs.length === 0 && (
         <div className="text-center py-16 opacity-50">
           <p className="text-slate-400 text-sm font-semibold">
-            No results for "
-            <span className="text-white">{searchTerm}</span>"
+            No results for "<span className="text-white">{searchTerm}</span>"
           </p>
         </div>
       )}
