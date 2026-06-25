@@ -110,19 +110,13 @@ async function main() {
     const data = await fetchHierarchyData();
     const tree = buildTree(data);
 
-    // Print first level and its children
-    tree.forEach(zone => {
-        console.log(`Zone: ${zone.name} (Leaders: ${zone.leaders.map(l => l.name).join(', ')})`);
-        zone.children.forEach(mc => {
-            console.log(`  MC: ${mc.name} (Leaders: ${mc.leaders.map(l => l.name).join(', ')})`);
-            mc.children.forEach(busc => {
-                console.log(`    Buscenta: ${busc.name} (Leaders: ${busc.leaders.map(l => l.name).join(', ')})`);
-                busc.children.forEach(cell => {
-                    console.log(`      Cell: ${cell.name} (Leaders: ${cell.leaders.map(l => l.name).join(', ')})`);
-                });
-            });
-        });
-    });
+    const dump = (node, indent = '') => {
+        console.log(`${indent}${node.name} (${node.unit_type}) [Leaders: ${node.leaders.map(l => l.name).join(', ')}]`);
+        (node.children || []).forEach(child => dump(child, indent + '  '));
+    };
+
+    tree.forEach(zone => dump(zone));
 }
 
 main();
+
