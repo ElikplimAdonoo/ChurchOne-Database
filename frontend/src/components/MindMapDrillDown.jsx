@@ -232,29 +232,37 @@ function getCellPeople(unit) {
 
 // ==========================================
 // DRILLDOWN NODE COMPONENT (RECURSIVE)
+// Now accordion-controlled: openId + onOpen ensure only one sibling is open.
 // ==========================================
-function DrillDownNode({ unit, theme }) {
-  const [isOpen, setIsOpen] = useState(false);
+function DrillDownNode({ unit, theme, openId, onOpen }) {
+  // Whether THIS node is the currently-open one (controlled by parent)
+  const isOpen = openId === unit.id;
+
+  // Per-level open-tracking for children of this node
+  const [childOpenId, setChildOpenId] = useState(null);
 
   const isCell = unit.unit_type === "CELL";
   const leader = isCell
     ? (unit.leaders?.find(l => l.role?.toLowerCase() === 'cell shepherd') || null)
     : unit.leaders?.[0];
-    
+
   const subUnitCount = isCell ? 0 : (unit.children?.length || 0);
   const totalMembers = isCell
     ? (unit.members?.length || 0)
     : countDescendantMembers(unit);
 
   const handleToggle = () => {
-    setIsOpen(prev => !prev);
+    // Toggle: if already open → close it; else open this one (closing the previous)
+    onOpen(isOpen ? null : unit.id);
+    // Reset child accordion whenever this node is toggled
+    setChildOpenId(null);
   };
 
   // Determine styles based on depth/type
   const bgClass = isCell
     ? (isOpen ? theme.cellActiveBg : `${theme.cellBg} hover:brightness-110`)
     : (isOpen ? theme.buscentaActiveBg : `${theme.buscentaBg} hover:brightness-110`);
-    
+
   const paddingClass = isCell ? "p-2.5 rounded-xl text-xs" : "p-3 rounded-2xl text-sm";
   const titleSize = isCell ? "text-[9px]" : "text-[10px]";
 
@@ -357,11 +365,14 @@ function DrillDownNode({ unit, theme }) {
                   No {getChildLabel(unit.unit_type).toLowerCase()} yet
                 </p>
               ) : (
+                // Each child accordion is governed by childOpenId at this level
                 (unit.children || []).map(child => (
                   <DrillDownNode
                     key={child.id}
                     unit={child}
                     theme={theme}
+                    openId={childOpenId}
+                    onOpen={setChildOpenId}
                   />
                 ))
               ))}
@@ -802,13 +813,15 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                         );
                       })()}
 
-                      {/* ── Non-CELL mc: recursively render children ── */}
+                      {/* ── Non-CELL mc: recursively render children with per-column accordion ── */}
                       {mc.unit_type !== "CELL" &&
                         (mc.children || []).map((child) => (
                           <DrillDownNode
                             key={child.id}
                             unit={child}
                             theme={theme}
+                            openId={selectedBuscentaId}
+                            onOpen={handleBuscentaSelect}
                           />
                         ))}
                     </div>
