@@ -153,17 +153,6 @@ function countDescendantMembers(node) {
   return direct + fromChildren;
 }
 
-// Custom hook to detect window size for responsive layouts
-function useWindowSize() {
-  const [width, setWidth] = useState(window.innerWidth);
-  useEffect(() => {
-    const handleResize = () => setWidth(window.innerWidth);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-  return width;
-}
-
 function getRoleLabel(unitType) {
   switch (unitType) {
     case "BRANCH":   return "ALPHA BRANCH PASTOR";
@@ -220,6 +209,209 @@ function getCellPeople(unit) {
 }
 
 // ==========================================
+// RECURSIVE LAYOUT COMPONENTS FOR FLOATING OVERLAYS
+// ==========================================
+
+function ColumnItem({ node, theme, level, selectedIds, onClickHandlers, refs }) {
+  const isSelected = selectedIds[level] === node.id;
+  const isCell = node.unit_type === "CELL";
+  
+  const leader = isCell ? getPrimaryCellShepherd(node) : node.leaders?.[0];
+  const subUnits = isCell ? 0 : (node.children?.length || 0);
+  const totalMem = isCell ? ((node.members?.length || 0) + (node.leaders?.length || 0)) : countDescendantMembers(node);
+
+  const cardActiveBg = theme.buscentaActiveBg;
+  const cardBg = theme.buscentaBg;
+
+  const handleCardClick = (e) => {
+    e.stopPropagation();
+    onClickHandlers[level](node.id);
+  };
+
+  return (
+    <div className="relative w-full shrink-0">
+      <button
+        onClick={handleCardClick}
+        className={`w-full flex items-center gap-2.5 p-3 rounded-2xl text-left border transition-all duration-200 shadow-sm ${
+          isSelected ? cardActiveBg : `${cardBg} hover:brightness-110`
+        }`}
+      >
+        <Avatar person={leader} size="sm" accent="border-white/10" />
+        <div className="min-w-0 flex-1">
+          <h5 className="text-[10px] font-black text-white leading-tight uppercase tracking-tight truncate">
+            {isCell ? node.name : (leader?.name || "No Leader")}
+          </h5>
+          <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 truncate">
+            {isCell ? (leader?.name || "No Shepherd Assigned") : node.name}
+          </p>
+          <div className="flex items-center gap-3 mt-1">
+            {!isCell && (
+              <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
+                <Home size={9} className="shrink-0" />
+                <span className="font-black text-white">{subUnits}</span>
+              </span>
+            )}
+            <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
+              <Users size={9} className="shrink-0" />
+              <span className="font-black text-white">{totalMem}</span>
+            </span>
+          </div>
+        </div>
+        <ChevronRight
+          size={10}
+          className={`text-slate-600 transition-transform duration-300 shrink-0 ${
+            isSelected ? "rotate-90 text-church-blue-400" : ""
+          }`}
+        />
+      </button>
+
+      {/* Render expansion panel directly next to this item, absolute! */}
+      <AnimatePresence>
+        {isSelected && (
+          <ExpansionPanel
+            parentNode={node}
+            theme={theme}
+            level={level + 1}
+            selectedIds={selectedIds}
+            onClickHandlers={onClickHandlers}
+            refs={refs}
+          />
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function ExpansionPanel({ parentNode, theme, level, selectedIds, onClickHandlers, refs }) {
+  const ref = refs[level];
+  const isCell = parentNode.unit_type === "CELL";
+  const label = parentNode.name;
+  const subtitle = isCell ? "People" : getChildLabel(parentNode.unit_type);
+
+  if (isCell) {
+    const people = getCellPeople(parentNode);
+    const shepherds = people.filter(p => p.isShepherd);
+    const members = people.filter(p => !p.isShepherd);
+
+    return (
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: -8 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="absolute left-[228px] top-0 w-[220px] shrink-0 bg-slate-900 border border-white/10 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 z-30"
+      >
+        {/* Caret pointing to parent card */}
+        <div className="absolute -left-2 top-6 w-4 h-4 bg-slate-900 border-l border-b border-white/10 rotate-45 z-10" />
+
+        {/* Header */}
+        <div className="relative z-20">
+          <span className={`text-[7.5px] font-black uppercase tracking-widest ${theme.textColor}`}>
+            {subtitle}
+          </span>
+          <h4 className="text-[11px] font-black text-white leading-tight uppercase tracking-tight truncate mt-0.5">
+            {label}
+          </h4>
+        </div>
+
+        <div className="relative z-20 overflow-y-auto no-scrollbar space-y-3 pr-0.5 max-h-[340px]">
+          {people.length === 0 ? (
+            <p className="text-[9px] text-slate-500 italic py-4 text-center">No one in this cell yet</p>
+          ) : (
+            <>
+              {shepherds.length > 0 && (
+                <div>
+                  <p className={`text-[7px] font-black uppercase tracking-wider ${theme.textColor} mb-1.5`}>
+                    Shepherds
+                  </p>
+                  <div className="space-y-1.5">
+                    {shepherds.map((p, i) => (
+                      <div
+                        key={`shep-${i}`}
+                        className={`flex items-center gap-2 border rounded-xl p-2 ${theme.shepherdBg}`}
+                      >
+                        <Avatar person={p} size="sm" accent="border-white/10" />
+                        <span className="text-[10px] font-bold text-white truncate">{p.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {members.length > 0 && (
+                <div>
+                  <p className="text-[7px] font-black uppercase tracking-wider text-slate-500 mb-1.5">
+                    Members
+                  </p>
+                  <div className="space-y-1.5">
+                    {members.map((m, i) => (
+                      <div
+                        key={`mem-${i}`}
+                        className={`flex items-center gap-2 border rounded-xl p-2 ${theme.memberBg}`}
+                      >
+                        <Avatar person={m} size="sm" accent="border-white/10" />
+                        <span className="text-[10px] font-bold text-slate-200 truncate">{m.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </motion.div>
+    );
+  }
+
+  const children = parentNode.children || [];
+  return (
+    <motion.div
+      ref={ref}
+      initial={{ opacity: 0, x: -12 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -8 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className="absolute left-[228px] top-0 w-[220px] shrink-0 bg-slate-900 border border-white/10 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 z-30"
+    >
+      {/* Caret pointing to parent card */}
+      <div className="absolute -left-2 top-6 w-4 h-4 bg-slate-900 border-l border-b border-white/10 rotate-45 z-10" />
+
+      {/* Header */}
+      <div className="relative z-20">
+        <span className={`text-[7.5px] font-black uppercase tracking-widest ${theme.textColor}`}>
+          {subtitle}
+        </span>
+        <h4 className="text-[11px] font-black text-white leading-tight uppercase tracking-tight truncate mt-0.5">
+          {label}
+        </h4>
+      </div>
+
+      {/* Content list */}
+      <div className="relative z-20 overflow-y-auto no-scrollbar space-y-2 pr-0.5 max-h-[340px]">
+        {children.length === 0 ? (
+          <p className="text-[9px] text-slate-500 italic py-4 text-center">
+            No {getChildLabel(parentNode.unit_type).toLowerCase()} yet
+          </p>
+        ) : (
+          children.map((child) => (
+            <ColumnItem
+              key={child.id}
+              node={child}
+              theme={theme}
+              level={level}
+              selectedIds={selectedIds}
+              onClickHandlers={onClickHandlers}
+              refs={refs}
+            />
+          ))
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ==========================================
 // MAIN COMPONENT
 // ==========================================
 export default function MindMapDrillDown({ searchTerm = "" }) {
@@ -239,9 +431,6 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
   const l4Ref = useRef(null);
   const l5Ref = useRef(null);
   const scrollContainerRef = useRef(null);
-
-  const windowWidth = useWindowSize();
-  const isMobile = windowWidth < 640;
 
   useEffect(() => {
     async function load() {
@@ -366,38 +555,17 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
   }, [activeZone, searchTerm]);
 
   // Derived selections
-  const allL2Items = useMemo(() => {
-    return filteredMCs.flatMap(mc => mc.children || []);
-  }, [filteredMCs]);
+  const selectedIds = useMemo(() => {
+    return { 2: selectedL2Id, 3: selectedL3Id, 4: selectedL4Id, 5: selectedL5Id };
+  }, [selectedL2Id, selectedL3Id, selectedL4Id, selectedL5Id]);
 
-  const selectedL2Node = useMemo(() => {
-    return allL2Items.find(item => item.id === selectedL2Id) || null;
-  }, [allL2Items, selectedL2Id]);
+  const onClickHandlers = useMemo(() => {
+    return { 2: handleL2Click, 3: handleL3Click, 4: handleL4Click, 5: handleL5Click };
+  }, [handleL2Click, handleL3Click, handleL4Click, handleL5Click]);
 
-  const l3Items = useMemo(() => {
-    return selectedL2Node?.children || [];
-  }, [selectedL2Node]);
-
-  const selectedL3Node = useMemo(() => {
-    return l3Items.find(item => item.id === selectedL3Id) || null;
-  }, [l3Items, selectedL3Id]);
-
-  const l4Items = useMemo(() => {
-    return selectedL3Node?.children || [];
-  }, [selectedL3Node]);
-
-  const selectedL4Node = useMemo(() => {
-    return l4Items.find(item => item.id === selectedL4Id) || null;
-  }, [l4Items, selectedL4Id]);
-
-  // Find the theme of the active L2 item's parent MC column
-  const activeMcIdx = useMemo(() => {
-    return filteredMCs.findIndex(mc => (mc.children || []).some(c => c.id === selectedL2Id));
-  }, [filteredMCs, selectedL2Id]);
-
-  const activeTheme = useMemo(() => {
-    return MC_THEMES[(activeMcIdx >= 0 ? activeMcIdx : 0) % MC_THEMES.length];
-  }, [activeMcIdx]);
+  const refs = useMemo(() => {
+    return { 3: l3Ref, 4: l4Ref, 5: l5Ref };
+  }, []);
 
   if (loading) {
     return (
@@ -417,169 +585,6 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
       </div>
     );
   }
-
-  // Renders a premium column-shaped panel for sub-units
-  const renderColumnPanel = (selectedNode, ref, selectedChildId, onChildClick, theme) => {
-    if (!selectedNode) return null;
-
-    const isCell = selectedNode.unit_type === "CELL";
-    const label = `${selectedNode.name}`;
-    const subtitle = isCell ? "People" : getChildLabel(selectedNode.unit_type);
-
-    if (isCell) {
-      const people = getCellPeople(selectedNode);
-      const shepherds = people.filter(p => p.isShepherd);
-      const members = people.filter(p => !p.isShepherd);
-
-      return (
-        <motion.div
-          ref={ref}
-          initial={{ opacity: 0, x: -15 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -10 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
-          className="w-[220px] shrink-0 bg-slate-900 border border-white/10 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 self-start"
-        >
-          {/* Header */}
-          <div>
-            <span className={`text-[7.5px] font-black uppercase tracking-widest ${theme.textColor}`}>
-              {subtitle}
-            </span>
-            <h4 className="text-[11px] font-black text-white leading-tight uppercase tracking-tight truncate mt-0.5">
-              {label}
-            </h4>
-          </div>
-
-          <div className="flex-1 overflow-y-auto no-scrollbar space-y-3 pr-0.5 max-h-[340px]">
-            {people.length === 0 ? (
-              <p className="text-[9px] text-slate-500 italic py-4 text-center">No one in this cell yet</p>
-            ) : (
-              <>
-                {shepherds.length > 0 && (
-                  <div>
-                    <p className={`text-[7px] font-black uppercase tracking-wider ${theme.textColor} mb-1.5`}>
-                      Shepherds
-                    </p>
-                    <div className="space-y-1.5">
-                      {shepherds.map((p, i) => (
-                        <div
-                          key={`shep-${i}`}
-                          className={`flex items-center gap-2 border rounded-xl p-2 ${theme.shepherdBg}`}
-                        >
-                          <Avatar person={p} size="sm" accent="border-white/10" />
-                          <span className="text-[10px] font-bold text-white truncate">{p.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {members.length > 0 && (
-                  <div>
-                    <p className="text-[7px] font-black uppercase tracking-wider text-slate-500 mb-1.5">
-                      Members
-                    </p>
-                    <div className="space-y-1.5">
-                      {members.map((m, i) => (
-                        <div
-                          key={`mem-${i}`}
-                          className={`flex items-center gap-2 border rounded-xl p-2 ${theme.memberBg}`}
-                        >
-                          <Avatar person={m} size="sm" accent="border-white/10" />
-                          <span className="text-[10px] font-bold text-slate-200 truncate">{m.name}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </motion.div>
-      );
-    }
-
-    const children = selectedNode.children || [];
-    return (
-      <motion.div
-        ref={ref}
-        initial={{ opacity: 0, x: -15 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -10 }}
-        transition={{ duration: 0.25, ease: "easeOut" }}
-        className="w-[220px] shrink-0 bg-slate-900 border border-white/10 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 self-start"
-      >
-        {/* Header */}
-        <div>
-          <span className={`text-[7.5px] font-black uppercase tracking-widest ${theme.textColor}`}>
-            {subtitle}
-          </span>
-          <h4 className="text-[11px] font-black text-white leading-tight uppercase tracking-tight truncate mt-0.5">
-            {label}
-          </h4>
-        </div>
-
-        {/* Content list */}
-        <div className="flex-1 overflow-y-auto no-scrollbar space-y-2 pr-0.5 max-h-[340px]">
-          {children.length === 0 ? (
-            <p className="text-[9px] text-slate-500 italic py-4 text-center">
-              No {getChildLabel(selectedNode.unit_type).toLowerCase()} yet
-            </p>
-          ) : (
-            children.map((child) => {
-              const isSel = selectedChildId === child.id;
-              const isChildCell = child.unit_type === "CELL";
-              const leader = isChildCell
-                ? getPrimaryCellShepherd(child)
-                : child.leaders?.[0];
-              const subUnits = isChildCell ? 0 : (child.children?.length || 0);
-              const totalMem = isChildCell
-                ? ((child.members?.length || 0) + (child.leaders?.length || 0))
-                : countDescendantMembers(child);
-
-              return (
-                <button
-                  key={child.id}
-                  onClick={() => onChildClick(child.id)}
-                  className={`w-full flex items-center gap-2.5 p-2.5 rounded-2xl text-left border transition-all duration-200 shadow-sm ${
-                    isSel ? theme.buscentaActiveBg : `${theme.buscentaBg} hover:brightness-110`
-                  }`}
-                >
-                  <Avatar person={leader} size="sm" accent="border-white/10" />
-                  <div className="min-w-0 flex-1">
-                    <h5 className="text-[9px] font-black text-white leading-tight uppercase tracking-tight truncate">
-                      {isChildCell ? child.name : (leader?.name || "No Leader")}
-                    </h5>
-                    <p className="text-[7.5px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 truncate">
-                      {isChildCell ? (leader?.name || "No Shepherd") : child.name}
-                    </p>
-                    <div className="flex items-center gap-2.5 mt-1">
-                      {!isChildCell && (
-                        <span className="text-[7px] text-slate-400 flex items-center gap-0.5 font-bold">
-                          <Home size={8} className="shrink-0" />
-                          <span className="font-black text-white">{subUnits}</span>
-                        </span>
-                      )}
-                      <span className="text-[7px] text-slate-400 flex items-center gap-0.5 font-bold">
-                        <Users size={8} className="shrink-0" />
-                        <span className="font-black text-white">{totalMem}</span>
-                      </span>
-                    </div>
-                  </div>
-                  <ChevronRight
-                    size={8}
-                    className={`text-slate-600 transition-transform duration-300 shrink-0 ${
-                      isSel ? "rotate-90 text-church-blue-400" : ""
-                    }`}
-                  />
-                </button>
-              );
-            })
-          )}
-        </div>
-      </motion.div>
-    );
-  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -706,15 +711,14 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
           </div>
         )}
 
-        {/* ── Columns (L1 columns, L2 items, and inline L3-L5 expansion panels) ── */}
+        {/* ── Columns (L1 columns with L2 items pre-expanded, and inline L3-L5 absolute expansion overlay panels) ── */}
         {filteredMCs.length > 0 && (
           <div
             ref={scrollContainerRef}
             className="w-full overflow-x-auto -mx-2 px-2 no-scrollbar"
           >
             <div
-              className="flex gap-0 w-max mx-auto"
-              style={{ scrollSnapType: isMobile ? "x mandatory" : "none" }}
+              className="flex gap-0 w-max mx-auto relative pb-[100px]"
             >
               {filteredMCs.map((mc, idx) => {
                 const theme = MC_THEMES[idx % MC_THEMES.length];
@@ -735,8 +739,6 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                   : isLast 
                   ? "rounded-r-3xl" 
                   : "";
-
-                const hasSelectedL2 = (mc.children || []).some(c => c.id === selectedL2Id);
 
                 return (
                   <div key={mc.id} className="flex items-start shrink-0">
@@ -793,7 +795,7 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
 
                       {/* Column Lane Container */}
                       <div
-                        className={`w-full flex flex-col pb-6 min-h-[380px] relative overflow-hidden ${roundedClass} border-r border-slate-800/40 last:border-r-0 z-0`}
+                        className={`w-full flex flex-col pb-6 min-h-[500px] relative ${roundedClass} border-r border-slate-800/40 last:border-r-0 z-0`}
                         style={{ marginTop: '-165px' }}
                       >
                         <div className="absolute inset-0 flex flex-col pointer-events-none -z-10">
@@ -819,7 +821,7 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                           {childCount === 0 && (
                             <p className="text-[9px] text-slate-600 italic text-center py-4">
                               {mc.unit_type === 'CELL'
-                               ? 'No shepherds or members in this cell yet'
+                                ? 'No shepherds or members in this cell yet'
                                 : `No ${getChildLabel(mc.unit_type).toLowerCase()} yet`}
                             </p>
                           )}
@@ -873,86 +875,26 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
 
                           {/* Non-CELL MC: render Level 2 nodes vertically inside the column */}
                           {mc.unit_type !== "CELL" &&
-                            (mc.children || []).map((l2) => {
-                              const isSelected = selectedL2Id === l2.id;
-                              const isL2Cell = l2.unit_type === "CELL";
-                              const l2Leader = isL2Cell
-                                ? getPrimaryCellShepherd(l2)
-                                : l2.leaders?.[0];
-                              const subUnits = isL2Cell ? 0 : (l2.children?.length || 0);
-                              const totalMem = isL2Cell
-                                ? ((l2.members?.length || 0) + (l2.leaders?.length || 0))
-                                : countDescendantMembers(l2);
-
-                              return (
-                                <button
-                                  key={l2.id}
-                                  onClick={() => handleL2Click(l2.id)}
-                                  className={`w-full flex items-center gap-2.5 p-3 rounded-2xl text-left border transition-all duration-200 shadow-sm ${
-                                    isSelected ? theme.buscentaActiveBg : `${theme.buscentaBg} hover:brightness-110`
-                                  }`}
-                                >
-                                  <Avatar person={l2Leader} size="sm" accent="border-white/10" />
-                                  <div className="min-w-0 flex-1">
-                                    <h5 className="text-[10px] font-black text-white leading-tight uppercase tracking-tight truncate">
-                                      {isL2Cell ? l2.name : (l2Leader?.name || "No Leader")}
-                                    </h5>
-                                    <p className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-0.5 truncate">
-                                      {isL2Cell ? (l2Leader?.name || "No Shepherd Assigned") : l2.name}
-                                    </p>
-                                    <div className="flex items-center gap-3 mt-1">
-                                      {!isL2Cell && (
-                                        <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
-                                          <Home size={9} className="shrink-0" />
-                                          <span className="font-black text-white">{subUnits}</span>
-                                        </span>
-                                      )}
-                                      <span className="text-[8px] text-slate-400 flex items-center gap-1 font-bold">
-                                        <Users size={9} className="shrink-0" />
-                                        <span className="font-black text-white">{totalMem}</span>
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <ChevronRight
-                                    size={10}
-                                    className={`text-slate-600 transition-transform duration-300 shrink-0 ${
-                                      isSelected ? "rotate-90 text-church-blue-400" : ""
-                                    }`}
-                                  />
-                                </button>
-                              );
-                            })}
+                            (mc.children || []).map((l2) => (
+                              <ColumnItem
+                                key={l2.id}
+                                node={l2}
+                                theme={theme}
+                                level={2}
+                                selectedIds={selectedIds}
+                                onClickHandlers={onClickHandlers}
+                                refs={refs}
+                              />
+                            ))}
                         </div>
                       </div>
                     </div>
-
-                    {/* ── Inline Horizontal Expansion Panels (L3-L5) ── */}
-                    {hasSelectedL2 && selectedL2Node && (
-                      <div
-                        className="flex items-start gap-4 px-4 self-stretch border-r border-slate-800/20 bg-slate-950/15 transition-all duration-300"
-                        style={{ paddingTop: 195 }}
-                      >
-                        {/* L3 Panel */}
-                        {renderColumnPanel(selectedL2Node, l3Ref, selectedL3Id, handleL3Click, theme)}
-
-                        {/* L4 Panel */}
-                        {selectedL3Node && (
-                          <>
-                            {renderColumnPanel(selectedL3Node, l4Ref, selectedL4Id, handleL4Click, theme)}
-
-                            {/* L5 Panel */}
-                            {selectedL4Node && (
-                              <>
-                                {renderColumnPanel(selectedL4Node, l5Ref, selectedL5Id, handleL5Click, theme)}
-                              </>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
                   </div>
                 );
               })}
+
+              {/* Spacer at the end of the columns flex row to allow scrolling to the overlay panels */}
+              {selectedL2Id && <div className="w-[450px] shrink-0 pointer-events-none" />}
             </div>
           </div>
         )}
