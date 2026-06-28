@@ -122,8 +122,8 @@ export default function AttendanceMarking({ currentRole, overrideUnitId = null, 
   const effectiveUnitType = overrideUnitType || currentRole.unitType;
   
   const isDirectUnit = effectiveUnitId === currentRole.unitId;
-  const canMark = isDirectUnit || currentRole.unitType === 'MC';
-  const isGeneralMarkingLevel = ['CELL', 'MC'].includes(effectiveUnitType);
+  const canMark = isDirectUnit || currentRole.unitType === 'MC' || currentRole.unitType === 'BUSCENTA';
+  const isGeneralMarkingLevel = ['CELL', 'MC', 'BUSCENTA'].includes(effectiveUnitType);
 
   const computedFirstTimersCount = useMemo(() => {
     return members

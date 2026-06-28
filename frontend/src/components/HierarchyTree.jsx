@@ -191,15 +191,15 @@ function TreeNode({ node, level = 0, defaultOpen = false, expansionToggle, onIma
                                                         e.stopPropagation();
                                                         leader.photo && onImageClick && onImageClick(leader.photo, leader.name);
                                                     }}
-                                                    className={`relative w-7 h-7 rounded-full border border-violet-500/50 shadow-glow-violet overflow-hidden bg-slate-800 shrink-0 transition-transform group-hover:scale-105 ${leader.photo ? 'cursor-pointer' : ''}`}
+                                                    className={`relative w-7 h-7 rounded-full border border-emerald-500/50 shadow-glow-emerald overflow-hidden bg-slate-800 shrink-0 transition-transform group-hover:scale-105 ${leader.photo ? 'cursor-pointer' : ''}`}
                                                 >
                                                     {leader.photo ? (
                                                         <img src={leader.photo} alt={leader.name} className="w-full h-full object-cover" />
-                                                    ) : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-violet-400">{leader.name.charAt(0)}</div>}
+                                                    ) : <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-emerald-400">{leader.name.charAt(0)}</div>}
                                                 </div>
                                                 <div>
-                                                    <p className="text-[11px] md:text-xs font-bold text-slate-100 leading-tight group-hover:text-violet-400 transition-colors uppercase tracking-tighter">{leader.name}</p>
-                                                    <p className="text-[8px] md:text-[9px] text-violet-400/70 font-black uppercase tracking-widest mt-1">{leader.role}</p>
+                                                    <p className="text-[11px] md:text-xs font-bold text-slate-100 leading-tight group-hover:text-emerald-400 transition-colors uppercase tracking-tighter">{leader.name}</p>
+                                                    <p className="text-[8px] md:text-[9px] text-emerald-400/80 font-black uppercase tracking-widest mt-1">{leader.role}</p>
                                                 </div>
                                             </div>
                                         ));

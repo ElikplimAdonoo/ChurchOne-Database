@@ -26,6 +26,11 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
             return;
         }
 
+        // If BUSCENTA leader, auto-set their buscenta and show only Cell selector below.
+        if (userRole.unitType === 'BUSCENTA') {
+            setSelectedBuscenta(userRole.unitId);
+        }
+
         async function loadData() {
             try {
                 const [allUnits, managedSet] = await Promise.all([
@@ -107,13 +112,19 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
     if (userRole?.unitType === 'CELL') return null; // Hide completely for cell leaders
     if (loading) return <div className="h-14 animate-pulse bg-slate-800/50 rounded-xl border border-slate-700"></div>;
 
+    // BUSCENTA heads: show only Buscenta + Cell selectors (no Branch/Church/MC chain)
+    const isBuscentaLeader = userRole?.unitType === 'BUSCENTA';
+
     // Derived dropdown options sorted naturally/chronologically (e.g. Branch 1 -> Branch 2 -> Branch 10)
     const sortByName = (a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
 
     const targetBranches = units.filter(u => u.unit_type === 'BRANCH').sort(sortByName);
     const targetChurches = units.filter(u => u.unit_type === 'CHURCH' && u.parent_id === selectedBranch).sort(sortByName);
     const targetMCs = units.filter(u => u.unit_type === 'MC' && u.parent_id === selectedChurch).sort(sortByName);
-    const targetBuscentas = units.filter(u => u.unit_type === 'BUSCENTA' && u.parent_id === selectedMC).sort(sortByName);
+    // For BUSCENTA users: show their own + sibling buscentas (all under same parent MC), or filter by selectedMC
+    const targetBuscentas = userRole?.unitType === 'BUSCENTA'
+        ? units.filter(u => u.unit_type === 'BUSCENTA').sort(sortByName)
+        : units.filter(u => u.unit_type === 'BUSCENTA' && u.parent_id === selectedMC).sort(sortByName);
     const targetCells = units.filter(u => u.unit_type === 'CELL' && u.parent_id === selectedBuscenta).sort(sortByName);
 
     return (
@@ -121,8 +132,8 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
             <h3 className="text-lg font-black text-slate-200">Scope</h3>
 
             <div className="space-y-3">
-                {/* BRANCH */}
-                {(targetBranches.length > 0 || selectedBranch) && (
+                {/* BRANCH — hidden for BUSCENTA leaders */}
+                {!isBuscentaLeader && (targetBranches.length > 0 || selectedBranch) && (
                     <div className="relative">
                         <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select
@@ -144,8 +155,8 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
                     </div>
                 )}
 
-                {/* CHURCH */}
-                {(targetChurches.length > 0 || selectedChurch) && selectedBranch && (
+                {/* CHURCH — hidden for BUSCENTA leaders */}
+                {!isBuscentaLeader && (targetChurches.length > 0 || selectedChurch) && selectedBranch && (
                     <div className="relative">
                         <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select
@@ -165,8 +176,8 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
                     </div>
                 )}
 
-                {/* MC */}
-                {(targetMCs.length > 0 || selectedMC) && selectedChurch && (
+                {/* MC — hidden for BUSCENTA leaders */}
+                {!isBuscentaLeader && (targetMCs.length > 0 || selectedMC) && selectedChurch && (
                     <div className="relative">
                         <Users size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select
@@ -185,8 +196,8 @@ export default function UnitScopeSelector({ userRole, onScopeChange }) {
                     </div>
                 )}
 
-                {/* BUSCENTA */}
-                {(targetBuscentas.length > 0 || selectedBuscenta) && selectedMC && (
+                {/* BUSCENTA — always shown for BUSCENTA leaders; otherwise shown when an MC is selected */}
+                {(targetBuscentas.length > 0 || selectedBuscenta) && (isBuscentaLeader || selectedMC) && (
                     <div className="relative">
                         <LayoutGrid size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-church-blue-400 pointer-events-none" />
                         <select

@@ -7,7 +7,7 @@ import { ChevronRight, Users, Home } from "lucide-react";
 
 // ==========================================
 // COLOR THEMES — one per MC column
-// Defined with split-shading properties (darkTint, lightTint) and deepest namePlateBg.
+// Defined with split-shading properties, active glow states, and borders.
 // ==========================================
 const MC_THEMES = [
   {
@@ -17,12 +17,13 @@ const MC_THEMES = [
     lightTint: "bg-violet-950/10",
     textColor: "text-violet-400",
     accentText: "text-violet-300",
-    buscentaBg: "bg-violet-950/30 border-violet-500/20 hover:border-violet-500/40",
+    buscentaBg: "bg-violet-950/30 border-violet-500/20",
     buscentaActiveBg: "bg-violet-900/60 border-violet-400/60 text-white",
-    cellBg: "bg-violet-950/20 border-violet-500/15 hover:border-violet-500/30",
+    cellBg: "bg-violet-950/20 border-violet-500/15",
     cellActiveBg: "bg-violet-900/50 border-violet-400/55 text-white",
     shepherdBg: "bg-violet-950/45 border-violet-500/25 text-violet-200",
-    memberBg: "bg-violet-950/20 border-violet-500/15 text-slate-200"
+    memberBg: "bg-violet-950/20 border-violet-500/15 text-slate-200",
+    activeGlow: "shadow-[0_0_20px_rgba(139,92,246,0.15)] border-violet-500/30",
   },
   {
     // 2 — Rose (Dunamis MC)
@@ -31,12 +32,13 @@ const MC_THEMES = [
     lightTint: "bg-rose-950/10",
     textColor: "text-rose-400",
     accentText: "text-rose-300",
-    buscentaBg: "bg-rose-950/30 border-rose-500/20 hover:border-rose-500/40",
+    buscentaBg: "bg-rose-950/30 border-rose-500/20",
     buscentaActiveBg: "bg-rose-900/60 border-rose-400/60 text-white",
-    cellBg: "bg-rose-950/20 border-rose-500/15 hover:border-rose-500/30",
+    cellBg: "bg-rose-950/20 border-rose-500/15",
     cellActiveBg: "bg-rose-900/50 border-rose-400/55 text-white",
     shepherdBg: "bg-rose-950/45 border-rose-500/25 text-rose-200",
-    memberBg: "bg-rose-950/20 border-rose-500/15 text-slate-200"
+    memberBg: "bg-rose-950/20 border-rose-500/15 text-slate-200",
+    activeGlow: "shadow-[0_0_20px_rgba(244,63,94,0.15)] border-rose-500/30",
   },
   {
     // 3 — Black (Media SM)
@@ -45,12 +47,13 @@ const MC_THEMES = [
     lightTint: "bg-neutral-950/15",
     textColor: "text-zinc-400",
     accentText: "text-zinc-200",
-    buscentaBg: "bg-zinc-900/40 border-zinc-800/30 hover:border-zinc-700/50",
+    buscentaBg: "bg-zinc-900/40 border-zinc-800/30",
     buscentaActiveBg: "bg-zinc-800/60 border-zinc-600/60 text-white",
-    cellBg: "bg-zinc-900/30 border-zinc-800/20 hover:border-zinc-700/40",
+    cellBg: "bg-zinc-900/30 border-zinc-800/20",
     cellActiveBg: "bg-zinc-800/50 border-zinc-600/50 text-white",
     shepherdBg: "bg-zinc-950/45 border-zinc-800/25 text-zinc-300",
-    memberBg: "bg-zinc-950/20 border-zinc-800/10 text-zinc-400"
+    memberBg: "bg-zinc-950/20 border-zinc-800/10 text-zinc-400",
+    activeGlow: "shadow-[0_0_20px_rgba(255,255,255,0.05)] border-zinc-700/30",
   },
   {
     // 4 — Blue (New Testament MC)
@@ -59,12 +62,13 @@ const MC_THEMES = [
     lightTint: "bg-blue-950/10",
     textColor: "text-blue-400",
     accentText: "text-blue-300",
-    buscentaBg: "bg-blue-950/30 border-blue-500/20 hover:border-blue-500/40",
+    buscentaBg: "bg-blue-950/30 border-blue-500/20",
     buscentaActiveBg: "bg-blue-900/60 border-blue-400/60 text-white",
-    cellBg: "bg-blue-950/20 border-blue-500/15 hover:border-blue-500/30",
+    cellBg: "bg-blue-950/20 border-blue-500/15",
     cellActiveBg: "bg-blue-900/50 border-blue-400/55 text-white",
     shepherdBg: "bg-blue-950/45 border-blue-500/25 text-blue-200",
-    memberBg: "bg-blue-950/20 border-blue-500/15 text-slate-200"
+    memberBg: "bg-blue-950/20 border-blue-500/15 text-slate-200",
+    activeGlow: "shadow-[0_0_20px_rgba(59,130,246,0.15)] border-blue-500/30",
   },
   {
     // 5 — Amber/Brown (Soul Winners' MC)
@@ -73,12 +77,13 @@ const MC_THEMES = [
     lightTint: "bg-amber-950/10",
     textColor: "text-amber-500",
     accentText: "text-amber-400",
-    buscentaBg: "bg-amber-950/25 border-amber-900/20 hover:border-amber-900/40",
+    buscentaBg: "bg-amber-950/25 border-amber-900/20",
     buscentaActiveBg: "bg-amber-900/50 border-amber-500/50 text-white",
-    cellBg: "bg-amber-950/15 border-amber-900/15 hover:border-amber-900/35",
+    cellBg: "bg-amber-950/15 border-amber-900/15",
     cellActiveBg: "bg-amber-900/40 border-amber-500/45 text-white",
     shepherdBg: "bg-amber-950/35 border-amber-900/20 text-amber-300",
-    memberBg: "bg-amber-950/15 border-amber-900/15 text-slate-200"
+    memberBg: "bg-amber-950/15 border-amber-900/15 text-slate-200",
+    activeGlow: "shadow-[0_0_20px_rgba(245,158,11,0.12)] border-amber-600/30",
   },
   {
     // 6 — Emerald (Fallback)
@@ -87,12 +92,13 @@ const MC_THEMES = [
     lightTint: "bg-emerald-950/10",
     textColor: "text-emerald-400",
     accentText: "text-emerald-300",
-    buscentaBg: "bg-emerald-950/30 border-emerald-500/20 hover:border-emerald-500/40",
+    buscentaBg: "bg-emerald-950/30 border-emerald-500/20",
     buscentaActiveBg: "bg-emerald-600/30 border-emerald-400/60 text-white",
-    cellBg: "bg-emerald-950/20 border-emerald-500/15 hover:border-emerald-500/30",
+    cellBg: "bg-emerald-950/20 border-emerald-500/15",
     cellActiveBg: "bg-emerald-600/30 border-emerald-400/60 text-white",
     shepherdBg: "bg-emerald-950/45 border-emerald-500/25 text-emerald-200",
-    memberBg: "bg-emerald-950/20 border-emerald-500/15 text-slate-200"
+    memberBg: "bg-emerald-950/20 border-emerald-500/15 text-slate-200",
+    activeGlow: "shadow-[0_0_20px_rgba(16,185,129,0.15)] border-emerald-500/30",
   },
 ];
 
@@ -228,13 +234,15 @@ function ColumnItem({ node, theme, level, selectedIds, onClickHandlers, refs }) 
     onClickHandlers[level](node.id);
   };
 
+  const cardClass = isSelected
+    ? `${cardActiveBg} ${theme.activeGlow} scale-[1.01]`
+    : `${cardBg} border-white/5 hover:border-white/20 hover:bg-slate-800/40 hover:scale-[1.01]`;
+
   return (
     <div className="relative w-full shrink-0">
       <button
         onClick={handleCardClick}
-        className={`w-full flex items-center gap-2.5 p-3 rounded-2xl text-left border transition-all duration-200 shadow-sm ${
-          isSelected ? cardActiveBg : `${cardBg} hover:brightness-110`
-        }`}
+        className={`w-full flex items-center gap-2.5 p-3 rounded-2xl text-left border transition-all duration-300 shadow-sm ${cardClass}`}
       >
         <Avatar person={leader} size="sm" accent="border-white/10" />
         <div className="min-w-0 flex-1">
@@ -299,11 +307,11 @@ function ExpansionPanel({ parentNode, theme, level, selectedIds, onClickHandlers
         initial={{ opacity: 0, x: -12 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: -8 }}
-        transition={{ duration: 0.2, ease: "easeOut" }}
-        className="absolute left-[228px] top-0 w-[220px] shrink-0 bg-slate-900 border border-white/10 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 z-30"
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        className={`absolute left-[228px] top-0 w-[220px] shrink-0 backdrop-blur-xl bg-slate-950/90 border border-white/10 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 z-30 transition-all duration-300 ${theme.activeGlow}`}
       >
         {/* Caret pointing to parent card */}
-        <div className="absolute -left-2 top-6 w-4 h-4 bg-slate-900 border-l border-b border-white/10 rotate-45 z-10" />
+        <div className="absolute -left-2 top-6 w-4 h-4 bg-slate-950 border-l border-b border-white/10 rotate-45 z-10" />
 
         {/* Header */}
         <div className="relative z-20">
@@ -329,7 +337,7 @@ function ExpansionPanel({ parentNode, theme, level, selectedIds, onClickHandlers
                     {shepherds.map((p, i) => (
                       <div
                         key={`shep-${i}`}
-                        className={`flex items-center gap-2 border rounded-xl p-2 ${theme.shepherdBg}`}
+                        className={`flex items-center gap-2 border rounded-xl p-2 transition-all duration-200 hover:brightness-110 ${theme.shepherdBg}`}
                       >
                         <Avatar person={p} size="sm" accent="border-white/10" />
                         <span className="text-[10px] font-bold text-white truncate">{p.name}</span>
@@ -348,7 +356,7 @@ function ExpansionPanel({ parentNode, theme, level, selectedIds, onClickHandlers
                     {members.map((m, i) => (
                       <div
                         key={`mem-${i}`}
-                        className={`flex items-center gap-2 border rounded-xl p-2 ${theme.memberBg}`}
+                        className={`flex items-center gap-2 border rounded-xl p-2 transition-all duration-200 hover:brightness-110 ${theme.memberBg}`}
                       >
                         <Avatar person={m} size="sm" accent="border-white/10" />
                         <span className="text-[10px] font-bold text-slate-200 truncate">{m.name}</span>
@@ -371,11 +379,11 @@ function ExpansionPanel({ parentNode, theme, level, selectedIds, onClickHandlers
       initial={{ opacity: 0, x: -12 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -8 }}
-      transition={{ duration: 0.2, ease: "easeOut" }}
-      className="absolute left-[228px] top-0 w-[220px] shrink-0 bg-slate-900 border border-white/10 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 z-30"
+      transition={{ duration: 0.22, ease: "easeOut" }}
+      className={`absolute left-[228px] top-0 w-[220px] shrink-0 backdrop-blur-xl bg-slate-950/90 border border-white/10 rounded-3xl p-4 shadow-2xl flex flex-col gap-3 z-30 transition-all duration-300 ${theme.activeGlow}`}
     >
       {/* Caret pointing to parent card */}
-      <div className="absolute -left-2 top-6 w-4 h-4 bg-slate-900 border-l border-b border-white/10 rotate-45 z-10" />
+      <div className="absolute -left-2 top-6 w-4 h-4 bg-slate-950 border-l border-b border-white/10 rotate-45 z-10" />
 
       {/* Header */}
       <div className="relative z-20">
@@ -590,7 +598,7 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
     <div className="space-y-6 pb-12">
       {/* Zone Selector Tabs */}
       {tree.length > 1 && (
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-2 p-1.5 bg-slate-950/40 backdrop-blur-md border border-white/5 rounded-2xl max-w-max mx-auto shadow-inner">
           {tree.map((zone, idx) => (
             <button
               key={zone.id}
@@ -599,8 +607,8 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
               }}
               className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all duration-300 ${
                 activeZoneIndex === idx
-                  ? "bg-church-blue-600 text-white shadow-lg shadow-church-blue-500/20"
-                  : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+                  ? "bg-church-blue-600 text-white shadow-lg shadow-church-blue-500/25 scale-[1.02]"
+                  : "bg-transparent text-slate-400 hover:text-white hover:bg-white/5"
               }`}
             >
               {zone.name}
@@ -622,13 +630,16 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                 <motion.div
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-5 px-6 py-5 bg-gradient-to-r from-slate-900 to-slate-800 border border-white/10 rounded-3xl shadow-2xl w-full max-w-sm hover:border-white/20 transition-all duration-300"
+                  className="relative group flex items-center gap-5 px-6 py-5 bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-white/10 hover:border-white/20 rounded-3xl shadow-2xl w-full max-w-sm transition-all duration-300"
                 >
-                  <Avatar
-                    person={zoneHead}
-                    size="xl"
-                    accent="border-church-blue-500/40"
-                  />
+                  <div className="relative">
+                    <div className="absolute -inset-1 rounded-full bg-gradient-to-r from-church-blue-600 to-violet-600 opacity-20 blur-sm group-hover:opacity-40 transition duration-350" />
+                    <Avatar
+                      person={zoneHead}
+                      size="xl"
+                      accent="border-church-blue-500/40"
+                    />
+                  </div>
                   <div className="min-w-0">
                     <h3 className="text-base font-black text-white leading-tight uppercase tracking-tight">
                       {zoneHead?.name || "Unassigned"}
@@ -761,16 +772,20 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                       </div>
 
                       {/* MC Photo Card */}
-                      <div className="w-full px-1.5 shrink-0 relative z-10">
+                      <div className="w-full px-1.5 shrink-0 relative z-10 group cursor-pointer">
                         <div className="w-full rounded-2xl overflow-hidden border border-white/5 shadow-xl bg-slate-950/80 hover:scale-[1.01] transition-all duration-300">
-                          <div className="w-full h-40 bg-slate-950 overflow-hidden">
+                          {/* Photo */}
+                          <div className="w-full h-40 bg-slate-950 overflow-hidden relative">
                             {mcLeader?.photo ? (
-                              <img
-                                src={mcLeader.photo}
-                                alt={mcLeader.name}
-                                className="w-full h-full object-cover"
-                                style={{ objectPosition: "center 20%" }}
-                              />
+                              <>
+                                <img
+                                  src={mcLeader.photo}
+                                  alt={mcLeader.name}
+                                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                  style={{ objectPosition: "center 20%" }}
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60 pointer-events-none" />
+                              </>
                             ) : (
                               <div className="w-full h-full flex items-center justify-center">
                                 <span className="text-6xl font-black text-slate-700">
@@ -779,6 +794,7 @@ export default function MindMapDrillDown({ searchTerm = "" }) {
                               </div>
                             )}
                           </div>
+                          {/* Name plate: Deepest Color */}
                           <div className={`px-3 py-2.5 ${theme.namePlateBg}`}>
                             <span className={`inline-block mb-1 px-1.5 py-0.5 text-[7px] font-black uppercase tracking-wider bg-white/5 border border-white/10 rounded ${theme.textColor}`}>
                               {mc.unit_type === 'CELL' ? 'CELL SHEPHERD' : (mcLeader?.role?.toUpperCase() || getRoleLabel(mc.unit_type))}
